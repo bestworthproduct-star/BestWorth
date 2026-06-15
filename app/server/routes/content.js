@@ -2,6 +2,10 @@ const express = require('express');
 const router = express.Router();
 const Content = require('../models/Content');
 const auth = require('../middleware/auth');
+const {
+  hydrateMediaFieldsForResponse,
+  normalizeMediaFieldsForStorage
+} = require('../utils/public-url');
 
 // @route   GET /api/content/:key
 // @desc    Get content by key
@@ -10,10 +14,10 @@ router.get('/:key', async (req, res) => {
   try {
     const content = await Content.findOne({ key: req.params.key });
     if (!content) return res.status(404).json({ msg: 'Content not found' });
-    res.json(content.data);
+    res.json(hydrateMediaFieldsForResponse(req, content.data));
   } catch (err) {
     console.error(err.message);
-    res.status(500).send('Server Error');
+    res.status(500).json({ message: 'Server Error' });
   }
 });
 
@@ -25,12 +29,12 @@ router.get('/', async (req, res) => {
     const contents = await Content.find();
     const result = {};
     contents.forEach(c => {
-      result[c.key] = c.data;
+      result[c.key] = hydrateMediaFieldsForResponse(req, c.data);
     });
     res.json(result);
   } catch (err) {
     console.error(err.message);
-    res.status(500).send('Server Error');
+    res.status(500).json({ message: 'Server Error' });
   }
 });
 
@@ -42,12 +46,12 @@ router.post('/:key', auth, async (req, res) => {
     let content = await Content.findOne({ key: req.params.key });
     
     if (content) {
-      content.data = req.body;
+      content.data = normalizeMediaFieldsForStorage(req.body);
       content.updatedAt = Date.now();
     } else {
       content = new Content({
         key: req.params.key,
-        data: req.body
+        data: normalizeMediaFieldsForStorage(req.body)
       });
     }
 
@@ -56,13 +60,16 @@ router.post('/:key', auth, async (req, res) => {
     // Broadcast change via Socket.io
     const io = req.app.get('io');
     if (io) {
-      io.emit('content_change', { key: req.params.key, data: content.data });
+      io.emit('content_change', {
+        key: req.params.key,
+        data: hydrateMediaFieldsForResponse(req, content.data)
+      });
     }
 
-    res.json(content.data);
+    res.json(hydrateMediaFieldsForResponse(req, content.data));
   } catch (err) {
     console.error(err.message);
-    res.status(500).send('Server Error');
+    res.status(500).json({ message: 'Server Error' });
   }
 });
 

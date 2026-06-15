@@ -2,6 +2,7 @@ import { useEffect, useState, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useSocket } from '../hooks/useSocket'
 import { apiUrl } from '@/lib/api'
+import { resolveMediaUrl } from '@/lib/media'
 
 interface Product {
   _id: string
@@ -534,7 +535,7 @@ export default function AdminDashboard() {
                       <td className="px-10 py-6">
                         <div className="flex items-center">
                           <div className="w-10 h-10 bg-warm-stone overflow-hidden mr-4 border border-charcoal/5">
-                            <img src={p.image} className="w-full h-full object-cover" alt="" />
+                            <img src={resolveMediaUrl(p.image)} className="w-full h-full object-cover" alt="" />
                           </div>
                           <span className="font-medium text-charcoal">{p.name}</span>
                         </div>
@@ -740,7 +741,7 @@ export default function AdminDashboard() {
               {data.team.map((m) => (
                 <div key={m._id} className="bg-white border border-charcoal/5 p-8 shadow-sm group relative">
                   <div className="aspect-square bg-warm-stone mb-6 overflow-hidden grayscale group-hover:grayscale-0 transition-all duration-700 border border-charcoal/5">
-                    <img src={m.image} alt={m.name} className="w-full h-full object-cover transform group-hover:scale-110 transition-transform duration-[2s]" />
+                    <img src={resolveMediaUrl(m.image)} alt={m.name} className="w-full h-full object-cover transform group-hover:scale-110 transition-transform duration-[2s]" />
                   </div>
                   <h4 className="font-display text-lg text-charcoal font-medium">{m.name}</h4>
                   <p className="text-[10px] uppercase tracking-[0.2em] text-brass font-bold mt-2">{m.role}</p>
@@ -873,7 +874,7 @@ export default function AdminDashboard() {
                                   if (file) {
                                     handleUpload(file, `hero-video-${index}`, (uploadedUrl) => {
                                       const newUrls = [...(cmsContent.hero?.videoUrls || [])]
-                                      newUrls[index] = apiUrl(uploadedUrl)
+                                      newUrls[index] = uploadedUrl
                                       setCmsContent({ ...cmsContent, hero: { ...cmsContent.hero, videoUrls: newUrls } })
                                     })
                                   }
@@ -1227,7 +1228,7 @@ export default function AdminDashboard() {
                       type="file" className="hidden" accept="image/*"
                       onChange={e => {
                         const file = e.target.files?.[0]
-                        if (file) handleUpload(file, 'product', url => setProductForm({ ...productForm, image: apiUrl(url) }))
+                        if (file) handleUpload(file, 'product', url => setProductForm({ ...productForm, image: url }))
                       }}
                     />
                   </label>
@@ -1313,7 +1314,7 @@ export default function AdminDashboard() {
                       type="file" className="hidden" accept="image/*"
                       onChange={e => {
                         const file = e.target.files?.[0]
-                        if (file) handleUpload(file, 'team', url => setTeamForm({ ...teamForm, image: apiUrl(url) }))
+                        if (file) handleUpload(file, 'team', url => setTeamForm({ ...teamForm, image: url }))
                       }}
                     />
                   </label>

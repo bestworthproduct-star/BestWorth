@@ -4,6 +4,7 @@ import { useGSAP } from '@gsap/react'
 import { ChevronDown, ChevronLeft, ChevronRight } from 'lucide-react'
 import { useSocket } from '../hooks/useSocket'
 import { apiUrl } from '@/lib/api'
+import { resolveMediaUrl } from '@/lib/media'
 
 interface HeroSectionProps {
   scrollTo: (target: string) => void
@@ -124,9 +125,9 @@ export default function HeroSection({ scrollTo }: HeroSectionProps) {
             className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-1000 ${
               idx === currentVideoIndex ? 'opacity-100' : 'opacity-0'
             }`}
-            poster="/assets/about-hero.jpg"
+            poster={resolveMediaUrl('/assets/about-hero.jpg')}
           >
-            <source src={url} type="video/mp4" />
+            <source src={resolveMediaUrl(url)} type="video/mp4" />
           </video>
         ))}
         {!heroData.videoUrls?.length && (
@@ -136,9 +137,9 @@ export default function HeroSection({ scrollTo }: HeroSectionProps) {
            loop
            playsInline
            className="absolute inset-0 w-full h-full object-cover"
-           poster="/assets/about-hero.jpg"
+           poster={resolveMediaUrl('/assets/about-hero.jpg')}
          >
-           <source src="/assets/Hero-Video.mp4" type="video/mp4" />
+           <source src={resolveMediaUrl('/assets/Hero-Video.mp4')} type="video/mp4" />
          </video>
         )}
       </div>

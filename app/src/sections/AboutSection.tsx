@@ -3,6 +3,7 @@ import gsap from 'gsap'
 import { useGSAP } from '@gsap/react'
 import { useSocket } from '../hooks/useSocket'
 import { apiUrl } from '@/lib/api'
+import { resolveMediaUrl } from '@/lib/media'
 
 interface AboutData {
   title: string
@@ -97,7 +98,7 @@ export default function AboutSection() {
           <div className="w-full md:w-[45%] overflow-hidden" ref={imageRef}>
             <div className="aspect-[4/5] overflow-hidden">
               <img
-                src={aboutData.imageUrl}
+                src={resolveMediaUrl(aboutData.imageUrl)}
                 alt="Assorted nails and screws on concrete surface"
                 className="w-full h-[120%] object-cover scale-110"
               />

@@ -3,6 +3,7 @@ import gsap from 'gsap'
 import { useGSAP } from '@gsap/react'
 import { useSocket } from '../hooks/useSocket'
 import { apiUrl } from '@/lib/api'
+import { resolveMediaUrl } from '@/lib/media'
 
 interface Product {
   _id: string
@@ -236,7 +237,7 @@ export default function ProductsSection() {
                   </span>
                 )}
                 <img
-                  src={product.image}
+                  src={resolveMediaUrl(product.image)}
                   alt={product.name}
                   className="w-full h-full object-cover transition-transform duration-[400ms] group-hover:scale-105"
                   style={{

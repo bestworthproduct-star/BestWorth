@@ -1,36 +1,59 @@
 const nodemailer = require('nodemailer');
+const { toAbsoluteUrl } = require('./public-url');
 
-// For development, we'll use a mock transport or a service like Ethereal
-const transporter = nodemailer.createTransport({
-  service: 'gmail',
-  auth: {
-    user: process.env.EMAIL_USER,
-    pass: process.env.EMAIL_PASS
-  }
-});
+function buildAppUrl() {
+  return (process.env.PUBLIC_APP_URL || 'https://bestworth.onrender.com').replace(/\/$/, '');
+}
 
-/**
- * Base Email Layout wrapper to maintain brand consistency
- */
+function makePseudoRequest(appUrl) {
+  return {
+    protocol: appUrl.startsWith('https://') ? 'https' : 'http',
+    get(name) {
+      return name === 'host' ? appUrl.replace(/^https?:\/\//, '') : '';
+    },
+    headers: {}
+  };
+}
+
+const mailConfig = process.env.SMTP_HOST
+  ? {
+      host: process.env.SMTP_HOST,
+      port: Number(process.env.SMTP_PORT || 587),
+      secure: process.env.SMTP_SECURE === 'true',
+      auth: {
+        user: process.env.EMAIL_USER,
+        pass: process.env.EMAIL_PASS
+      }
+    }
+  : {
+      service: process.env.EMAIL_SERVICE || 'gmail',
+      auth: {
+        user: process.env.EMAIL_USER,
+        pass: process.env.EMAIL_PASS
+      }
+    };
+
+const transporter = nodemailer.createTransport(mailConfig);
+
 const EmailLayout = (content, previewText, cmsData = {}) => {
-  const brandColor = '#C5A059'; // Brass
+  const brandColor = '#C5A059';
   const charcoal = '#1A1A1A';
   const lightBg = '#F8F8F5';
+  const appUrl = buildAppUrl();
+  const requestLike = makePseudoRequest(appUrl);
 
   const contact = cmsData.contact || {};
   const footerData = cmsData.footer || {};
   const branding = cmsData.branding || {};
 
-  // Use CMS data if available, otherwise fall back to defaults
   const address = contact.address || 'Plot 15, Industrial Estate, Phase II, Lagos, Nigeria';
   const regNo = footerData.registrationNumber || 'RC: 1191234';
-  const website = 'https://bestworthproducts.com';
+  const website = appUrl;
   const linkedin = footerData.socials?.linkedin || 'https://linkedin.com/company/bestworth';
   const twitter = footerData.socials?.twitter || 'https://twitter.com/bestworth';
 
-  // Branding URLs from CMS
-  const logoUrl = branding.logoUrl || 'https://bestworthproducts.com/assets/Closed%20Sidebar%20Logo.png';
-  const faviconUrl = branding.faviconUrl || 'https://bestworthproducts.com/assets/Favicon%20Logo.png';
+  const logoUrl = toAbsoluteUrl(requestLike, branding.logoUrl || '/assets/Closed Sidebar Logo.jpg');
+  const faviconUrl = toAbsoluteUrl(requestLike, branding.faviconUrl || '/assets/Favicon Logo.png');
 
   return `
     <!DOCTYPE html>
@@ -53,13 +76,11 @@ const EmailLayout = (content, previewText, cmsData = {}) => {
       </style>
     </head>
     <body>
-      <!-- Preview Text (Hidden) -->
       <div style="display:none; font-size:1px; line-height:1px; max-height:0px; max-width:0px; opacity:0; overflow:hidden;">
         ${previewText}
       </div>
 
       <div class="container">
-        <!-- Header -->
         <div class="header">
           <div style="margin-bottom: 20px;">
             <img src="${logoUrl}" alt="Bestworth Products Limited" style="height: 40px; width: auto; filter: brightness(0) invert(1);">
@@ -72,12 +93,10 @@ const EmailLayout = (content, previewText, cmsData = {}) => {
           </div>
         </div>
 
-        <!-- Main Body -->
         <div class="content">
           ${content}
         </div>
 
-        <!-- Footer -->
         <div class="footer">
           <div style="font-size: 14px; margin-bottom: 20px; letter-spacing: 2px;">BESTWORTH PRODUCTS LIMITED</div>
           <p style="opacity: 0.6; line-height: 1.8;">
@@ -100,7 +119,8 @@ const EmailLayout = (content, previewText, cmsData = {}) => {
   `;
 };
 
-const sendInquiryNotification = async (inquiry) => {
+const sendInquiryNotification = async (inquiry, cmsData = {}) => {
+  const appUrl = buildAppUrl();
   const content = `
     <span class="label">System Notification</span>
     <h1 style="font-size: 24px; margin: 0 0 30px 0; font-weight: 500; letter-spacing: -0.5px;">New Business Inquiry</h1>
@@ -124,28 +144,33 @@ const sendInquiryNotification = async (inquiry) => {
     </div>
 
     <div style="margin-top: 40px;">
-      <a href="http://localhost:5173/admin" class="button">Access Admin Portal</a>
+      <a href="${appUrl}/admin" class="button">Access Admin Portal</a>
     </div>
   `;
 
   const mailOptions = {
-    from: `"Bestworth System" <${process.env.EMAIL_USER}>`,
+    from: process.env.EMAIL_FROM || `"Bestworth System" <${process.env.EMAIL_USER}>`,
     to: process.env.COMPANY_EMAIL || process.env.EMAIL_USER,
     replyTo: inquiry.email,
     subject: `[Lead] New Inquiry from ${inquiry.company || inquiry.name}`,
-    html: EmailLayout(content, `New inquiry received from ${inquiry.name} representing ${inquiry.company || 'Private'}`)
+    html: EmailLayout(
+      content,
+      `New inquiry received from ${inquiry.name} representing ${inquiry.company || 'Private'}`,
+      cmsData
+    )
   };
 
   try {
-    await transporter.sendMail(mailOptions);
-    console.log('Inquiry notification email sent');
+    const info = await transporter.sendMail(mailOptions);
+    console.log('Inquiry notification email sent:', info.messageId);
+    return info;
   } catch (error) {
     console.error('Error sending inquiry notification:', error);
+    throw error;
   }
 };
 
 const sendAdminReply = async (to, subject, message, cmsData = {}) => {
-  // Convert <br> tags to actual spacing for HTML layout
   const formattedMessage = message.replace(/<br>/g, '</div><div style="margin-bottom: 15px;">');
 
   const content = `
@@ -164,11 +189,15 @@ const sendAdminReply = async (to, subject, message, cmsData = {}) => {
   `;
 
   const mailOptions = {
-    from: `"Bestworth Sales" <${process.env.EMAIL_USER}>`,
-    to: to,
-    replyTo: process.env.EMAIL_USER,
+    from: process.env.EMAIL_FROM || `"Bestworth Sales" <${process.env.EMAIL_USER}>`,
+    to,
+    replyTo: process.env.EMAIL_REPLY_TO || process.env.EMAIL_USER,
     subject: subject || 'Response to your inquiry - Bestworth Products Limited',
-    html: EmailLayout(content, `Official response from Bestworth Products Limited regarding your inquiry.`, cmsData)
+    html: EmailLayout(
+      content,
+      'Official response from Bestworth Products Limited regarding your inquiry.',
+      cmsData
+    )
   };
 
   try {

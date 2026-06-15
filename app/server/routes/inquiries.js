@@ -1,8 +1,17 @@
 const express = require('express');
 const router = express.Router();
 const Inquiry = require('../models/Inquiry');
+const Content = require('../models/Content');
 const auth = require('../middleware/auth');
 const { sendInquiryNotification, sendAdminReply } = require('../utils/email');
+
+async function getCmsEmailData() {
+  const docs = await Content.find({ key: { $in: ['contact', 'footer', 'branding'] } });
+  return docs.reduce((accumulator, document) => {
+    accumulator[document.key] = document.data;
+    return accumulator;
+  }, {});
+}
 
 // Public: Submit inquiry
 router.post('/', async (req, res) => {
@@ -10,12 +19,19 @@ router.post('/', async (req, res) => {
   try {
     const newInquiry = await inquiry.save();
     
-    // Send email notification to company
-    await sendInquiryNotification(newInquiry);
+    let emailSent = true;
+    try {
+      const cmsData = await getCmsEmailData();
+      await sendInquiryNotification(newInquiry, cmsData);
+    } catch (emailError) {
+      emailSent = false;
+      console.error('Inquiry notification email failed:', emailError.message);
+    }
     
     req.app.get('io').emit('inquiry_change', { action: 'create', data: newInquiry });
-    res.status(201).json(newInquiry);
+    res.status(201).json({ ...newInquiry.toObject(), emailSent });
   } catch (err) {
+    console.error('Inquiry submission error:', err.message);
     res.status(400).json({ message: err.message });
   }
 });

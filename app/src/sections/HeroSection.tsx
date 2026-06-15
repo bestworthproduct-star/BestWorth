@@ -3,6 +3,7 @@ import gsap from 'gsap'
 import { useGSAP } from '@gsap/react'
 import { ChevronDown, ChevronLeft, ChevronRight } from 'lucide-react'
 import { useSocket } from '../hooks/useSocket'
+import { apiUrl } from '@/lib/api'
 
 interface HeroSectionProps {
   scrollTo: (target: string) => void
@@ -26,7 +27,7 @@ export default function HeroSection({ scrollTo }: HeroSectionProps) {
   const ctaRef = useRef<HTMLButtonElement>(null)
 
   useEffect(() => {
-    fetch('http://localhost:5000/api/content/hero')
+    fetch(apiUrl('/api/content/hero'))
       .then(res => res.json())
       .then(data => setHeroData(data))
       .catch(err => console.error(err))

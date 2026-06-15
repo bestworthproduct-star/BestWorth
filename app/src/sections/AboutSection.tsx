@@ -2,6 +2,7 @@ import { useRef, useEffect, useState } from 'react'
 import gsap from 'gsap'
 import { useGSAP } from '@gsap/react'
 import { useSocket } from '../hooks/useSocket'
+import { apiUrl } from '@/lib/api'
 
 interface AboutData {
   title: string
@@ -16,7 +17,7 @@ export default function AboutSection() {
   const textRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
-    fetch('http://localhost:5000/api/content/about')
+    fetch(apiUrl('/api/content/about'))
       .then(res => res.json())
       .then(data => setAboutData(data))
       .catch(err => console.error(err))

@@ -3,6 +3,7 @@ import gsap from 'gsap'
 import { useGSAP } from '@gsap/react'
 import { Facebook, Linkedin, Instagram, Twitter } from 'lucide-react'
 import { useSocket } from '../hooks/useSocket'
+import { apiUrl } from '@/lib/api'
 
 interface FooterProps {
   scrollTo: (target: string) => void
@@ -32,7 +33,7 @@ export default function Footer({ scrollTo }: FooterProps) {
   const footerRef = useRef<HTMLElement>(null)
 
   useEffect(() => {
-    fetch('http://localhost:5000/api/content/footer')
+    fetch(apiUrl('/api/content/footer'))
       .then(res => res.json())
       .then(data => setFooterData(data))
       .catch(err => console.error(err))

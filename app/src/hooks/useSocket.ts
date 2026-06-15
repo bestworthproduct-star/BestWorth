@@ -1,12 +1,13 @@
 import { useEffect, useRef } from 'react'
 import { io, Socket } from 'socket.io-client'
+import { SOCKET_URL } from '@/lib/api'
 
 export const useSocket = (event: string, callback: (data: any) => void) => {
   const socketRef = useRef<Socket | null>(null)
 
   useEffect(() => {
     // Connect to backend socket server
-    socketRef.current = io('http://localhost:5000')
+    socketRef.current = io(SOCKET_URL)
 
     socketRef.current.on('connect', () => {
       console.log('Connected to Real-time Sync Engine')

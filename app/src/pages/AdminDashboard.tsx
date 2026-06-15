@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useSocket } from '../hooks/useSocket'
+import { apiUrl } from '@/lib/api'
 
 interface Product {
   _id: string
@@ -80,10 +81,10 @@ export default function AdminDashboard() {
   const fetchDashboardData = useCallback(async (token: string) => {
     try {
       const [pRes, iRes, tRes, cRes] = await Promise.all([
-        fetch('http://localhost:5000/api/products', { headers: { 'Authorization': `Bearer ${token}` } }),
-        fetch('http://localhost:5000/api/inquiries', { headers: { 'Authorization': `Bearer ${token}` } }),
-        fetch('http://localhost:5000/api/team', { headers: { 'Authorization': `Bearer ${token}` } }),
-        fetch('http://localhost:5000/api/content', { headers: { 'Authorization': `Bearer ${token}` } })
+        fetch(apiUrl('/api/products'), { headers: { 'Authorization': `Bearer ${token}` } }),
+        fetch(apiUrl('/api/inquiries'), { headers: { 'Authorization': `Bearer ${token}` } }),
+        fetch(apiUrl('/api/team'), { headers: { 'Authorization': `Bearer ${token}` } }),
+        fetch(apiUrl('/api/content'), { headers: { 'Authorization': `Bearer ${token}` } })
       ])
 
       const products = await pRes.json()
@@ -124,7 +125,7 @@ export default function AdminDashboard() {
       }
 
       try {
-        const response = await fetch('http://localhost:5000/api/admin/check', {
+        const response = await fetch(apiUrl('/api/admin/check'), {
           headers: { 'Authorization': `Bearer ${token}` }
         })
         if (response.ok) {
@@ -163,7 +164,7 @@ export default function AdminDashboard() {
     formData.append('file', file)
 
     try {
-      const response = await fetch('http://localhost:5000/api/upload', {
+      const response = await fetch(apiUrl('/api/upload'), {
         method: 'POST',
         headers: { 'Authorization': `Bearer ${token}` },
         body: formData
@@ -186,7 +187,7 @@ export default function AdminDashboard() {
   const handleUpdateInquiry = async (id: string, status: string) => {
     const token = localStorage.getItem('adminToken')
     try {
-      await fetch(`http://localhost:5000/api/inquiries/${id}`, {
+      await fetch(apiUrl(`/api/inquiries/${id}`), {
         method: 'PATCH',
         headers: { 
           'Content-Type': 'application/json',
@@ -206,7 +207,7 @@ export default function AdminDashboard() {
     const token = localStorage.getItem('adminToken')
 
     try {
-      const response = await fetch('http://localhost:5000/api/inquiries/reply', {
+      const response = await fetch(apiUrl('/api/inquiries/reply'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
         body: JSON.stringify({
@@ -240,7 +241,7 @@ export default function AdminDashboard() {
     if (!window.confirm('Delete this inquiry?')) return
     const token = localStorage.getItem('adminToken')
     try {
-      await fetch(`http://localhost:5000/api/inquiries/${id}`, {
+      await fetch(apiUrl(`/api/inquiries/${id}`), {
         method: 'DELETE',
         headers: { 'Authorization': `Bearer ${token}` }
       })
@@ -255,7 +256,7 @@ export default function AdminDashboard() {
     if (!window.confirm(`Delete ${selectedInquiries.length} selected inquiries?`)) return
     const token = localStorage.getItem('adminToken')
     try {
-      await fetch('http://localhost:5000/api/inquiries/bulk', {
+      await fetch(apiUrl('/api/inquiries/bulk'), {
         method: 'DELETE',
         headers: {
           'Content-Type': 'application/json',
@@ -274,7 +275,7 @@ export default function AdminDashboard() {
     if (!window.confirm('Are you sure you want to delete this product?')) return
     const token = localStorage.getItem('adminToken')
     try {
-      await fetch(`http://localhost:5000/api/products/${id}`, {
+      await fetch(apiUrl(`/api/products/${id}`), {
         method: 'DELETE',
         headers: { 'Authorization': `Bearer ${token}` }
       })
@@ -289,8 +290,8 @@ export default function AdminDashboard() {
     const token = localStorage.getItem('adminToken')
     const method = productModal.editId ? 'PUT' : 'POST'
     const url = productModal.editId 
-      ? `http://localhost:5000/api/products/${productModal.editId}`
-      : 'http://localhost:5000/api/products'
+      ? apiUrl(`/api/products/${productModal.editId}`)
+      : apiUrl('/api/products')
 
     try {
       const res = await fetch(url, {
@@ -316,8 +317,8 @@ export default function AdminDashboard() {
     const token = localStorage.getItem('adminToken')
     const method = teamModal.editId ? 'PUT' : 'POST'
     const url = teamModal.editId 
-      ? `http://localhost:5000/api/team/${teamModal.editId}`
-      : 'http://localhost:5000/api/team'
+      ? apiUrl(`/api/team/${teamModal.editId}`)
+      : apiUrl('/api/team')
 
     try {
       const res = await fetch(url, {
@@ -342,7 +343,7 @@ export default function AdminDashboard() {
     if (!window.confirm('Remove this team member?')) return
     const token = localStorage.getItem('adminToken')
     try {
-      await fetch(`http://localhost:5000/api/team/${id}`, {
+      await fetch(apiUrl(`/api/team/${id}`), {
         method: 'DELETE',
         headers: { 'Authorization': `Bearer ${token}` }
       })
@@ -360,7 +361,7 @@ export default function AdminDashboard() {
   const handleUpdateContent = async (key: string, data: any) => {
     const token = localStorage.getItem('adminToken')
     try {
-      const res = await fetch(`http://localhost:5000/api/content/${key}`, {
+      const res = await fetch(apiUrl(`/api/content/${key}`), {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',
@@ -874,7 +875,7 @@ export default function AdminDashboard() {
                                   if (file) {
                                     handleUpload(file, `hero-video-${index}`, (uploadedUrl) => {
                                       const newUrls = [...(cmsContent.hero?.videoUrls || [])]
-                                      newUrls[index] = `http://localhost:5000${uploadedUrl}`
+                                      newUrls[index] = apiUrl(uploadedUrl)
                                       setCmsContent({ ...cmsContent, hero: { ...cmsContent.hero, videoUrls: newUrls } })
                                     })
                                   }
@@ -1228,7 +1229,7 @@ export default function AdminDashboard() {
                       type="file" className="hidden" accept="image/*"
                       onChange={e => {
                         const file = e.target.files?.[0]
-                        if (file) handleUpload(file, 'product', url => setProductForm({ ...productForm, image: `http://localhost:5000${url}` }))
+                        if (file) handleUpload(file, 'product', url => setProductForm({ ...productForm, image: apiUrl(url) }))
                       }}
                     />
                   </label>
@@ -1314,7 +1315,7 @@ export default function AdminDashboard() {
                       type="file" className="hidden" accept="image/*"
                       onChange={e => {
                         const file = e.target.files?.[0]
-                        if (file) handleUpload(file, 'team', url => setTeamForm({ ...teamForm, image: `http://localhost:5000${url}` }))
+                        if (file) handleUpload(file, 'team', url => setTeamForm({ ...teamForm, image: apiUrl(url) }))
                       }}
                     />
                   </label>

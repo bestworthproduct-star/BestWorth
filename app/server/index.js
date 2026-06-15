@@ -107,7 +107,7 @@ app.get('/api/admin/check', require('./middleware/auth'), (req, res) => {
 });
 
 if (isProduction && fs.existsSync(frontendDist)) {
-  app.get('*', (req, res) => {
+  app.get('/{*splat}', (req, res) => {
     res.sendFile(path.join(frontendDist, 'index.html'));
   });
 }

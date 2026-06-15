@@ -3,6 +3,7 @@ import gsap from 'gsap'
 import { useGSAP } from '@gsap/react'
 import { Shield, Target, Briefcase, HandHeart, Leaf } from 'lucide-react'
 import { useSocket } from '../hooks/useSocket'
+import { apiUrl } from '@/lib/api'
 
 interface Value {
   title: string
@@ -25,7 +26,7 @@ export default function ValuesSection() {
   const cardsRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
-    fetch('http://localhost:5000/api/content/values')
+    fetch(apiUrl('/api/content/values'))
       .then(res => res.json())
       .then(data => setValues(data))
       .catch(err => console.error(err))

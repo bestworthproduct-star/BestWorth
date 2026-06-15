@@ -2,6 +2,7 @@ import { useState, useRef, useEffect, useCallback } from 'react'
 import gsap from 'gsap'
 import { useGSAP } from '@gsap/react'
 import { useSocket } from '../hooks/useSocket'
+import { apiUrl } from '@/lib/api'
 
 interface Product {
   _id: string
@@ -29,7 +30,7 @@ export default function ProductsSection() {
   }, [])
 
   const fetchCategories = useCallback(() => {
-    fetch('http://localhost:5000/api/content/categories')
+    fetch(apiUrl('/api/content/categories'))
       .then(res => res.json())
       .then(data => {
         if (data && Array.isArray(data)) {
@@ -55,7 +56,7 @@ export default function ProductsSection() {
   }, [])
 
   const fetchProducts = useCallback(() => {
-    fetch('http://localhost:5000/api/products')
+    fetch(apiUrl('/api/products'))
       .then(res => res.json())
       .then(data => {
         setAllProducts(data)

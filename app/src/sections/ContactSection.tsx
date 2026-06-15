@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from 'react'
 import gsap from 'gsap'
 import { useGSAP } from '@gsap/react'
 import { useSocket } from '../hooks/useSocket'
+import { apiUrl } from '@/lib/api'
 
 interface ContactData {
   address: string
@@ -17,7 +18,7 @@ export default function ContactSection() {
   const rightRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
-    fetch('http://localhost:5000/api/content/contact')
+    fetch(apiUrl('/api/content/contact'))
       .then(res => res.json())
       .then(data => setContactData(data))
       .catch(err => console.error(err))
@@ -79,7 +80,7 @@ export default function ContactSection() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     try {
-      const response = await fetch('http://localhost:5000/api/inquiries', {
+      const response = await fetch(apiUrl('/api/inquiries'), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

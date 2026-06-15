@@ -2,6 +2,7 @@ import { useRef, useEffect, useState, useCallback } from 'react'
 import gsap from 'gsap'
 import { useGSAP } from '@gsap/react'
 import { useSocket } from '../hooks/useSocket'
+import { apiUrl } from '@/lib/api'
 
 interface TeamMember {
   _id: string
@@ -19,7 +20,7 @@ export default function ManagementSection() {
   const cardsRef = useRef<HTMLDivElement>(null)
 
   const fetchTeam = useCallback(() => {
-    fetch('http://localhost:5000/api/team')
+    fetch(apiUrl('/api/team'))
       .then(res => res.json())
       .then(data => setTeam(data))
       .catch(err => console.error('Error fetching team:', err))

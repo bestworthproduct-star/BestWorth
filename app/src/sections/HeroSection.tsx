@@ -106,8 +106,6 @@ export default function HeroSection({ scrollTo }: HeroSectionProps) {
     </section>
   )
 
-  const currentVideo = heroData.videoUrls?.[currentVideoIndex] || '/assets/Hero-Video.mp4'
-
   return (
     <section
       id="hero"

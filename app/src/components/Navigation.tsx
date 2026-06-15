@@ -1,13 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import gsap from 'gsap'
 import { useGSAP } from '@gsap/react'
-import { Menu, X, Facebook, Linkedin, Instagram, Twitter, ChevronLeft, ChevronRight } from 'lucide-react'
-
-interface NavigationProps {
-  scrollTo: (target: string) => void
-  collapsed: boolean
-  setCollapsed: (collapsed: boolean) => void
-}
+import { Menu, X } from 'lucide-react'
 
 const navLinks = [
   { label: 'HOME', target: '#hero', icon: <Menu size={20} /> },

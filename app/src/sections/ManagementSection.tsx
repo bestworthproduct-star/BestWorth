@@ -3,6 +3,7 @@ import gsap from 'gsap'
 import { useGSAP } from '@gsap/react'
 import { useSocket } from '../hooks/useSocket'
 import { apiUrl } from '@/lib/api'
+import { resolveMediaUrl } from '@/lib/media'
 
 interface TeamMember {
   _id: string
@@ -112,7 +113,7 @@ export default function ManagementSection() {
               {/* Portrait */}
               <div className="aspect-[4/5] overflow-hidden relative">
                 <img
-                  src={member.image}
+                  src={resolveMediaUrl(member.image)}
                   alt={member.name}
                   className="w-full h-full object-cover grayscale transition-all duration-[800ms] group-hover:grayscale-0 group-hover:scale-[1.05]"
                 />
@@ -162,7 +163,7 @@ export default function ManagementSection() {
             {/* Image Column */}
             <div className="w-full md:w-[40%] bg-warm-stone/5">
               <img
-                src={selectedMember.image}
+                src={resolveMediaUrl(selectedMember.image)}
                 alt={selectedMember.name}
                 className="w-full h-full object-cover grayscale"
               />

@@ -2,12 +2,16 @@ const express = require('express');
 const router = express.Router();
 const TeamMember = require('../models/TeamMember');
 const auth = require('../middleware/auth');
+const {
+  hydrateMediaFieldsForResponse,
+  normalizeMediaFieldsForStorage
+} = require('../utils/public-url');
 
 // Public: Get all team members
 router.get('/', async (req, res) => {
   try {
     const team = await TeamMember.find().sort({ order: 1 });
-    res.json(team);
+    res.json(team.map((member) => hydrateMediaFieldsForResponse(req, member.toObject())));
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
@@ -15,11 +19,12 @@ router.get('/', async (req, res) => {
 
 // Admin: Add team member
 router.post('/', auth, async (req, res) => {
-  const member = new TeamMember(req.body);
+  const member = new TeamMember(normalizeMediaFieldsForStorage(req.body));
   try {
     const newMember = await member.save();
-    req.app.get('io').emit('team_change', { action: 'create', data: newMember });
-    res.status(201).json(newMember);
+    const payload = hydrateMediaFieldsForResponse(req, newMember.toObject());
+    req.app.get('io').emit('team_change', { action: 'create', data: payload });
+    res.status(201).json(payload);
   } catch (err) {
     res.status(400).json({ message: err.message });
   }
@@ -28,9 +33,14 @@ router.post('/', auth, async (req, res) => {
 // Admin: Update team member
 router.put('/:id', auth, async (req, res) => {
   try {
-    const updatedMember = await TeamMember.findByIdAndUpdate(req.params.id, req.body, { new: true });
-    req.app.get('io').emit('team_change', { action: 'update', data: updatedMember });
-    res.json(updatedMember);
+    const updatedMember = await TeamMember.findByIdAndUpdate(
+      req.params.id,
+      normalizeMediaFieldsForStorage(req.body),
+      { new: true }
+    );
+    const payload = hydrateMediaFieldsForResponse(req, updatedMember.toObject());
+    req.app.get('io').emit('team_change', { action: 'update', data: payload });
+    res.json(payload);
   } catch (err) {
     res.status(400).json({ message: err.message });
   }

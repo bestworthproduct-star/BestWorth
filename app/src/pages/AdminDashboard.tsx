@@ -380,7 +380,6 @@ export default function AdminDashboard() {
 
   const handleSaveCategory = async (e: React.FormEvent) => {
     e.preventDefault()
-    const token = localStorage.getItem('adminToken')
     const currentCategories = cmsContent.categories || [
       { id: 'nails', name: 'Nails' },
       { id: 'screws', name: 'Screws' },
@@ -434,7 +433,6 @@ export default function AdminDashboard() {
 
   const handleSaveCustomTemplate = async () => {
     if (!newTemplateName) return
-    const token = localStorage.getItem('adminToken')
     const currentTemplates = cmsContent.email_templates || []
 
     // Replace actual name with placeholder for future use
@@ -542,7 +540,7 @@ export default function AdminDashboard() {
                         </div>
                       </td>
                       <td className="px-10 py-6 uppercase text-[10px] tracking-widest font-bold text-charcoal/60">
-                        {categories.find(c => c.id === p.category)?.name || p.category}
+                        {categories.find((c: { id: string; name: string }) => c.id === p.category)?.name || p.category}
                       </td>
                       <td className="px-10 py-6">
                         {p.featured ? (

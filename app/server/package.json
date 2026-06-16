@@ -6,7 +6,8 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "migrate:atlas": "node migrate-local-to-atlas.js",
-    "seed": "node seed.js"
+    "seed": "node seed.js",
+    "clear:team": "node clear-team.js"
   },
   "keywords": [],
   "author": "",

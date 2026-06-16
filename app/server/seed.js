@@ -7,7 +7,6 @@ dotenv.config();
 const User = require('./models/User');
 
 const Product = require('./models/Product');
-const TeamMember = require('./models/TeamMember');
 const Inquiry = require('./models/Inquiry');
 const Content = require('./models/Content');
 
@@ -33,16 +32,6 @@ const seed = async () => {
         { name: 'Wood Screws', category: 'screws', description: 'Precision threaded wood screws', image: '/assets/product-wood-screw.jpg' }
       ]);
       console.log('Sample products seeded');
-    }
-
-    // Team
-    const teamCount = await TeamMember.countDocuments();
-    if (teamCount === 0) {
-      await TeamMember.create([
-        { name: 'Dr. Abubakar Ahmed', role: 'Chairman / CEO', image: '/assets/team-1.jpg', order: 1 },
-        { name: 'Sarah Williams', role: 'Operations Director', image: '/assets/team-2.jpg', order: 2 }
-      ]);
-      console.log('Sample team seeded');
     }
 
     // Inquiries

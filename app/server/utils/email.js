@@ -87,6 +87,41 @@ function createSmtpTransporter() {
 const smtpTransporter = createSmtpTransporter();
 let verifyPromise = null;
 
+async function fetchAssetAsAttachment(url, fallbackName, contentId) {
+  if (!url) {
+    return null;
+  }
+
+  try {
+    const response = await fetch(url);
+
+    if (!response.ok) {
+      throw new Error(`Asset request failed with status ${response.status}`);
+    }
+
+    const arrayBuffer = await response.arrayBuffer();
+    const contentType = response.headers.get('content-type') || 'application/octet-stream';
+    const fileExtension = contentType.split('/')[1]?.split(';')[0] || 'bin';
+    const filename = `${fallbackName}.${fileExtension.replace('svg+xml', 'svg')}`;
+    const contentBuffer = Buffer.from(arrayBuffer);
+
+    return {
+      filename,
+      content: contentBuffer,
+      contentType,
+      disposition: 'inline',
+      cid: contentId
+    };
+  } catch (error) {
+    console.error('[email] failed to fetch branding asset', {
+      url,
+      contentId,
+      message: error.message
+    });
+    return null;
+  }
+}
+
 async function verifySmtpTransporter() {
   if (!verifyPromise) {
     console.log('[email] starting transporter verification', summarizeMailConfig());
@@ -116,7 +151,7 @@ async function verifySmtpTransporter() {
   return verifyPromise;
 }
 
-const EmailLayout = (content, previewText, cmsData = {}) => {
+async function buildEmailBranding(cmsData = {}) {
   const brandColor = '#C5A059';
   const charcoal = '#1A1A1A';
   const lightBg = '#F8F8F5';
@@ -135,6 +170,37 @@ const EmailLayout = (content, previewText, cmsData = {}) => {
 
   const logoUrl = toAbsoluteUrl(requestLike, branding.logoUrl || '/assets/Closed Sidebar Logo.jpg');
   const faviconUrl = toAbsoluteUrl(requestLike, branding.faviconUrl || '/assets/Favicon Logo.png');
+  const logoAttachment = await fetchAssetAsAttachment(logoUrl, 'bestworth-logo', 'bestworth-logo');
+
+  return {
+    brandColor,
+    charcoal,
+    lightBg,
+    address,
+    regNo,
+    website,
+    linkedin,
+    twitter,
+    logoUrl,
+    faviconUrl,
+    logoSrc: logoAttachment ? 'cid:bestworth-logo' : logoUrl,
+    attachments: logoAttachment ? [logoAttachment] : []
+  };
+}
+
+const EmailLayout = (content, previewText, brandingData) => {
+  const {
+    brandColor,
+    charcoal,
+    lightBg,
+    address,
+    regNo,
+    website,
+    linkedin,
+    twitter,
+    logoSrc,
+    faviconUrl
+  } = brandingData;
 
   return `
     <!DOCTYPE html>
@@ -163,7 +229,7 @@ const EmailLayout = (content, previewText, cmsData = {}) => {
       <div class="container">
         <div class="header">
           <div style="margin-bottom: 20px;">
-            <img src="${logoUrl}" alt="Bestworth Products Limited" style="height: 40px; width: auto; filter: brightness(0) invert(1);">
+            <img src="${logoSrc}" alt="Bestworth Products Limited" style="height: 40px; width: auto; filter: brightness(0) invert(1);">
           </div>
           <div style="display: flex; align-items: center; justify-content: center; gap: 8px;">
             <img src="${faviconUrl}" style="height: 12px; width: 12px; display: inline-block;" alt="">
@@ -215,7 +281,16 @@ async function sendWithResend(mailOptions) {
       to: Array.isArray(mailOptions.to) ? mailOptions.to : [mailOptions.to],
       reply_to: mailOptions.replyTo,
       subject: mailOptions.subject,
-      html: mailOptions.html
+      html: mailOptions.html,
+      attachments: Array.isArray(mailOptions.attachments)
+        ? mailOptions.attachments.map((attachment) => ({
+            filename: attachment.filename,
+            content: attachment.content.toString('base64'),
+            content_type: attachment.contentType,
+            content_id: attachment.cid,
+            disposition: attachment.disposition || 'inline'
+          }))
+        : undefined
     })
   });
 
@@ -263,7 +338,16 @@ async function sendWithSendGrid(mailOptions) {
           type: 'text/html',
           value: mailOptions.html
         }
-      ]
+      ],
+      attachments: Array.isArray(mailOptions.attachments)
+        ? mailOptions.attachments.map((attachment) => ({
+            content: attachment.content.toString('base64'),
+            filename: attachment.filename,
+            type: attachment.contentType,
+            disposition: attachment.disposition || 'inline',
+            content_id: attachment.cid
+          }))
+        : undefined
     })
   });
 
@@ -347,6 +431,7 @@ const sendInquiryNotification = async (inquiry, cmsData = {}) => {
   });
 
   const appUrl = buildAppUrl();
+  const brandingData = await buildEmailBranding(cmsData);
   const content = `
     <span class="label">System Notification</span>
     <h1 style="font-size: 24px; margin: 0 0 30px 0; font-weight: 500; letter-spacing: -0.5px;">New Business Inquiry</h1>
@@ -377,8 +462,9 @@ const sendInquiryNotification = async (inquiry, cmsData = {}) => {
     html: EmailLayout(
       content,
       `New inquiry received from ${inquiry.name} representing ${inquiry.company || 'Private'}`,
-      cmsData
-    )
+      brandingData
+    ),
+    attachments: brandingData.attachments
   };
 
   try {
@@ -405,6 +491,7 @@ const sendInquiryConfirmation = async (inquiry, cmsData = {}) => {
     hasFooter: Boolean(cmsData.footer)
   });
 
+  const brandingData = await buildEmailBranding(cmsData);
   const content = `
     <span class="label">Inquiry Received</span>
     <h1 style="font-size: 24px; margin: 0 0 30px 0; font-weight: 500; letter-spacing: -0.5px;">Thank You for Contacting Bestworth</h1>
@@ -428,8 +515,9 @@ const sendInquiryConfirmation = async (inquiry, cmsData = {}) => {
     html: EmailLayout(
       content,
       'We received your inquiry and our team will respond shortly.',
-      cmsData
-    )
+      brandingData
+    ),
+    attachments: brandingData.attachments
   };
 
   try {
@@ -457,6 +545,7 @@ const sendAdminReply = async (to, subject, message, cmsData = {}) => {
     messageLength: message.length
   });
 
+  const brandingData = await buildEmailBranding(cmsData);
   const formattedMessage = message.replace(/<br>/g, '</div><div style="margin-bottom: 15px;">');
   const content = `
     <span class="label">Official Correspondence</span>
@@ -478,8 +567,9 @@ const sendAdminReply = async (to, subject, message, cmsData = {}) => {
     html: EmailLayout(
       content,
       'Official response from Bestworth Products Limited regarding your inquiry.',
-      cmsData
-    )
+      brandingData
+    ),
+    attachments: brandingData.attachments
   };
 
   try {

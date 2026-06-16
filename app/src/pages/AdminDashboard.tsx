@@ -1490,12 +1490,13 @@ export default function AdminDashboard() {
               setTeamForm(emptyTeamForm)
             }}
           ></div>
-          <div className="relative bg-white w-full max-w-xl border border-charcoal/10 shadow-2xl p-12">
-            <h3 className="font-display text-3xl text-charcoal mb-10 tracking-tight">
-              {teamModal.editId ? 'Update Executive Profile' : 'Register New Executive'}
-            </h3>
-            <form onSubmit={handleSaveTeam} className="space-y-6">
-              <div className="space-y-2">
+          <div className="relative bg-white w-full max-w-xl max-h-[90vh] border border-charcoal/10 shadow-2xl overflow-hidden">
+            <div className="max-h-[90vh] overflow-y-auto p-8 md:p-12">
+              <h3 className="font-display text-3xl text-charcoal mb-10 tracking-tight">
+                {teamModal.editId ? 'Update Executive Profile' : 'Register New Executive'}
+              </h3>
+              <form onSubmit={handleSaveTeam} className="space-y-6">
+                <div className="space-y-2">
                 <label className="text-[9px] uppercase tracking-widest font-bold text-charcoal/40">Full Name</label>
                 <input 
                   type="text" required
@@ -1503,8 +1504,8 @@ export default function AdminDashboard() {
                   value={teamForm.name}
                   onChange={e => setTeamForm((prev) => ({ ...prev, name: e.target.value }))}
                 />
-              </div>
-              <div className="space-y-2">
+                </div>
+                <div className="space-y-2">
                 <label className="text-[9px] uppercase tracking-widest font-bold text-charcoal/40">Corporate Role</label>
                 <input 
                   type="text" required
@@ -1512,8 +1513,8 @@ export default function AdminDashboard() {
                   value={teamForm.role}
                   onChange={e => setTeamForm((prev) => ({ ...prev, role: e.target.value }))}
                 />
-              </div>
-              <div className="space-y-2">
+                </div>
+                <div className="space-y-2">
                 <label className="text-[9px] uppercase tracking-widest font-bold text-charcoal/40">Display Order</label>
                 <input
                   type="number"
@@ -1522,8 +1523,8 @@ export default function AdminDashboard() {
                   value={teamForm.order}
                   onChange={e => setTeamForm((prev) => ({ ...prev, order: Number(e.target.value) || 0 }))}
                 />
-              </div>
-              <div className="space-y-2">
+                </div>
+                <div className="space-y-2">
                 <label className="text-[9px] uppercase tracking-widest font-bold text-charcoal/40">Portrait Image URL</label>
                 <div className="flex gap-2">
                   <input 
@@ -1556,8 +1557,8 @@ export default function AdminDashboard() {
                     />
                   </div>
                 )}
-              </div>
-              <div className="space-y-2">
+                </div>
+                <div className="space-y-2">
                 <label className="text-[9px] uppercase tracking-widest font-bold text-charcoal/40">Executive Biography</label>
                 <textarea
                   rows={5}
@@ -1566,8 +1567,8 @@ export default function AdminDashboard() {
                   onChange={e => setTeamForm((prev) => ({ ...prev, bio: e.target.value }))}
                   placeholder="Optional: Professional history and role details..."
                 />
-              </div>
-              <div className="pt-8 flex justify-end space-x-4">
+                </div>
+                <div className="pt-8 flex justify-end space-x-4 sticky bottom-0 bg-white">
                 <button 
                   type="button"
                   onClick={() => {
@@ -1585,8 +1586,9 @@ export default function AdminDashboard() {
                 >
                   {savingTeam ? 'Saving...' : teamModal.editId ? 'Update Profile' : 'Finalize Profile'}
                 </button>
-              </div>
-            </form>
+                </div>
+              </form>
+            </div>
           </div>
         </div>
       )}

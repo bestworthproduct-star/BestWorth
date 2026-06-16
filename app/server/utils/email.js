@@ -46,6 +46,45 @@ const mailConfig = smtpHost
 
 const transporter = nodemailer.createTransport(mailConfig);
 
+function summarizeMailConfig() {
+  return {
+    mode: smtpHost ? 'smtp-host' : 'service',
+    host: smtpHost || null,
+    port: smtpHost ? smtpPort : null,
+    secure: smtpHost ? smtpSecure : null,
+    service: smtpHost ? null : (process.env.EMAIL_SERVICE || 'gmail'),
+    hasEmailUser: Boolean(process.env.EMAIL_USER),
+    hasEmailPass: Boolean(process.env.EMAIL_PASS),
+    hasCompanyEmail: Boolean(process.env.COMPANY_EMAIL),
+    publicAppUrl: buildAppUrl()
+  };
+}
+
+let verifyPromise = null;
+
+async function verifyTransporter() {
+  if (!verifyPromise) {
+    console.log('[email] starting transporter verification', summarizeMailConfig());
+    verifyPromise = transporter.verify()
+      .then((result) => {
+        console.log('[email] transporter verification succeeded', { result });
+        return result;
+      })
+      .catch((error) => {
+        console.error('[email] transporter verification failed', {
+          message: error.message,
+          code: error.code,
+          command: error.command,
+          response: error.response,
+          responseCode: error.responseCode
+        });
+        throw error;
+      });
+  }
+
+  return verifyPromise;
+}
+
 const EmailLayout = (content, previewText, cmsData = {}) => {
   const brandColor = '#C5A059';
   const charcoal = '#1A1A1A';
@@ -131,6 +170,15 @@ const EmailLayout = (content, previewText, cmsData = {}) => {
 };
 
 const sendInquiryNotification = async (inquiry, cmsData = {}) => {
+  console.log('[email] sendInquiryNotification triggered', {
+    inquiryId: String(inquiry._id),
+    to: process.env.COMPANY_EMAIL || process.env.EMAIL_USER,
+    replyTo: inquiry.email,
+    hasBranding: Boolean(cmsData.branding),
+    hasContact: Boolean(cmsData.contact),
+    hasFooter: Boolean(cmsData.footer)
+  });
+
   const appUrl = buildAppUrl();
   const content = `
     <span class="label">System Notification</span>
@@ -172,16 +220,44 @@ const sendInquiryNotification = async (inquiry, cmsData = {}) => {
   };
 
   try {
+    await verifyTransporter();
+    console.log('[email] sending inquiry notification', {
+      subject: mailOptions.subject,
+      from: mailOptions.from,
+      to: mailOptions.to,
+      replyTo: mailOptions.replyTo
+    });
     const info = await transporter.sendMail(mailOptions);
-    console.log('Inquiry notification email sent:', info.messageId);
+    console.log('[email] inquiry notification email sent', {
+      messageId: info.messageId,
+      accepted: info.accepted,
+      rejected: info.rejected,
+      response: info.response
+    });
     return info;
   } catch (error) {
-    console.error('Error sending inquiry notification:', error);
+    console.error('[email] error sending inquiry notification', {
+      message: error.message,
+      code: error.code,
+      command: error.command,
+      response: error.response,
+      responseCode: error.responseCode,
+      stack: error.stack
+    });
     throw error;
   }
 };
 
 const sendAdminReply = async (to, subject, message, cmsData = {}) => {
+  console.log('[email] sendAdminReply triggered', {
+    to,
+    subject: subject || 'Response to your inquiry - Bestworth Products Limited',
+    hasBranding: Boolean(cmsData.branding),
+    hasContact: Boolean(cmsData.contact),
+    hasFooter: Boolean(cmsData.footer),
+    messageLength: message.length
+  });
+
   const formattedMessage = message.replace(/<br>/g, '</div><div style="margin-bottom: 15px;">');
 
   const content = `
@@ -212,11 +288,30 @@ const sendAdminReply = async (to, subject, message, cmsData = {}) => {
   };
 
   try {
+    await verifyTransporter();
+    console.log('[email] sending admin reply', {
+      subject: mailOptions.subject,
+      from: mailOptions.from,
+      to: mailOptions.to,
+      replyTo: mailOptions.replyTo
+    });
     const info = await transporter.sendMail(mailOptions);
-    console.log('Admin reply email sent:', info.messageId);
+    console.log('[email] admin reply email sent', {
+      messageId: info.messageId,
+      accepted: info.accepted,
+      rejected: info.rejected,
+      response: info.response
+    });
     return info;
   } catch (error) {
-    console.error('Error sending admin reply:', error);
+    console.error('[email] error sending admin reply', {
+      message: error.message,
+      code: error.code,
+      command: error.command,
+      response: error.response,
+      responseCode: error.responseCode,
+      stack: error.stack
+    });
     throw error;
   }
 };

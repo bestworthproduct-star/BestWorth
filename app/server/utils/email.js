@@ -34,6 +34,7 @@ function summarizeMailConfig() {
     hasEmailPass: Boolean(process.env.EMAIL_PASS),
     hasCompanyEmail: Boolean(process.env.COMPANY_EMAIL),
     hasResendKey: Boolean(process.env.RESEND_API_KEY),
+    hasSendGridKey: Boolean(process.env.SENDGRID_API_KEY),
     publicAppUrl: buildAppUrl()
   };
 }
@@ -232,11 +233,77 @@ async function sendWithResend(mailOptions) {
   return data;
 }
 
+async function sendWithSendGrid(mailOptions) {
+  console.log('[email] using sendgrid provider', {
+    to: mailOptions.to,
+    from: mailOptions.from,
+    subject: mailOptions.subject
+  });
+
+  const response = await fetch('https://api.sendgrid.com/v3/mail/send', {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${process.env.SENDGRID_API_KEY}`,
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({
+      personalizations: [
+        {
+          to: (Array.isArray(mailOptions.to) ? mailOptions.to : [mailOptions.to]).map((email) => ({ email }))
+        }
+      ],
+      from: {
+        email: mailOptions.from
+      },
+      reply_to: mailOptions.replyTo ? { email: mailOptions.replyTo } : undefined,
+      subject: mailOptions.subject,
+      content: [
+        {
+          type: 'text/html',
+          value: mailOptions.html
+        }
+      ]
+    })
+  });
+
+  const responseText = await response.text();
+
+  if (!response.ok) {
+    let parsed;
+    try {
+      parsed = JSON.parse(responseText);
+    } catch {
+      parsed = null;
+    }
+
+    const message =
+      parsed?.errors?.map((error) => error.message).join('; ') ||
+      parsed?.message ||
+      `SendGrid request failed with status ${response.status}`;
+
+    const error = new Error(message);
+    error.responseCode = response.status;
+    error.response = responseText;
+    throw error;
+  }
+
+  console.log('[email] sendgrid email sent', {
+    status: response.status,
+    response: responseText || 'accepted'
+  });
+
+  return { status: response.status, response: responseText || 'accepted' };
+}
+
 async function sendMail(mailOptions, contextLabel) {
   const provider = process.env.EMAIL_PROVIDER || (process.env.RESEND_API_KEY ? 'resend' : 'smtp');
 
   if (provider === 'resend') {
     return sendWithResend(mailOptions);
+  }
+
+  if (provider === 'sendgrid') {
+    return sendWithSendGrid(mailOptions);
   }
 
   try {
@@ -298,7 +365,7 @@ const sendInquiryNotification = async (inquiry, cmsData = {}) => {
   `;
 
   const mailOptions = {
-    from: process.env.EMAIL_FROM || `"Bestworth System" <${process.env.EMAIL_USER}>`,
+    from: process.env.EMAIL_FROM || process.env.EMAIL_USER || `"Bestworth System" <${process.env.EMAIL_USER}>`,
     to: process.env.COMPANY_EMAIL || process.env.EMAIL_USER,
     replyTo: inquiry.email,
     subject: `[Lead] New Inquiry from ${inquiry.company || inquiry.name}`,
@@ -348,7 +415,7 @@ const sendAdminReply = async (to, subject, message, cmsData = {}) => {
   `;
 
   const mailOptions = {
-    from: process.env.EMAIL_FROM || `"Bestworth Sales" <${process.env.EMAIL_USER}>`,
+    from: process.env.EMAIL_FROM || process.env.EMAIL_USER || `"Bestworth Sales" <${process.env.EMAIL_USER}>`,
     to,
     replyTo: process.env.EMAIL_REPLY_TO || process.env.EMAIL_USER,
     subject: subject || 'Response to your inquiry - Bestworth Products Limited',

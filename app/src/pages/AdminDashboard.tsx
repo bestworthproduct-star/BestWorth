@@ -339,9 +339,13 @@ export default function AdminDashboard() {
         setTeamModal({ show: false, editId: null })
         setTeamForm({ name: '', role: '', image: '', bio: '', order: 0 })
         fetchDashboardData(token!)
+      } else {
+        const data = await res.json().catch(() => null)
+        alert(data?.message || 'Failed to save executive profile')
       }
     } catch (err) {
       console.error(err)
+      alert('Failed to save executive profile')
     }
   }
 
@@ -349,13 +353,19 @@ export default function AdminDashboard() {
     if (!window.confirm('Remove this team member?')) return
     const token = localStorage.getItem('adminToken')
     try {
-      await fetch(apiUrl(`/api/team/${id}`), {
+      const res = await fetch(apiUrl(`/api/team/${id}`), {
         method: 'DELETE',
         headers: { 'Authorization': `Bearer ${token}` }
       })
-      fetchDashboardData(token!)
+      if (res.ok) {
+        fetchDashboardData(token!)
+      } else {
+        const data = await res.json().catch(() => null)
+        alert(data?.message || 'Failed to remove executive')
+      }
     } catch (err) {
       console.error(err)
+      alert('Failed to remove executive')
     }
   }
 
@@ -753,7 +763,8 @@ export default function AdminDashboard() {
                   
                   <div className="absolute top-4 right-4 flex space-x-2 opacity-0 group-hover:opacity-100 transition-opacity">
                     <button 
-                      onClick={() => {
+                      onClick={(e) => {
+                        e.stopPropagation()
                         setTeamForm({ name: m.name, role: m.role, image: m.image, bio: m.bio || '', order: m.order })
                         setTeamModal({ show: true, editId: m._id })
                       }}
@@ -762,7 +773,10 @@ export default function AdminDashboard() {
                       ✎
                     </button>
                     <button 
-                      onClick={() => handleDeleteTeam(m._id)}
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        handleDeleteTeam(m._id)
+                      }}
                       className="w-8 h-8 bg-white border border-charcoal/5 flex items-center justify-center text-[10px] hover:text-red-800 transition-colors shadow-sm"
                     >
                       ✕

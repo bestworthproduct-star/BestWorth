@@ -38,6 +38,9 @@ router.put('/:id', auth, async (req, res) => {
       normalizeMediaFieldsForStorage(req.body),
       { new: true }
     );
+    if (!updatedMember) {
+      return res.status(404).json({ message: 'Team member not found' });
+    }
     const payload = hydrateMediaFieldsForResponse(req, updatedMember.toObject());
     req.app.get('io').emit('team_change', { action: 'update', data: payload });
     res.json(payload);
@@ -49,7 +52,10 @@ router.put('/:id', auth, async (req, res) => {
 // Admin: Delete team member
 router.delete('/:id', auth, async (req, res) => {
   try {
-    await TeamMember.findByIdAndDelete(req.params.id);
+    const deletedMember = await TeamMember.findByIdAndDelete(req.params.id);
+    if (!deletedMember) {
+      return res.status(404).json({ message: 'Team member not found' });
+    }
     req.app.get('io').emit('team_change', { action: 'delete', id: req.params.id });
     res.json({ message: 'Team member removed' });
   } catch (err) {

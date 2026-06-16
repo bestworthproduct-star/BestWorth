@@ -37,6 +37,12 @@ interface Inquiry {
   }
 }
 
+interface ValueItem {
+  title: string
+  description: string
+  icon: string
+}
+
 export default function AdminDashboard() {
   const [authorized, setAuthorized] = useState(false)
   const [activeTab, setActiveTab] = useState<'dashboard' | 'products' | 'team' | 'inquiries' | 'cms'>('dashboard')
@@ -62,6 +68,12 @@ export default function AdminDashboard() {
   const [teamForm, setTeamForm] = useState<Omit<TeamMember, '_id'>>({ name: '', role: '', image: '', bio: '', order: 0 })
   const [replyForm, setReplyForm] = useState({ subject: '', message: '' })
   const [categoryForm, setCategoryForm] = useState({ name: '', id: '' })
+
+  const defaultValueItem: ValueItem = {
+    title: '',
+    description: '',
+    icon: 'Shield'
+  }
 
   const replyTemplates = [
     { name: 'Available', subject: 'Products Availability - Bestworth Products Limited', message: (inquiry: Inquiry) => `Dear ${inquiry.name},\n\nThank you for reaching out to Bestworth Products Limited.\n\nWe are pleased to inform you that the items you inquired about are currently available in stock. We can fulfill your order immediately upon confirmation.\n\nPlease let us know your required quantities so we can provide a formal quotation.\n\nBest regards,\nSales Team` },
@@ -339,6 +351,7 @@ export default function AdminDashboard() {
         setTeamModal({ show: false, editId: null })
         setTeamForm({ name: '', role: '', image: '', bio: '', order: 0 })
         fetchDashboardData(token!)
+        alert(teamModal.editId ? 'Executive updated successfully' : 'Executive created successfully')
       } else {
         const data = await res.json().catch(() => null)
         alert(data?.message || 'Failed to save executive profile')
@@ -359,6 +372,7 @@ export default function AdminDashboard() {
       })
       if (res.ok) {
         fetchDashboardData(token!)
+        alert('Executive removed successfully')
       } else {
         const data = await res.json().catch(() => null)
         alert(data?.message || 'Failed to remove executive')
@@ -467,6 +481,40 @@ export default function AdminDashboard() {
     } catch (err) {
       console.error('Error saving template:', err)
     }
+  }
+
+  const getValuesContent = (): ValueItem[] => {
+    if (Array.isArray(cmsContent.values)) {
+      return cmsContent.values
+    }
+    return []
+  }
+
+  const setValuesContent = (values: ValueItem[]) => {
+    setCmsContent({ ...cmsContent, values })
+  }
+
+  const updateValueItem = (index: number, field: keyof ValueItem, value: string) => {
+    const newValues = [...getValuesContent()]
+    newValues[index] = { ...newValues[index], [field]: value }
+    setValuesContent(newValues)
+  }
+
+  const addValueItem = () => {
+    setValuesContent([...getValuesContent(), { ...defaultValueItem }])
+  }
+
+  const removeValueItem = (index: number) => {
+    setValuesContent(getValuesContent().filter((_, currentIndex) => currentIndex !== index))
+  }
+
+  const moveValueItem = (index: number, direction: -1 | 1) => {
+    const currentValues = [...getValuesContent()]
+    const targetIndex = index + direction
+    if (targetIndex < 0 || targetIndex >= currentValues.length) return
+
+    ;[currentValues[index], currentValues[targetIndex]] = [currentValues[targetIndex], currentValues[index]]
+    setValuesContent(currentValues)
   }
 
   if (!authorized) return null
@@ -1017,21 +1065,56 @@ export default function AdminDashboard() {
 
             {/* Values CMS */}
             <div className="bg-white border border-charcoal/5 p-10 shadow-sm">
-              <h3 className="text-[10px] uppercase tracking-[0.25em] text-brass font-bold mb-8">Our Values</h3>
+              <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4 mb-8">
+                <div>
+                  <h3 className="text-[10px] uppercase tracking-[0.25em] text-brass font-bold">Our Values</h3>
+                  <p className="text-xs text-charcoal/40 mt-1 uppercase tracking-widest font-medium">Add, remove, and reorder public values</p>
+                </div>
+                <button
+                  onClick={addValueItem}
+                  className="px-6 py-3 bg-charcoal text-white text-[10px] tracking-[0.2em] uppercase font-bold hover:bg-brass transition-all"
+                >
+                  + Add Value
+                </button>
+              </div>
               <div className="space-y-8">
-                {cmsContent.values?.map((value: any, index: number) => (
+                {getValuesContent().map((value: ValueItem, index: number) => (
                   <div key={index} className="p-6 border border-charcoal/5 bg-warm-stone/20 space-y-4">
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="flex justify-between items-center gap-4">
+                      <p className="text-[10px] uppercase tracking-widest text-charcoal/40 font-bold">Value {index + 1}</p>
+                      <div className="flex gap-2">
+                        <button
+                          type="button"
+                          onClick={() => moveValueItem(index, -1)}
+                          disabled={index === 0}
+                          className="px-3 py-2 border border-charcoal/10 text-[10px] uppercase tracking-widest hover:border-brass disabled:opacity-40 disabled:cursor-not-allowed"
+                        >
+                          Up
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => moveValueItem(index, 1)}
+                          disabled={index === getValuesContent().length - 1}
+                          className="px-3 py-2 border border-charcoal/10 text-[10px] uppercase tracking-widest hover:border-brass disabled:opacity-40 disabled:cursor-not-allowed"
+                        >
+                          Down
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => removeValueItem(index)}
+                          className="px-3 py-2 border border-red-200 text-[10px] uppercase tracking-widest text-red-700 hover:border-red-400"
+                        >
+                          Remove
+                        </button>
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div>
                         <label className="block text-[9px] uppercase tracking-widest text-charcoal/40 font-bold mb-1">Title</label>
                         <input 
                           type="text" 
                           value={value.title} 
-                          onChange={(e) => {
-                            const newValues = [...cmsContent.values]
-                            newValues[index].title = e.target.value
-                            setCmsContent({ ...cmsContent, values: newValues })
-                          }}
+                          onChange={(e) => updateValueItem(index, 'title', e.target.value)}
                           className="w-full px-3 py-2 border border-charcoal/10 text-sm outline-none focus:border-brass"
                         />
                       </div>
@@ -1040,11 +1123,7 @@ export default function AdminDashboard() {
                         <input 
                           type="text" 
                           value={value.icon} 
-                          onChange={(e) => {
-                            const newValues = [...cmsContent.values]
-                            newValues[index].icon = e.target.value
-                            setCmsContent({ ...cmsContent, values: newValues })
-                          }}
+                          onChange={(e) => updateValueItem(index, 'icon', e.target.value)}
                           className="w-full px-3 py-2 border border-charcoal/10 text-sm outline-none focus:border-brass"
                         />
                       </div>
@@ -1053,18 +1132,14 @@ export default function AdminDashboard() {
                       <label className="block text-[9px] uppercase tracking-widest text-charcoal/40 font-bold mb-1">Description</label>
                       <textarea 
                         value={value.description} 
-                        onChange={(e) => {
-                          const newValues = [...cmsContent.values]
-                          newValues[index].description = e.target.value
-                          setCmsContent({ ...cmsContent, values: newValues })
-                        }}
+                        onChange={(e) => updateValueItem(index, 'description', e.target.value)}
                         className="w-full px-3 py-2 border border-charcoal/10 text-sm outline-none focus:border-brass min-h-[60px]"
                       />
                     </div>
                   </div>
                 ))}
               </div>
-              <button onClick={() => handleUpdateContent('values', cmsContent.values)} className="mt-8 px-10 py-3 bg-charcoal text-white text-[10px] tracking-widest uppercase font-bold hover:bg-brass transition-all">Update Values</button>
+              <button onClick={() => handleUpdateContent('values', getValuesContent())} className="mt-8 px-10 py-3 bg-charcoal text-white text-[10px] tracking-widest uppercase font-bold hover:bg-brass transition-all">Update Values</button>
             </div>
 
             {/* Footer CMS */}

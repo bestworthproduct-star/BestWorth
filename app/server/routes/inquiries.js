@@ -17,21 +17,44 @@ async function getCmsEmailData() {
 router.post('/', async (req, res) => {
   const inquiry = new Inquiry(req.body);
   try {
+    console.log('[inquiries] create route hit', {
+      name: req.body?.name,
+      email: req.body?.email,
+      company: req.body?.company,
+      hasMessage: Boolean(req.body?.message)
+    });
     const newInquiry = await inquiry.save();
+    console.log('[inquiries] inquiry saved', {
+      inquiryId: String(newInquiry._id)
+    });
     
     let emailSent = true;
     try {
+      console.log('[inquiries] fetching CMS email data');
       const cmsData = await getCmsEmailData();
+      console.log('[inquiries] CMS email data loaded', {
+        keys: Object.keys(cmsData)
+      });
       await sendInquiryNotification(newInquiry, cmsData);
     } catch (emailError) {
       emailSent = false;
-      console.error('Inquiry notification email failed:', emailError.message);
+      console.error('[inquiries] inquiry notification email failed', {
+        inquiryId: String(newInquiry._id),
+        message: emailError.message
+      });
     }
     
     req.app.get('io').emit('inquiry_change', { action: 'create', data: newInquiry });
+    console.log('[inquiries] create route completed', {
+      inquiryId: String(newInquiry._id),
+      emailSent
+    });
     res.status(201).json({ ...newInquiry.toObject(), emailSent });
   } catch (err) {
-    console.error('Inquiry submission error:', err.message);
+    console.error('[inquiries] inquiry submission error', {
+      message: err.message,
+      stack: err.stack
+    });
     res.status(400).json({ message: err.message });
   }
 });
@@ -40,6 +63,13 @@ router.post('/', async (req, res) => {
 router.post('/reply', auth, async (req, res) => {
   const { to, subject, message, inquiryId, cmsData } = req.body;
   try {
+    console.log('[inquiries] reply route hit', {
+      inquiryId,
+      to,
+      subject,
+      hasMessage: Boolean(message),
+      cmsKeys: cmsData ? Object.keys(cmsData) : []
+    });
     // 1. Send the actual email with CMS footer data
     await sendAdminReply(to, subject, message, cmsData);
 
@@ -65,9 +95,15 @@ router.post('/reply', auth, async (req, res) => {
       req.app.get('io').emit('inquiry_change', { action: 'reply', id: inquiryId });
     }
 
+    console.log('[inquiries] reply route completed', { inquiryId, to });
     res.json({ message: 'Reply sent successfully' });
   } catch (err) {
-    console.error('Admin reply error:', err.message);
+    console.error('[inquiries] admin reply error', {
+      inquiryId,
+      to,
+      message: err.message,
+      stack: err.stack
+    });
     res.status(500).json({ message: err.message || 'Email delivery failed' });
   }
 });

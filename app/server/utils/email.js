@@ -15,51 +15,16 @@ function makePseudoRequest(appUrl) {
   };
 }
 
-const smtpHost = process.env.SMTP_HOST || process.env.EMAIL_HOST;
-const smtpPort = Number(process.env.SMTP_PORT || process.env.EMAIL_PORT || 587);
-const smtpSecure =
-  process.env.SMTP_SECURE === 'true' ||
-  process.env.EMAIL_SECURE === 'true' ||
-  smtpPort === 465;
-
-const mailConfig = smtpHost
-  ? {
-      host: smtpHost,
-      port: smtpPort,
-      secure: smtpSecure,
-      connectionTimeout: 15000,
-      greetingTimeout: 10000,
-      socketTimeout: 20000,
-      dnsTimeout: 10000,
-      requireTLS: !smtpSecure,
-      logger: true,
-      debug: true,
-      tls: {
-        servername: smtpHost
-      },
-      auth: {
-        user: process.env.EMAIL_USER,
-        pass: process.env.EMAIL_PASS
-      }
-    }
-  : {
-      service: process.env.EMAIL_SERVICE || 'gmail',
-      connectionTimeout: 15000,
-      greetingTimeout: 10000,
-      socketTimeout: 20000,
-      dnsTimeout: 10000,
-      logger: true,
-      debug: true,
-      auth: {
-        user: process.env.EMAIL_USER,
-        pass: process.env.EMAIL_PASS
-      }
-    };
-
-const transporter = nodemailer.createTransport(mailConfig);
-
 function summarizeMailConfig() {
+  const smtpHost = process.env.SMTP_HOST || process.env.EMAIL_HOST;
+  const smtpPort = Number(process.env.SMTP_PORT || process.env.EMAIL_PORT || 587);
+  const smtpSecure =
+    process.env.SMTP_SECURE === 'true' ||
+    process.env.EMAIL_SECURE === 'true' ||
+    smtpPort === 465;
+
   return {
+    provider: process.env.EMAIL_PROVIDER || (process.env.RESEND_API_KEY ? 'resend' : 'smtp'),
     mode: smtpHost ? 'smtp-host' : 'service',
     host: smtpHost || null,
     port: smtpHost ? smtpPort : null,
@@ -68,17 +33,64 @@ function summarizeMailConfig() {
     hasEmailUser: Boolean(process.env.EMAIL_USER),
     hasEmailPass: Boolean(process.env.EMAIL_PASS),
     hasCompanyEmail: Boolean(process.env.COMPANY_EMAIL),
+    hasResendKey: Boolean(process.env.RESEND_API_KEY),
     publicAppUrl: buildAppUrl()
   };
 }
 
+function createSmtpTransporter() {
+  const smtpHost = process.env.SMTP_HOST || process.env.EMAIL_HOST;
+  const smtpPort = Number(process.env.SMTP_PORT || process.env.EMAIL_PORT || 587);
+  const smtpSecure =
+    process.env.SMTP_SECURE === 'true' ||
+    process.env.EMAIL_SECURE === 'true' ||
+    smtpPort === 465;
+
+  const mailConfig = smtpHost
+    ? {
+        host: smtpHost,
+        port: smtpPort,
+        secure: smtpSecure,
+        connectionTimeout: 15000,
+        greetingTimeout: 10000,
+        socketTimeout: 20000,
+        dnsTimeout: 10000,
+        requireTLS: !smtpSecure,
+        logger: true,
+        debug: true,
+        tls: {
+          servername: smtpHost
+        },
+        auth: {
+          user: process.env.EMAIL_USER,
+          pass: process.env.EMAIL_PASS
+        }
+      }
+    : {
+        service: process.env.EMAIL_SERVICE || 'gmail',
+        connectionTimeout: 15000,
+        greetingTimeout: 10000,
+        socketTimeout: 20000,
+        dnsTimeout: 10000,
+        logger: true,
+        debug: true,
+        auth: {
+          user: process.env.EMAIL_USER,
+          pass: process.env.EMAIL_PASS
+        }
+      };
+
+  return nodemailer.createTransport(mailConfig);
+}
+
+const smtpTransporter = createSmtpTransporter();
 let verifyPromise = null;
 
-async function verifyTransporter() {
+async function verifySmtpTransporter() {
   if (!verifyPromise) {
     console.log('[email] starting transporter verification', summarizeMailConfig());
     verifyPromise = Promise.race([
-      transporter.verify(),
+      smtpTransporter.verify(),
       new Promise((_, reject) => {
         setTimeout(() => reject(new Error('SMTP verification timed out')), 12000);
       })
@@ -147,7 +159,6 @@ const EmailLayout = (content, previewText, cmsData = {}) => {
       <div style="display:none; font-size:1px; line-height:1px; max-height:0px; max-width:0px; opacity:0; overflow:hidden;">
         ${previewText}
       </div>
-
       <div class="container">
         <div class="header">
           <div style="margin-bottom: 20px;">
@@ -160,11 +171,9 @@ const EmailLayout = (content, previewText, cmsData = {}) => {
             </div>
           </div>
         </div>
-
         <div class="content">
           ${content}
         </div>
-
         <div class="footer">
           <div style="font-size: 14px; margin-bottom: 20px; letter-spacing: 2px;">BESTWORTH PRODUCTS LIMITED</div>
           <p style="opacity: 0.6; line-height: 1.8;">
@@ -187,6 +196,74 @@ const EmailLayout = (content, previewText, cmsData = {}) => {
   `;
 };
 
+async function sendWithResend(mailOptions) {
+  console.log('[email] using resend provider', {
+    to: mailOptions.to,
+    from: mailOptions.from,
+    subject: mailOptions.subject
+  });
+
+  const response = await fetch('https://api.resend.com/emails', {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${process.env.RESEND_API_KEY}`,
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({
+      from: mailOptions.from,
+      to: Array.isArray(mailOptions.to) ? mailOptions.to : [mailOptions.to],
+      reply_to: mailOptions.replyTo,
+      subject: mailOptions.subject,
+      html: mailOptions.html
+    })
+  });
+
+  const data = await response.json().catch(() => null);
+
+  if (!response.ok) {
+    const message = data?.message || data?.error || `Resend request failed with status ${response.status}`;
+    const error = new Error(message);
+    error.responseCode = response.status;
+    error.response = JSON.stringify(data);
+    throw error;
+  }
+
+  console.log('[email] resend email sent', data);
+  return data;
+}
+
+async function sendMail(mailOptions, contextLabel) {
+  const provider = process.env.EMAIL_PROVIDER || (process.env.RESEND_API_KEY ? 'resend' : 'smtp');
+
+  if (provider === 'resend') {
+    return sendWithResend(mailOptions);
+  }
+
+  try {
+    await verifySmtpTransporter();
+  } catch (verifyError) {
+    console.warn(`[email] continuing after verify failure for ${contextLabel}`, {
+      message: verifyError.message
+    });
+  }
+
+  console.log(`[email] sending ${contextLabel}`, {
+    subject: mailOptions.subject,
+    from: mailOptions.from,
+    to: mailOptions.to,
+    replyTo: mailOptions.replyTo
+  });
+
+  const info = await smtpTransporter.sendMail(mailOptions);
+  console.log(`[email] ${contextLabel} sent`, {
+    messageId: info.messageId,
+    accepted: info.accepted,
+    rejected: info.rejected,
+    response: info.response
+  });
+  return info;
+}
+
 const sendInquiryNotification = async (inquiry, cmsData = {}) => {
   console.log('[email] sendInquiryNotification triggered', {
     inquiryId: String(inquiry._id),
@@ -201,25 +278,20 @@ const sendInquiryNotification = async (inquiry, cmsData = {}) => {
   const content = `
     <span class="label">System Notification</span>
     <h1 style="font-size: 24px; margin: 0 0 30px 0; font-weight: 500; letter-spacing: -0.5px;">New Business Inquiry</h1>
-
     <div style="margin-bottom: 25px;">
       <span class="label">From</span>
       <div style="font-size: 16px; font-weight: bold;">${inquiry.name}</div>
       <div style="font-size: 14px; opacity: 0.7;">${inquiry.email}</div>
     </div>
-
     <div style="margin-bottom: 25px;">
       <span class="label">Company</span>
       <div style="font-size: 16px;">${inquiry.company || 'Not Specified'}</div>
     </div>
-
     <div class="divider"></div>
-
     <span class="label">Message Context</span>
     <div style="background-color: #F8F8F5; padding: 25px; border-left: 2px solid #C5A059; font-style: italic; color: #444;">
       "${inquiry.message}"
     </div>
-
     <div style="margin-top: 40px;">
       <a href="${appUrl}/admin" class="button">Access Admin Portal</a>
     </div>
@@ -238,27 +310,7 @@ const sendInquiryNotification = async (inquiry, cmsData = {}) => {
   };
 
   try {
-    try {
-      await verifyTransporter();
-    } catch (verifyError) {
-      console.warn('[email] continuing after verify failure for inquiry notification', {
-        message: verifyError.message
-      });
-    }
-    console.log('[email] sending inquiry notification', {
-      subject: mailOptions.subject,
-      from: mailOptions.from,
-      to: mailOptions.to,
-      replyTo: mailOptions.replyTo
-    });
-    const info = await transporter.sendMail(mailOptions);
-    console.log('[email] inquiry notification email sent', {
-      messageId: info.messageId,
-      accepted: info.accepted,
-      rejected: info.rejected,
-      response: info.response
-    });
-    return info;
+    return await sendMail(mailOptions, 'inquiry notification');
   } catch (error) {
     console.error('[email] error sending inquiry notification', {
       message: error.message,
@@ -283,17 +335,13 @@ const sendAdminReply = async (to, subject, message, cmsData = {}) => {
   });
 
   const formattedMessage = message.replace(/<br>/g, '</div><div style="margin-bottom: 15px;">');
-
   const content = `
     <span class="label">Official Correspondence</span>
     <h1 style="font-size: 24px; margin: 0 0 35px 0; font-weight: 500; letter-spacing: -0.5px;">Corporate Response</h1>
-
     <div style="font-size: 16px; color: #333; line-height: 1.8;">
       <div style="margin-bottom: 15px;">${formattedMessage}</div>
     </div>
-
     <div class="divider"></div>
-
     <div style="font-size: 14px; color: #777;">
       If you have further technical requirements or wish to schedule a physical inspection of our inventory, please reply directly to this email.
     </div>
@@ -312,27 +360,7 @@ const sendAdminReply = async (to, subject, message, cmsData = {}) => {
   };
 
   try {
-    try {
-      await verifyTransporter();
-    } catch (verifyError) {
-      console.warn('[email] continuing after verify failure for admin reply', {
-        message: verifyError.message
-      });
-    }
-    console.log('[email] sending admin reply', {
-      subject: mailOptions.subject,
-      from: mailOptions.from,
-      to: mailOptions.to,
-      replyTo: mailOptions.replyTo
-    });
-    const info = await transporter.sendMail(mailOptions);
-    console.log('[email] admin reply email sent', {
-      messageId: info.messageId,
-      accepted: info.accepted,
-      rejected: info.rejected,
-      response: info.response
-    });
-    return info;
+    return await sendMail(mailOptions, 'admin reply');
   } catch (error) {
     console.error('[email] error sending admin reply', {
       message: error.message,

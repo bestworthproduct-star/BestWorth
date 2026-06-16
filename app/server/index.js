@@ -101,6 +101,7 @@ app.use('/api/team', require('./routes/team'));
 app.use('/api/inquiries', require('./routes/inquiries'));
 app.use('/api/content', require('./routes/content'));
 app.use('/api/upload', require('./routes/upload'));
+app.use('/api/media', require('./routes/media'));
 
 // Health check
 app.get('/api/admin/check', require('./middleware/auth'), (req, res) => {

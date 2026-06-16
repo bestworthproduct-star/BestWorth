@@ -2,35 +2,28 @@ const express = require('express');
 const router = express.Router();
 const multer = require('multer');
 const path = require('path');
-const fs = require('fs');
 const auth = require('../middleware/auth');
 const { getRequestOrigin } = require('../utils/public-url');
+const MediaAsset = require('../models/MediaAsset');
 
-const uploadsDir = path.join(__dirname, '..', 'uploads');
-fs.mkdirSync(uploadsDir, { recursive: true });
-
-// Configure storage
-const storage = multer.diskStorage({
-  destination: function (req, file, cb) {
-    cb(null, uploadsDir);
-  },
-  filename: function (req, file, cb) {
-    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-    cb(null, file.fieldname + '-' + uniqueSuffix + path.extname(file.originalname));
-  }
-});
+const MAX_FILE_SIZE = 10 * 1024 * 1024;
 
 const upload = multer({ 
-  storage: storage,
+  storage: multer.memoryStorage(),
+  limits: {
+    fileSize: MAX_FILE_SIZE
+  },
   fileFilter: (req, file, cb) => {
-    const filetypes = /jpeg|jpg|png|gif|mp4|webm|ogg/;
-    const extname = filetypes.test(path.extname(file.originalname).toLowerCase());
-    const mimetype = filetypes.test(file.mimetype);
+    const extension = path.extname(file.originalname).toLowerCase();
+    const allowedExtensions = /\.(jpeg|jpg|png|gif|webp|svg|mp4|webm|ogg|mov)$/i;
+    const allowedMimeTypes = /^(image\/(jpeg|jpg|png|gif|webp|svg\+xml)|video\/(mp4|webm|ogg|quicktime))$/i;
+    const extname = allowedExtensions.test(extension);
+    const mimetype = allowedMimeTypes.test(file.mimetype);
 
     if (extname && mimetype) {
       return cb(null, true);
     } else {
-      cb('Error: Images and Videos Only!');
+      cb(new Error('Images and videos only'));
     }
   }
 });
@@ -38,18 +31,46 @@ const upload = multer({
 // @route   POST api/upload
 // @desc    Upload a file
 // @access  Private
-router.post('/', auth, upload.single('file'), (req, res) => {
-  if (!req.file) {
-    return res.status(400).json({ message: 'No file uploaded' });
-  }
-  
-  const fileUrl = `/uploads/${req.file.filename}`;
-  res.json({ 
-    url: fileUrl,
-    absoluteUrl: `${getRequestOrigin(req)}${fileUrl}`,
-    filename: req.file.filename,
-    mimetype: req.file.mimetype,
-    size: req.file.size
+router.post('/', auth, (req, res) => {
+  upload.single('file')(req, res, async (error) => {
+    if (error instanceof multer.MulterError && error.code === 'LIMIT_FILE_SIZE') {
+      return res.status(400).json({ message: 'File size must be 10MB or less' });
+    }
+
+    if (error) {
+      return res.status(400).json({ message: error.message || 'Upload failed' });
+    }
+
+    if (!req.file) {
+      return res.status(400).json({ message: 'No file uploaded' });
+    }
+
+    try {
+      const extension = path.extname(req.file.originalname);
+      const baseName = path.basename(req.file.originalname, extension).replace(/[^a-z0-9-_]+/gi, '-').replace(/-+/g, '-');
+      const filename = `${baseName || 'file'}-${Date.now()}${extension}`;
+
+      const asset = await MediaAsset.create({
+        filename,
+        originalName: req.file.originalname,
+        mimetype: req.file.mimetype,
+        size: req.file.size,
+        data: req.file.buffer
+      });
+
+      const fileUrl = `/api/media/${asset._id}`;
+      return res.json({ 
+        url: fileUrl,
+        absoluteUrl: `${getRequestOrigin(req)}${fileUrl}`,
+        filename: asset.filename,
+        mimetype: asset.mimetype,
+        size: asset.size,
+        id: asset._id
+      });
+    } catch (uploadError) {
+      console.error('Failed to store uploaded file:', uploadError.message);
+      return res.status(500).json({ message: 'Failed to store uploaded file' });
+    }
   });
 });
 

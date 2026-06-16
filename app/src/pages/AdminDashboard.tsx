@@ -51,6 +51,8 @@ export default function AdminDashboard() {
   const [cmsContent, setCmsContent] = useState<any>({})
   const [loading, setLoading] = useState(true)
   const [uploading, setUploading] = useState<string | null>(null)
+  const [savingTeam, setSavingTeam] = useState(false)
+  const [deletingTeamId, setDeletingTeamId] = useState<string | null>(null)
   
   // Modal states
   const [productModal, setProductModal] = useState<{ show: boolean, editId: string | null }>({ show: false, editId: null })
@@ -68,6 +70,8 @@ export default function AdminDashboard() {
   const [teamForm, setTeamForm] = useState<Omit<TeamMember, '_id'>>({ name: '', role: '', image: '', bio: '', order: 0 })
   const [replyForm, setReplyForm] = useState({ subject: '', message: '' })
   const [categoryForm, setCategoryForm] = useState({ name: '', id: '' })
+
+  const emptyTeamForm: Omit<TeamMember, '_id'> = { name: '', role: '', image: '', bio: '', order: 0 }
 
   const defaultValueItem: ValueItem = {
     title: '',
@@ -338,7 +342,12 @@ export default function AdminDashboard() {
 
   const handleSaveTeam = async (e: React.FormEvent) => {
     e.preventDefault()
+    if (savingTeam || uploading === 'team') return
+
     const token = localStorage.getItem('adminToken')
+    if (!token) return
+
+    setSavingTeam(true)
     const method = teamModal.editId ? 'PUT' : 'POST'
     const url = teamModal.editId 
       ? apiUrl(`/api/team/${teamModal.editId}`)
@@ -355,7 +364,7 @@ export default function AdminDashboard() {
       })
       if (res.ok) {
         setTeamModal({ show: false, editId: null })
-        setTeamForm({ name: '', role: '', image: '', bio: '', order: 0 })
+        setTeamForm(emptyTeamForm)
         fetchDashboardData(token!)
         alert(teamModal.editId ? 'Executive updated successfully' : 'Executive created successfully')
       } else {
@@ -365,12 +374,18 @@ export default function AdminDashboard() {
     } catch (err) {
       console.error(err)
       alert('Failed to save executive profile')
+    } finally {
+      setSavingTeam(false)
     }
   }
 
   const handleDeleteTeam = async (id: string) => {
+    if (deletingTeamId) return
     if (!window.confirm('Remove this team member?')) return
     const token = localStorage.getItem('adminToken')
+    if (!token) return
+
+    setDeletingTeamId(id)
     try {
       const res = await fetch(apiUrl(`/api/team/${id}`), {
         method: 'DELETE',
@@ -386,6 +401,8 @@ export default function AdminDashboard() {
     } catch (err) {
       console.error(err)
       alert('Failed to remove executive')
+    } finally {
+      setDeletingTeamId(null)
     }
   }
 
@@ -798,7 +815,7 @@ export default function AdminDashboard() {
               </div>
               <button 
                 onClick={() => {
-                  setTeamForm({ name: '', role: '', image: '', bio: '', order: data.team.length })
+                  setTeamForm({ ...emptyTeamForm, order: data.team.length })
                   setTeamModal({ show: true, editId: null })
                 }}
                 className="px-8 py-3 bg-charcoal text-white text-[10px] tracking-[0.2em] uppercase font-bold hover:bg-brass transition-all"
@@ -819,8 +836,8 @@ export default function AdminDashboard() {
                     <button 
                       onClick={(e) => {
                         e.stopPropagation()
-                        setTeamForm({ name: m.name, role: m.role, image: m.image, bio: m.bio || '', order: m.order })
-                        setTeamModal({ show: true, editId: m._id })
+                        setTeamForm({ name: m.name, role: m.role, image: m.image, bio: m.bio || '', order: m.order ?? 0 })
+                        setTeamModal({ show: true, editId: String(m._id) })
                       }}
                       className="w-8 h-8 bg-white border border-charcoal/5 flex items-center justify-center text-[10px] hover:text-brass transition-colors shadow-sm"
                     >
@@ -831,7 +848,8 @@ export default function AdminDashboard() {
                         e.stopPropagation()
                         handleDeleteTeam(m._id)
                       }}
-                      className="w-8 h-8 bg-white border border-charcoal/5 flex items-center justify-center text-[10px] hover:text-red-800 transition-colors shadow-sm"
+                      disabled={deletingTeamId === m._id}
+                      className="w-8 h-8 bg-white border border-charcoal/5 flex items-center justify-center text-[10px] hover:text-red-800 transition-colors shadow-sm disabled:opacity-40 disabled:cursor-not-allowed"
                     >
                       ✕
                     </button>
@@ -1465,7 +1483,13 @@ export default function AdminDashboard() {
       {/* Team Modal */}
       {teamModal.show && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-6">
-          <div className="absolute inset-0 bg-charcoal/80 backdrop-blur-sm" onClick={() => setTeamModal({ show: false, editId: null })}></div>
+          <div
+            className="absolute inset-0 bg-charcoal/80 backdrop-blur-sm"
+            onClick={() => {
+              setTeamModal({ show: false, editId: null })
+              setTeamForm(emptyTeamForm)
+            }}
+          ></div>
           <div className="relative bg-white w-full max-w-xl border border-charcoal/10 shadow-2xl p-12">
             <h3 className="font-display text-3xl text-charcoal mb-10 tracking-tight">
               {teamModal.editId ? 'Update Executive Profile' : 'Register New Executive'}
@@ -1477,7 +1501,7 @@ export default function AdminDashboard() {
                   type="text" required
                   className="w-full bg-warm-stone/30 border border-charcoal/10 px-4 py-3 text-sm focus:border-brass outline-none transition-colors"
                   value={teamForm.name}
-                  onChange={e => setTeamForm({ ...teamForm, name: e.target.value })}
+                  onChange={e => setTeamForm((prev) => ({ ...prev, name: e.target.value }))}
                 />
               </div>
               <div className="space-y-2">
@@ -1486,7 +1510,17 @@ export default function AdminDashboard() {
                   type="text" required
                   className="w-full bg-warm-stone/30 border border-charcoal/10 px-4 py-3 text-sm focus:border-brass outline-none transition-colors"
                   value={teamForm.role}
-                  onChange={e => setTeamForm({ ...teamForm, role: e.target.value })}
+                  onChange={e => setTeamForm((prev) => ({ ...prev, role: e.target.value }))}
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-[9px] uppercase tracking-widest font-bold text-charcoal/40">Display Order</label>
+                <input
+                  type="number"
+                  min="0"
+                  className="w-full bg-warm-stone/30 border border-charcoal/10 px-4 py-3 text-sm focus:border-brass outline-none transition-colors"
+                  value={teamForm.order}
+                  onChange={e => setTeamForm((prev) => ({ ...prev, order: Number(e.target.value) || 0 }))}
                 />
               </div>
               <div className="space-y-2">
@@ -1496,7 +1530,7 @@ export default function AdminDashboard() {
                     type="text" required
                     className="flex-1 bg-warm-stone/30 border border-charcoal/10 px-4 py-3 text-sm focus:border-brass outline-none transition-colors font-mono"
                     value={teamForm.image}
-                    onChange={e => setTeamForm({ ...teamForm, image: e.target.value })}
+                    onChange={e => setTeamForm((prev) => ({ ...prev, image: e.target.value }))}
                   />
                   <label className="px-4 py-3 bg-brass text-white text-[10px] uppercase font-bold cursor-pointer hover:bg-charcoal transition-colors flex items-center justify-center min-w-[100px]">
                     {uploading === 'team' ? '...' : 'Upload'}
@@ -1504,11 +1538,24 @@ export default function AdminDashboard() {
                       type="file" className="hidden" accept="image/*"
                       onChange={e => {
                         const file = e.target.files?.[0]
-                        if (file) handleUpload(file, 'team', url => setTeamForm({ ...teamForm, image: url }))
+                        if (file) {
+                          handleUpload(file, 'team', (url) => {
+                            setTeamForm((prev) => ({ ...prev, image: url }))
+                          })
+                        }
                       }}
                     />
                   </label>
                 </div>
+                {teamForm.image && (
+                  <div className="mt-3 border border-charcoal/10 bg-warm-stone/20 p-3 inline-block">
+                    <img
+                      src={resolveMediaUrl(teamForm.image)}
+                      alt="Executive preview"
+                      className="h-28 w-24 object-cover"
+                    />
+                  </div>
+                )}
               </div>
               <div className="space-y-2">
                 <label className="text-[9px] uppercase tracking-widest font-bold text-charcoal/40">Executive Biography</label>
@@ -1516,23 +1563,27 @@ export default function AdminDashboard() {
                   rows={5}
                   className="w-full bg-warm-stone/30 border border-charcoal/10 px-4 py-3 text-sm focus:border-brass outline-none transition-colors resize-none"
                   value={teamForm.bio}
-                  onChange={e => setTeamForm({ ...teamForm, bio: e.target.value })}
+                  onChange={e => setTeamForm((prev) => ({ ...prev, bio: e.target.value }))}
                   placeholder="Optional: Professional history and role details..."
                 />
               </div>
               <div className="pt-8 flex justify-end space-x-4">
                 <button 
                   type="button"
-                  onClick={() => setTeamModal({ show: false, editId: null })}
+                  onClick={() => {
+                    setTeamModal({ show: false, editId: null })
+                    setTeamForm(emptyTeamForm)
+                  }}
                   className="px-8 py-3 text-[10px] uppercase tracking-widest font-bold text-charcoal/40 hover:text-charcoal transition-colors"
                 >
                   Cancel
                 </button>
                 <button 
                   type="submit"
-                  className="px-10 py-3 bg-charcoal text-white text-[10px] uppercase tracking-[0.2em] font-bold hover:bg-brass transition-all"
+                  disabled={savingTeam || uploading === 'team'}
+                  className="px-10 py-3 bg-charcoal text-white text-[10px] uppercase tracking-[0.2em] font-bold hover:bg-brass transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  {teamModal.editId ? 'Update Profile' : 'Finalize Profile'}
+                  {savingTeam ? 'Saving...' : teamModal.editId ? 'Update Profile' : 'Finalize Profile'}
                 </button>
               </div>
             </form>

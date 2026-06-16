@@ -58,7 +58,13 @@ function transformDeep(value, transformer) {
     return value.map((item) => transformDeep(item, transformer));
   }
 
-  if (value && typeof value === 'object' && !(value instanceof Date)) {
+  const isPlainObject =
+    value &&
+    typeof value === 'object' &&
+    !(value instanceof Date) &&
+    (Object.getPrototypeOf(value) === Object.prototype || Object.getPrototypeOf(value) === null);
+
+  if (isPlainObject) {
     return Object.fromEntries(
       Object.entries(value).map(([key, nestedValue]) => [key, transformDeep(nestedValue, transformer)])
     );

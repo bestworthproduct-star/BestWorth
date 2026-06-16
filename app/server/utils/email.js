@@ -15,11 +15,22 @@ function makePseudoRequest(appUrl) {
   };
 }
 
-const mailConfig = process.env.SMTP_HOST
+const smtpHost = process.env.SMTP_HOST || process.env.EMAIL_HOST;
+const smtpPort = Number(process.env.SMTP_PORT || process.env.EMAIL_PORT || 587);
+const smtpSecure =
+  process.env.SMTP_SECURE === 'true' ||
+  process.env.EMAIL_SECURE === 'true' ||
+  smtpPort === 465;
+
+const mailConfig = smtpHost
   ? {
-      host: process.env.SMTP_HOST,
-      port: Number(process.env.SMTP_PORT || 587),
-      secure: process.env.SMTP_SECURE === 'true',
+      host: smtpHost,
+      port: smtpPort,
+      secure: smtpSecure,
+      requireTLS: !smtpSecure,
+      tls: {
+        servername: smtpHost
+      },
       auth: {
         user: process.env.EMAIL_USER,
         pass: process.env.EMAIL_PASS

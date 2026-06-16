@@ -55,6 +55,7 @@ export default function AdminDashboard() {
   const [newTemplateModal, setNewTemplateModal] = useState(false)
   const [newTemplateName, setNewTemplateName] = useState('')
   const [selectedInquiries, setSelectedInquiries] = useState<string[]>([])
+  const [sendingReply, setSendingReply] = useState(false)
 
   // Form states
   const [productForm, setProductForm] = useState<Omit<Product, '_id'>>({ name: '', category: 'nails', description: '', image: '', featured: false })
@@ -204,8 +205,9 @@ export default function AdminDashboard() {
 
   const handleSendReply = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!replyModal.inquiry) return
+    if (!replyModal.inquiry || sendingReply) return
     const token = localStorage.getItem('adminToken')
+    setSendingReply(true)
 
     try {
       const response = await fetch(apiUrl('/api/inquiries/reply'), {
@@ -223,6 +225,7 @@ export default function AdminDashboard() {
           }
         })
       })
+      const data = await response.json().catch(() => null)
 
       if (response.ok) {
         alert('Reply saved and email sent successfully')
@@ -230,11 +233,13 @@ export default function AdminDashboard() {
         setReplyForm({ subject: '', message: '' })
         fetchDashboardData(token!)
       } else {
-        alert('Failed to process reply')
+        alert(data?.message || 'Failed to process reply')
       }
     } catch (err) {
       console.error('Error sending reply:', err)
       alert('Error sending reply')
+    } finally {
+      setSendingReply(false)
     }
   }
 
@@ -1458,9 +1463,10 @@ export default function AdminDashboard() {
                   </button>
                   <button
                     type="submit"
-                    className="px-10 py-3 bg-brass text-white text-[10px] uppercase tracking-widest font-bold hover:bg-charcoal transition-all shadow-lg shadow-brass/10"
+                    disabled={sendingReply}
+                    className="px-10 py-3 bg-brass text-white text-[10px] uppercase tracking-widest font-bold hover:bg-charcoal transition-all shadow-lg shadow-brass/10 disabled:opacity-60 disabled:cursor-not-allowed"
                   >
-                    Transmit Official Reply
+                    {sendingReply ? 'SENDING...' : 'Transmit Official Reply'}
                   </button>
                 </div>
               </div>

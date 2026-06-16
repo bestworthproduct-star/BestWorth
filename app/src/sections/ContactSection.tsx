@@ -35,6 +35,8 @@ export default function ContactSection() {
     message: '',
   })
   const [submitted, setSubmitted] = useState(false)
+  const [submitting, setSubmitting] = useState(false)
+  const [submitError, setSubmitError] = useState('')
 
   useGSAP(() => {
     if (!sectionRef.current) return
@@ -79,6 +81,11 @@ export default function ContactSection() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    if (submitting) return
+
+    setSubmitting(true)
+    setSubmitError('')
+
     try {
       const response = await fetch(apiUrl('/api/inquiries'), {
         method: 'POST',
@@ -87,6 +94,7 @@ export default function ContactSection() {
         },
         body: JSON.stringify(formData),
       })
+      const data = await response.json().catch(() => null)
 
       if (response.ok) {
         setSubmitted(true)
@@ -94,11 +102,17 @@ export default function ContactSection() {
           setSubmitted(false)
           setFormData({ name: '', email: '', company: '', message: '' })
         }, 3000)
+        if (data?.emailSent === false) {
+          setSubmitError('Inquiry saved, but email notification could not be sent yet.')
+        }
       } else {
-        console.error('Failed to submit inquiry')
+        setSubmitError(data?.message || 'Failed to submit inquiry')
       }
     } catch (err) {
       console.error('Error submitting inquiry:', err)
+      setSubmitError('Error submitting inquiry')
+    } finally {
+      setSubmitting(false)
     }
   }
 
@@ -134,9 +148,19 @@ export default function ContactSection() {
                 <p className="font-body text-base text-charcoal mt-2">
                   Our team will get back to you shortly.
                 </p>
+                {submitError && (
+                  <p className="font-body text-sm text-charcoal mt-3">
+                    {submitError}
+                  </p>
+                )}
               </div>
             ) : (
               <form onSubmit={handleSubmit} className="mt-10 space-y-6">
+                {submitError && (
+                  <div className="border border-red-500/20 bg-red-500/10 p-4 text-sm text-red-700">
+                    {submitError}
+                  </div>
+                )}
                 <input
                   type="text"
                   name="name"
@@ -172,8 +196,8 @@ export default function ContactSection() {
                   rows={4}
                   className={`${inputClass} resize-none min-h-[120px]`}
                 />
-                <button type="submit" className="btn-primary w-full mt-4">
-                  SEND INQUIRY
+                <button type="submit" disabled={submitting} className="btn-primary w-full mt-4 disabled:opacity-60 disabled:cursor-not-allowed">
+                  {submitting ? 'SENDING...' : 'SEND INQUIRY'}
                 </button>
               </form>
             )}

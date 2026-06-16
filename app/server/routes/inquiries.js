@@ -67,7 +67,8 @@ router.post('/reply', auth, async (req, res) => {
 
     res.json({ message: 'Reply sent successfully' });
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    console.error('Admin reply error:', err.message);
+    res.status(500).json({ message: err.message || 'Email delivery failed' });
   }
 });
 

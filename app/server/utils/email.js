@@ -27,7 +27,13 @@ const mailConfig = smtpHost
       host: smtpHost,
       port: smtpPort,
       secure: smtpSecure,
+      connectionTimeout: 15000,
+      greetingTimeout: 10000,
+      socketTimeout: 20000,
+      dnsTimeout: 10000,
       requireTLS: !smtpSecure,
+      logger: true,
+      debug: true,
       tls: {
         servername: smtpHost
       },
@@ -38,6 +44,12 @@ const mailConfig = smtpHost
     }
   : {
       service: process.env.EMAIL_SERVICE || 'gmail',
+      connectionTimeout: 15000,
+      greetingTimeout: 10000,
+      socketTimeout: 20000,
+      dnsTimeout: 10000,
+      logger: true,
+      debug: true,
       auth: {
         user: process.env.EMAIL_USER,
         pass: process.env.EMAIL_PASS
@@ -65,7 +77,12 @@ let verifyPromise = null;
 async function verifyTransporter() {
   if (!verifyPromise) {
     console.log('[email] starting transporter verification', summarizeMailConfig());
-    verifyPromise = transporter.verify()
+    verifyPromise = Promise.race([
+      transporter.verify(),
+      new Promise((_, reject) => {
+        setTimeout(() => reject(new Error('SMTP verification timed out')), 12000);
+      })
+    ])
       .then((result) => {
         console.log('[email] transporter verification succeeded', { result });
         return result;
@@ -78,6 +95,7 @@ async function verifyTransporter() {
           response: error.response,
           responseCode: error.responseCode
         });
+        verifyPromise = null;
         throw error;
       });
   }
@@ -220,7 +238,13 @@ const sendInquiryNotification = async (inquiry, cmsData = {}) => {
   };
 
   try {
-    await verifyTransporter();
+    try {
+      await verifyTransporter();
+    } catch (verifyError) {
+      console.warn('[email] continuing after verify failure for inquiry notification', {
+        message: verifyError.message
+      });
+    }
     console.log('[email] sending inquiry notification', {
       subject: mailOptions.subject,
       from: mailOptions.from,
@@ -288,7 +312,13 @@ const sendAdminReply = async (to, subject, message, cmsData = {}) => {
   };
 
   try {
-    await verifyTransporter();
+    try {
+      await verifyTransporter();
+    } catch (verifyError) {
+      console.warn('[email] continuing after verify failure for admin reply', {
+        message: verifyError.message
+      });
+    }
     console.log('[email] sending admin reply', {
       subject: mailOptions.subject,
       from: mailOptions.from,

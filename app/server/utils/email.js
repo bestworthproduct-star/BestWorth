@@ -240,6 +240,7 @@ async function sendWithSendGrid(mailOptions) {
     subject: mailOptions.subject
   });
 
+  console.log('[email] sendgrid request starting');
   const response = await fetch('https://api.sendgrid.com/v3/mail/send', {
     method: 'POST',
     headers: {
@@ -266,6 +267,10 @@ async function sendWithSendGrid(mailOptions) {
     })
   });
 
+  console.log('[email] sendgrid response received', {
+    status: response.status,
+    ok: response.ok
+  });
   const responseText = await response.text();
 
   if (!response.ok) {
@@ -391,6 +396,57 @@ const sendInquiryNotification = async (inquiry, cmsData = {}) => {
   }
 };
 
+const sendInquiryConfirmation = async (inquiry, cmsData = {}) => {
+  console.log('[email] sendInquiryConfirmation triggered', {
+    inquiryId: String(inquiry._id),
+    to: inquiry.email,
+    hasBranding: Boolean(cmsData.branding),
+    hasContact: Boolean(cmsData.contact),
+    hasFooter: Boolean(cmsData.footer)
+  });
+
+  const content = `
+    <span class="label">Inquiry Received</span>
+    <h1 style="font-size: 24px; margin: 0 0 30px 0; font-weight: 500; letter-spacing: -0.5px;">Thank You for Contacting Bestworth</h1>
+    <div style="font-size: 16px; color: #333; line-height: 1.8;">
+      <div style="margin-bottom: 15px;">Dear ${inquiry.name},</div>
+      <div style="margin-bottom: 15px;">We have received your inquiry and our team will review it shortly.</div>
+      <div style="margin-bottom: 15px;">A member of our team will get back to you using this email address as soon as possible.</div>
+    </div>
+    <div class="divider"></div>
+    <span class="label">Your Message</span>
+    <div style="background-color: #F8F8F5; padding: 25px; border-left: 2px solid #C5A059; font-style: italic; color: #444;">
+      "${inquiry.message}"
+    </div>
+  `;
+
+  const mailOptions = {
+    from: process.env.EMAIL_FROM || process.env.EMAIL_USER || `"Bestworth" <${process.env.EMAIL_USER}>`,
+    to: inquiry.email,
+    replyTo: process.env.COMPANY_EMAIL || process.env.EMAIL_REPLY_TO || process.env.EMAIL_USER,
+    subject: 'We received your inquiry - Bestworth Products Limited',
+    html: EmailLayout(
+      content,
+      'We received your inquiry and our team will respond shortly.',
+      cmsData
+    )
+  };
+
+  try {
+    return await sendMail(mailOptions, 'inquiry confirmation');
+  } catch (error) {
+    console.error('[email] error sending inquiry confirmation', {
+      message: error.message,
+      code: error.code,
+      command: error.command,
+      response: error.response,
+      responseCode: error.responseCode,
+      stack: error.stack
+    });
+    throw error;
+  }
+};
+
 const sendAdminReply = async (to, subject, message, cmsData = {}) => {
   console.log('[email] sendAdminReply triggered', {
     to,
@@ -443,5 +499,6 @@ const sendAdminReply = async (to, subject, message, cmsData = {}) => {
 
 module.exports = {
   sendInquiryNotification,
+  sendInquiryConfirmation,
   sendAdminReply
 };

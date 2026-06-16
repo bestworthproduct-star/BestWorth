@@ -57,6 +57,10 @@ export default function Navigation({ scrollTo }: { scrollTo: (target: string) =>
     setMobileOpen(false)
   }
 
+  const goToAdminLogin = () => {
+    window.location.href = '/login'
+  }
+
   return (
     <>
       {/* Desktop Top Bar Navigation */}
@@ -99,6 +103,12 @@ export default function Navigation({ scrollTo }: { scrollTo: (target: string) =>
               />
             </button>
           ))}
+          <button
+            onClick={goToAdminLogin}
+            className="border border-white/20 px-4 py-2 font-body text-[11px] uppercase tracking-[0.18em] text-white/80 transition-all duration-300 hover:border-[#B8860B] hover:text-[#B8860B]"
+          >
+            Admin Login
+          </button>
         </div>
       </nav>
 
@@ -113,7 +123,9 @@ export default function Navigation({ scrollTo }: { scrollTo: (target: string) =>
         >
           BESTWORTH
         </button>
-        <div className="w-8" />
+        <button onClick={goToAdminLogin} className="text-[10px] uppercase tracking-[0.15em] text-white/80">
+          Login
+        </button>
       </nav>
 
       {/* Mobile Menu Overlay */}

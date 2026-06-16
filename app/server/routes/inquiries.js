@@ -3,7 +3,7 @@ const router = express.Router();
 const Inquiry = require('../models/Inquiry');
 const Content = require('../models/Content');
 const auth = require('../middleware/auth');
-const { sendInquiryNotification, sendAdminReply } = require('../utils/email');
+const { sendInquiryNotification, sendInquiryConfirmation, sendAdminReply } = require('../utils/email');
 
 async function getCmsEmailData() {
   const docs = await Content.find({ key: { $in: ['contact', 'footer', 'branding'] } });
@@ -36,6 +36,7 @@ router.post('/', async (req, res) => {
         keys: Object.keys(cmsData)
       });
       await sendInquiryNotification(newInquiry, cmsData);
+      await sendInquiryConfirmation(newInquiry, cmsData);
     } catch (emailError) {
       emailSent = false;
       console.error('[inquiries] inquiry notification email failed', {

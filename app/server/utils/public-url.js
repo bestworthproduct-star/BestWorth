@@ -12,7 +12,7 @@ function getRequestOrigin(req) {
 }
 
 function isMediaPath(pathname) {
-  return pathname.startsWith('/uploads/') || pathname.startsWith('/assets/');
+  return pathname.startsWith('/uploads/') || pathname.startsWith('/assets/') || pathname.startsWith('/api/media/');
 }
 
 function normalizeMediaUrlForStorage(value) {

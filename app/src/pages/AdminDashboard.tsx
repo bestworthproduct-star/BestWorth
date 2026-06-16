@@ -173,6 +173,11 @@ export default function AdminDashboard() {
     const token = localStorage.getItem('adminToken')
     if (!token) return
 
+    if (file.size > 10 * 1024 * 1024) {
+      alert('File size must be 10MB or less')
+      return
+    }
+
     setUploading(target)
     const formData = new FormData()
     formData.append('file', file)
@@ -188,7 +193,8 @@ export default function AdminDashboard() {
         const result = await response.json()
         callback(result.url)
       } else {
-        alert('Upload failed')
+        const result = await response.json().catch(() => null)
+        alert(result?.message || 'Upload failed')
       }
     } catch (err) {
       console.error('Upload error:', err)
@@ -851,6 +857,36 @@ export default function AdminDashboard() {
                     className="w-full px-4 py-3 border border-charcoal/10 focus:border-brass outline-none transition-colors text-[11px] font-mono"
                     placeholder="https://your-domain.com/assets/logo.png"
                   />
+                  <div className="mt-3 flex flex-wrap items-center gap-4">
+                    <label className="cursor-pointer">
+                      <span className="text-[9px] uppercase tracking-tighter font-bold text-brass hover:underline">
+                        {uploading === 'branding-logo' ? 'Uploading...' : '↑ Upload Logo'}
+                      </span>
+                      <input
+                        type="file"
+                        className="hidden"
+                        accept="image/*"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0]
+                          if (file) {
+                            handleUpload(file, 'branding-logo', (uploadedUrl) => {
+                              setCmsContent({
+                                ...cmsContent,
+                                branding: { ...cmsContent.branding, logoUrl: uploadedUrl }
+                              })
+                            })
+                          }
+                        }}
+                      />
+                    </label>
+                    {cmsContent.branding?.logoUrl && (
+                      <img
+                        src={resolveMediaUrl(cmsContent.branding.logoUrl)}
+                        alt="Logo preview"
+                        className="h-14 w-auto border border-charcoal/10 bg-white object-contain px-3 py-2"
+                      />
+                    )}
+                  </div>
                 </div>
                 <div>
                   <label className="block text-[10px] uppercase tracking-widest text-charcoal/40 font-bold mb-2">Favicon URL (Publicly Hosted)</label>
@@ -861,9 +897,39 @@ export default function AdminDashboard() {
                     className="w-full px-4 py-3 border border-charcoal/10 focus:border-brass outline-none transition-colors text-[11px] font-mono"
                     placeholder="https://your-domain.com/favicon.png"
                   />
+                  <div className="mt-3 flex flex-wrap items-center gap-4">
+                    <label className="cursor-pointer">
+                      <span className="text-[9px] uppercase tracking-tighter font-bold text-brass hover:underline">
+                        {uploading === 'branding-favicon' ? 'Uploading...' : '↑ Upload Favicon'}
+                      </span>
+                      <input
+                        type="file"
+                        className="hidden"
+                        accept="image/*"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0]
+                          if (file) {
+                            handleUpload(file, 'branding-favicon', (uploadedUrl) => {
+                              setCmsContent({
+                                ...cmsContent,
+                                branding: { ...cmsContent.branding, faviconUrl: uploadedUrl }
+                              })
+                            })
+                          }
+                        }}
+                      />
+                    </label>
+                    {cmsContent.branding?.faviconUrl && (
+                      <img
+                        src={resolveMediaUrl(cmsContent.branding.faviconUrl)}
+                        alt="Favicon preview"
+                        className="h-14 w-14 border border-charcoal/10 bg-white object-contain p-2"
+                      />
+                    )}
+                  </div>
                 </div>
               </div>
-              <p className="mt-4 text-[9px] text-charcoal/40 uppercase tracking-widest font-bold">Note: These images must be accessible over the public internet to appear in emails.</p>
+              <p className="mt-4 text-[9px] text-charcoal/40 uppercase tracking-widest font-bold">Uploads are stored in the database and limited to 10MB per file.</p>
               <button onClick={() => handleUpdateContent('branding', cmsContent.branding)} className="mt-8 px-10 py-3 bg-charcoal text-white text-[10px] tracking-widest uppercase font-bold hover:bg-brass transition-all">Update Branding</button>
             </div>
 
@@ -1002,6 +1068,36 @@ export default function AdminDashboard() {
                     onChange={(e) => setCmsContent({ ...cmsContent, about: { ...cmsContent.about, imageUrl: e.target.value } })}
                     className="w-full px-4 py-3 border border-charcoal/10 focus:border-brass outline-none transition-colors text-sm" 
                   />
+                  <div className="mt-3 flex flex-wrap items-center gap-4">
+                    <label className="cursor-pointer">
+                      <span className="text-[9px] uppercase tracking-tighter font-bold text-brass hover:underline">
+                        {uploading === 'about-image' ? 'Uploading...' : '↑ Upload About Image'}
+                      </span>
+                      <input
+                        type="file"
+                        className="hidden"
+                        accept="image/*"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0]
+                          if (file) {
+                            handleUpload(file, 'about-image', (uploadedUrl) => {
+                              setCmsContent({
+                                ...cmsContent,
+                                about: { ...cmsContent.about, imageUrl: uploadedUrl }
+                              })
+                            })
+                          }
+                        }}
+                      />
+                    </label>
+                    {cmsContent.about?.imageUrl && (
+                      <img
+                        src={resolveMediaUrl(cmsContent.about.imageUrl)}
+                        alt="About preview"
+                        className="h-20 w-32 border border-charcoal/10 bg-white object-cover"
+                      />
+                    )}
+                  </div>
                 </div>
                 <div>
                   <label className="block text-[10px] uppercase tracking-widest text-charcoal/40 font-bold mb-2">Description Paragraphs</label>

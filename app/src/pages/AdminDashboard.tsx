@@ -337,7 +337,7 @@ export default function AdminDashboard() {
       })
       if (res.ok) {
         setTeamModal({ show: false, editId: null })
-        setTeamForm({ name: '', role: '', image: '', order: 0 })
+        setTeamForm({ name: '', role: '', image: '', bio: '', order: 0 })
         fetchDashboardData(token!)
       }
     } catch (err) {
@@ -734,7 +734,7 @@ export default function AdminDashboard() {
               </div>
               <button 
                 onClick={() => {
-                  setTeamForm({ name: '', role: '', image: '', order: data.team.length })
+                  setTeamForm({ name: '', role: '', image: '', bio: '', order: data.team.length })
                   setTeamModal({ show: true, editId: null })
                 }}
                 className="px-8 py-3 bg-charcoal text-white text-[10px] tracking-[0.2em] uppercase font-bold hover:bg-brass transition-all"

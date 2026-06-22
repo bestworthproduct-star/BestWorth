@@ -2,15 +2,23 @@ const express = require('express');
 const router = express.Router();
 const Inquiry = require('../models/Inquiry');
 const Content = require('../models/Content');
+const User = require('../models/User');
 const auth = require('../middleware/auth');
 const { sendInquiryNotification, sendInquiryConfirmation, sendAdminReply } = require('../utils/email');
 
 async function getCmsEmailData() {
-  const docs = await Content.find({ key: { $in: ['contact', 'footer', 'branding'] } });
-  return docs.reduce((accumulator, document) => {
+  const [docs, adminUser] = await Promise.all([
+    Content.find({ key: { $in: ['contact', 'footer', 'branding'] } }),
+    User.findOne().select('notificationEmails').lean()
+  ]);
+
+  const cmsData = docs.reduce((accumulator, document) => {
     accumulator[document.key] = document.data;
     return accumulator;
   }, {});
+
+  cmsData.notificationEmails = adminUser?.notificationEmails || [];
+  return cmsData;
 }
 
 // Public: Submit inquiry

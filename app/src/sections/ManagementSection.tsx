@@ -19,6 +19,7 @@ export default function ManagementSection() {
   const sectionRef = useRef<HTMLElement>(null)
   const headerRef = useRef<HTMLDivElement>(null)
   const cardsRef = useRef<HTMLDivElement>(null)
+  const modalScrollRef = useRef<HTMLDivElement>(null)
 
   const fetchTeam = useCallback(() => {
     fetch(apiUrl('/api/team'))
@@ -30,6 +31,63 @@ export default function ManagementSection() {
   useEffect(() => {
     fetchTeam()
   }, [fetchTeam])
+
+  useEffect(() => {
+    if (!selectedMember) {
+      document.documentElement.style.overflow = ''
+      document.body.style.overflow = ''
+      document.body.style.position = ''
+      document.body.style.top = ''
+      document.body.style.width = ''
+      return
+    }
+
+    const scrollY = window.scrollY
+    const previousHtmlOverflow = document.documentElement.style.overflow
+    const previousOverflow = document.body.style.overflow
+    const previousPosition = document.body.style.position
+    const previousTop = document.body.style.top
+    const previousWidth = document.body.style.width
+
+    document.documentElement.style.overflow = 'hidden'
+    document.body.style.overflow = 'hidden'
+    document.body.style.position = 'fixed'
+    document.body.style.top = `-${scrollY}px`
+    document.body.style.width = '100%'
+
+    return () => {
+      document.documentElement.style.overflow = previousHtmlOverflow
+      document.body.style.overflow = previousOverflow
+      document.body.style.position = previousPosition
+      document.body.style.top = previousTop
+      document.body.style.width = previousWidth
+      window.scrollTo(0, scrollY)
+    }
+  }, [selectedMember])
+
+  useEffect(() => {
+    if (!selectedMember) return
+
+    const preventBackgroundScroll = (event: WheelEvent | TouchEvent) => {
+      if (!modalScrollRef.current) {
+        event.preventDefault()
+        return
+      }
+
+      const target = event.target as Node | null
+      if (!target || !modalScrollRef.current.contains(target)) {
+        event.preventDefault()
+      }
+    }
+
+    window.addEventListener('wheel', preventBackgroundScroll, { passive: false, capture: true })
+    window.addEventListener('touchmove', preventBackgroundScroll, { passive: false, capture: true })
+
+    return () => {
+      window.removeEventListener('wheel', preventBackgroundScroll, true)
+      window.removeEventListener('touchmove', preventBackgroundScroll, true)
+    }
+  }, [selectedMember])
 
   useSocket('team_change', fetchTeam)
 
@@ -151,48 +209,55 @@ export default function ManagementSection() {
       </div>
 
       {selectedMember && (
-        <div className="fixed inset-0 z-[1000] flex items-center justify-center p-6 md:p-12">
+        <div className="fixed inset-0 z-[3000] flex items-center justify-center p-4 pt-24 md:p-8 md:pt-28">
           <div
             className="absolute inset-0 bg-charcoal/95 backdrop-blur-md"
             onClick={() => setSelectedMember(null)}
           />
 
-          <div className="relative bg-[#1A1A1A] border border-white/10 w-full max-w-5xl max-h-[88vh] overflow-hidden grid md:grid-cols-[minmax(280px,340px)_1fr] shadow-2xl animate-in fade-in zoom-in duration-300">
+          <div
+            data-lenis-prevent
+            className="relative bg-[#171717] border border-white/10 w-full max-w-5xl h-[min(78vh,720px)] overflow-hidden grid grid-rows-[200px_minmax(0,1fr)] md:grid-rows-1 md:grid-cols-[300px_minmax(0,1fr)] shadow-[0_30px_80px_rgba(0,0,0,0.45)] animate-in fade-in zoom-in duration-300 rounded-[20px]"
+          >
             <button
               onClick={() => setSelectedMember(null)}
-              className="absolute top-6 right-6 z-10 w-10 h-10 border border-white/10 flex items-center justify-center text-white hover:bg-white/10 transition-all rounded-full"
+              className="absolute top-5 right-5 z-10 w-10 h-10 border border-white/10 bg-black/20 flex items-center justify-center text-white hover:bg-white/10 transition-all rounded-full"
             >
               ✕
             </button>
 
-            <div className="bg-warm-stone/5 max-h-[320px] md:max-h-none">
+            <div className="bg-warm-stone/5 h-full min-h-0 overflow-hidden md:border-r md:border-white/5">
               <img
                 src={resolveMediaUrl(selectedMember.image)}
                 alt={selectedMember.name}
-                className="w-full h-full object-cover grayscale"
+                className="w-full h-full object-cover object-center grayscale"
               />
             </div>
 
-            <div className="p-8 md:p-12 overflow-y-auto">
-              <span className="text-[10px] font-bold text-brass uppercase tracking-[0.3em] mb-4 block">
+            <div
+              ref={modalScrollRef}
+              data-lenis-prevent
+              className="min-h-0 overflow-y-auto overscroll-contain modal-scrollbar px-6 py-6 md:px-10 md:py-10 pr-5 md:pr-6"
+            >
+              <span className="text-[10px] font-bold text-brass uppercase tracking-[0.28em] mb-3 block">
                 Executive Profile
               </span>
-              <h3 className="font-display text-3xl md:text-5xl text-white tracking-tight font-medium mb-2">
+              <h3 className="font-display text-[28px] md:text-[46px] text-white tracking-[-0.03em] font-medium mb-2 leading-[1.02]">
                 {selectedMember.name}
               </h3>
-              <p className="text-base md:text-lg text-white/60 font-body mb-8">
+              <p className="text-[14px] md:text-[16px] text-white/80 font-body mb-6 uppercase tracking-[0.08em]">
                 {selectedMember.role}
               </p>
 
-              <div className="space-y-5 max-w-2xl">
+              <div className="space-y-4 max-w-2xl">
                 {selectedMember.bio?.trim().split('\n\n').map((para, index) => (
-                  <p key={index} className="text-white/80 font-body leading-[1.85] text-[15px] md:text-[17px]">
+                  <p key={index} className="text-white/95 font-body leading-[1.75] text-[14px] md:text-[15px]">
                     {para}
                   </p>
                 ))}
               </div>
 
-              <div className="mt-10 pt-6 border-t border-white/5">
+              <div className="mt-8 pt-5 border-t border-white/5 max-w-2xl">
                 <p className="text-[9px] uppercase tracking-widest text-white/30 font-bold">
                   Bestworth Products Limited • Leadership Board
                 </p>

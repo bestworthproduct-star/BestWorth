@@ -2,6 +2,9 @@ import { useState, useEffect, useRef } from 'react'
 import gsap from 'gsap'
 import { useGSAP } from '@gsap/react'
 import { Menu, X } from 'lucide-react'
+import { useSocket } from '../hooks/useSocket'
+import { apiUrl } from '@/lib/api'
+import { resolveMediaUrl } from '@/lib/media'
 
 const navLinks = [
   { label: 'HOME', target: '#hero', icon: <Menu size={20} /> },
@@ -11,11 +14,30 @@ const navLinks = [
   { label: 'CONTACT', target: '#contact', icon: <Menu size={20} /> },
 ]
 
+const FALLBACK_NAV_LOGO = '/assets/Open Sidebar Logo.jpg'
+
 export default function Navigation({ scrollTo }: { scrollTo: (target: string) => void }) {
   const [activeSection, setActiveSection] = useState('hero')
   const [scrolled, setScrolled] = useState(false)
   const [mobileOpen, setMobileOpen] = useState(false)
+  const [brandingLogo, setBrandingLogo] = useState(FALLBACK_NAV_LOGO)
   const mobileMenuRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    fetch(apiUrl('/api/content/branding'))
+      .then(res => res.ok ? res.json() : null)
+      .then(data => setBrandingLogo(resolveMediaUrl(data?.logoUrl) || FALLBACK_NAV_LOGO))
+      .catch(err => {
+        console.error('Error fetching branding logo:', err)
+        setBrandingLogo(FALLBACK_NAV_LOGO)
+      })
+  }, [])
+
+  useSocket('content_change', (payload: any) => {
+    if (payload.key === 'branding') {
+      setBrandingLogo(resolveMediaUrl(payload.data?.logoUrl) || FALLBACK_NAV_LOGO)
+    }
+  })
 
   useEffect(() => {
     const handleScroll = () => {
@@ -79,7 +101,7 @@ export default function Navigation({ scrollTo }: { scrollTo: (target: string) =>
             className="transition-all duration-500 transform hover:scale-105"
           >
             <img 
-              src="/assets/Open Sidebar Logo.jpg" 
+              src={brandingLogo}
               alt="BESTWORTH" 
               className="h-12 w-auto object-contain"
             />
@@ -119,9 +141,13 @@ export default function Navigation({ scrollTo }: { scrollTo: (target: string) =>
         </button>
         <button
           onClick={() => handleNavClick('#hero')}
-          className="font-display font-bold text-base uppercase tracking-[0.02em] text-white"
+          className="transition-all duration-300 hover:opacity-90"
         >
-          BESTWORTH
+          <img
+            src={brandingLogo}
+            alt="BESTWORTH"
+            className="h-8 w-auto object-contain"
+          />
         </button>
         <button onClick={goToAdminLogin} className="text-[10px] uppercase tracking-[0.15em] text-white/80">
           Login

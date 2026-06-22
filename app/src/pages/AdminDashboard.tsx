@@ -1704,7 +1704,7 @@ export default function AdminDashboard() {
   }
 
   return (
-    <div className="min-h-screen bg-[#F8F8F5]">
+    <div className="min-h-screen overflow-x-hidden bg-[#F8F8F5]">
       <div className="sticky top-0 z-40 flex items-center justify-between border-b border-charcoal/5 bg-white/95 px-4 py-4 backdrop-blur lg:hidden">
         <div>
           <p className="text-[10px] font-bold uppercase tracking-[0.35em] text-brass">Bestworth</p>
@@ -1759,7 +1759,7 @@ export default function AdminDashboard() {
         </div>
       )}
 
-    <div className="flex min-h-screen">
+    <div className="flex min-h-screen overflow-x-hidden">
       {/* Sidebar */}
       <aside className="hidden w-[280px] bg-charcoal fixed h-full z-50 shadow-2xl lg:flex lg:flex-col">
         <div className="p-10 border-b border-white/5">
@@ -1794,7 +1794,7 @@ export default function AdminDashboard() {
       </aside>
 
       {/* Main Content */}
-      <main className="flex-1 p-4 sm:p-6 lg:ml-[280px] lg:p-16">
+      <main className="min-w-0 flex-1 p-4 sm:p-6 lg:ml-[280px] lg:p-16">
         <header className="mb-8 flex flex-col gap-5 sm:mb-10 sm:flex-row sm:items-end sm:justify-between lg:mb-16">
           <div>
             <span className="text-[10px] uppercase tracking-[0.4em] text-brass font-bold mb-4 block">Central Command</span>

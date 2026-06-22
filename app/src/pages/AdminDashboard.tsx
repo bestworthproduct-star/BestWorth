@@ -43,6 +43,11 @@ interface ValueItem {
   icon: string
 }
 
+interface FooterSocialLink {
+  label: string
+  url: string
+}
+
 const HERO_IDLE_HIDE_FALLBACK_SECONDS = 25
 
 export default function AdminDashboard() {
@@ -86,6 +91,11 @@ export default function AdminDashboard() {
     title: '',
     description: '',
     icon: 'Shield'
+  }
+
+  const defaultFooterSocialLink: FooterSocialLink = {
+    label: '',
+    url: ''
   }
 
   const replyTemplates = [
@@ -622,6 +632,40 @@ export default function AdminDashboard() {
 
     ;[currentValues[index], currentValues[targetIndex]] = [currentValues[targetIndex], currentValues[index]]
     setValuesContent(currentValues)
+  }
+
+  const getExtraFooterSocials = (): FooterSocialLink[] => {
+    if (Array.isArray(cmsContent.footer?.socials?.extra)) {
+      return cmsContent.footer.socials.extra
+    }
+    return []
+  }
+
+  const setExtraFooterSocials = (extra: FooterSocialLink[]) => {
+    setCmsContent({
+      ...cmsContent,
+      footer: {
+        ...cmsContent.footer,
+        socials: {
+          ...cmsContent.footer?.socials,
+          extra
+        }
+      }
+    })
+  }
+
+  const addExtraFooterSocial = () => {
+    setExtraFooterSocials([...getExtraFooterSocials(), { ...defaultFooterSocialLink }])
+  }
+
+  const updateExtraFooterSocial = (index: number, field: keyof FooterSocialLink, value: string) => {
+    const nextItems = [...getExtraFooterSocials()]
+    nextItems[index] = { ...nextItems[index], [field]: value }
+    setExtraFooterSocials(nextItems)
+  }
+
+  const removeExtraFooterSocial = (index: number) => {
+    setExtraFooterSocials(getExtraFooterSocials().filter((_, currentIndex) => currentIndex !== index))
   }
 
   if (!authorized) return null
@@ -1445,6 +1489,57 @@ export default function AdminDashboard() {
                       onChange={(e) => setCmsContent({ ...cmsContent, footer: { ...cmsContent.footer, socials: { ...cmsContent.footer.socials, twitter: e.target.value } } })}
                       className="w-full px-4 py-3 border border-charcoal/10 text-sm" 
                     />
+                  </div>
+                </div>
+                <div className="pt-2">
+                  <div className="flex items-end justify-between gap-4 mb-4">
+                    <div>
+                      <label className="block text-[10px] uppercase tracking-widest text-charcoal/40 font-bold mb-1">Extra Social Handles</label>
+                      <p className="text-[10px] uppercase tracking-widest text-charcoal/30 font-bold">
+                        Add more social icons beyond the four default platforms.
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={addExtraFooterSocial}
+                      className="px-5 py-2 border border-charcoal/10 text-[10px] uppercase tracking-widest font-bold hover:border-brass hover:text-brass transition-all"
+                    >
+                      + Add Handle
+                    </button>
+                  </div>
+
+                  <div className="space-y-4">
+                    {getExtraFooterSocials().map((item, index) => (
+                      <div key={index} className="grid grid-cols-1 md:grid-cols-[180px_minmax(0,1fr)_auto] gap-3 items-end border border-charcoal/5 p-4 bg-warm-stone/20">
+                        <div>
+                          <label className="block text-[9px] uppercase tracking-widest text-charcoal/40 font-bold mb-1">Platform Name</label>
+                          <input
+                            type="text"
+                            value={item.label}
+                            onChange={(e) => updateExtraFooterSocial(index, 'label', e.target.value)}
+                            className="w-full px-3 py-2 border border-charcoal/10 text-sm outline-none focus:border-brass"
+                            placeholder="tiktok / phone / whatsapp"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-[9px] uppercase tracking-widest text-charcoal/40 font-bold mb-1">Handle or URL</label>
+                          <input
+                            type="text"
+                            value={item.url}
+                            onChange={(e) => updateExtraFooterSocial(index, 'url', e.target.value)}
+                            className="w-full px-3 py-2 border border-charcoal/10 text-sm outline-none focus:border-brass"
+                            placeholder="@bestworth / +2348000000000 / https://..."
+                          />
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => removeExtraFooterSocial(index)}
+                          className="px-4 py-2 border border-red-200 text-[10px] uppercase tracking-widest font-bold text-red-700 hover:border-red-400 transition-all"
+                        >
+                          Remove
+                        </button>
+                      </div>
+                    ))}
                   </div>
                 </div>
               </div>

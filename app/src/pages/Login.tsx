@@ -131,32 +131,29 @@ export default function Login() {
     <div className="min-h-screen bg-[#efe2bd]">
       <div className="flex min-h-screen flex-col lg:grid lg:grid-cols-[1.03fr_0.97fr]">
           <section
-            className="relative overflow-hidden bg-[#2f2b2c] text-white min-h-[52vh] lg:min-h-screen"
-            style={{
-              clipPath: 'polygon(0 0, 92% 0, 100% 100%, 0 100%)'
-            }}
+            className="relative min-h-[32vh] overflow-hidden bg-[#2f2b2c] text-white lg:min-h-screen lg:[clip-path:polygon(0_0,92%_0,100%_100%,0_100%)]"
           >
             <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,_rgba(184,134,11,0.2),_transparent_36%)]" />
 
-            <div className="relative flex h-full flex-col justify-between px-8 py-8 sm:px-12 sm:py-10 lg:px-20 lg:py-14">
+            <div className="relative flex h-full flex-col justify-between px-5 py-5 sm:px-8 sm:py-8 lg:px-20 lg:py-14">
               <div>
                 <p className="text-[11px] font-semibold uppercase tracking-[0.34em] text-[#d4af37]">
                   Bestworth
                 </p>
               </div>
 
-              <div className="flex flex-1 flex-col items-center justify-center py-6 text-center">
-                <div className="flex h-[180px] w-full max-w-[300px] items-center justify-center overflow-hidden rounded-[22px] bg-white/6 shadow-[0_16px_40px_rgba(0,0,0,0.18)] lg:h-[210px] lg:max-w-[340px]">
+              <div className="flex flex-1 flex-col items-center justify-center py-3 text-center lg:py-6">
+                <div className="flex h-[132px] w-full max-w-[220px] items-center justify-center overflow-hidden rounded-[18px] bg-white/6 shadow-[0_16px_40px_rgba(0,0,0,0.18)] sm:h-[150px] sm:max-w-[250px] lg:h-[210px] lg:max-w-[340px] lg:rounded-[22px]">
                   {activeSlide?.type === 'branding' ? (
-                    <div className="flex h-full w-full flex-col items-center justify-center gap-5 bg-[linear-gradient(180deg,rgba(255,255,255,0.06),rgba(255,255,255,0.02))] px-8">
-                      <div className="flex h-20 w-20 items-center justify-center rounded-[18px] bg-white p-3 shadow-[0_12px_30px_rgba(0,0,0,0.18)]">
+                    <div className="flex h-full w-full flex-col items-center justify-center gap-3 bg-[linear-gradient(180deg,rgba(255,255,255,0.06),rgba(255,255,255,0.02))] px-4 sm:px-6 lg:gap-5 lg:px-8">
+                      <div className="flex h-14 w-14 items-center justify-center rounded-[14px] bg-white p-2 shadow-[0_12px_30px_rgba(0,0,0,0.18)] sm:h-16 sm:w-16 lg:h-20 lg:w-20 lg:rounded-[18px] lg:p-3">
                         <img
                           src={activeSlide.image}
                           alt="Bestworth logo"
                           className="h-full w-full object-contain"
                         />
                       </div>
-                      <p className="max-w-[200px] text-[12px] leading-5 text-white/78">
+                      <p className="max-w-[170px] text-[10px] leading-4 text-white/78 sm:max-w-[190px] sm:text-[11px] sm:leading-4 lg:max-w-[200px] lg:text-[12px] lg:leading-5">
                         Bestworth identity shows first before product slides begin.
                       </p>
                     </div>
@@ -169,17 +166,17 @@ export default function Login() {
                   )}
                 </div>
 
-                <div className="mt-6 max-w-[420px]">
-                  <h1 className="font-display text-2xl tracking-tight sm:text-3xl lg:text-4xl">
+                <div className="mt-4 max-w-[260px] sm:max-w-[320px] lg:mt-6 lg:max-w-[420px]">
+                  <h1 className="font-display text-lg tracking-tight sm:text-2xl lg:text-4xl">
                     {activeSlide?.title || 'Welcome back'}
                   </h1>
-                  <p className="mt-2 line-clamp-3 text-[12px] leading-5 text-white/72 lg:text-[13px] lg:leading-5">
+                  <p className="mt-2 line-clamp-2 text-[10px] leading-4 text-white/72 sm:text-[11px] sm:leading-4 lg:line-clamp-3 lg:text-[13px] lg:leading-5">
                     {activeSlide?.description || 'Current products from the live catalog appear here.'}
                   </p>
                 </div>
               </div>
 
-              <div className="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between lg:gap-5">
                 <div className="flex items-center gap-2">
                   {slides.map((slide, index) => (
                     <button
@@ -199,7 +196,7 @@ export default function Login() {
                 <button
                   type="button"
                   onClick={goToProducts}
-                  className="inline-flex items-center justify-center rounded-full border border-[#d4af37]/70 px-5 py-3 text-[11px] font-semibold uppercase tracking-[0.24em] text-[#f0d98a] transition-colors hover:bg-[#d4af37] hover:text-[#2f2b2c]"
+                  className="inline-flex items-center justify-center rounded-full border border-[#d4af37]/70 px-4 py-2 text-[9px] font-semibold uppercase tracking-[0.18em] text-[#f0d98a] transition-colors hover:bg-[#d4af37] hover:text-[#2f2b2c] sm:px-5 sm:py-2.5 sm:text-[10px] lg:px-5 lg:py-3 lg:text-[11px] lg:tracking-[0.24em]"
                 >
                   View Products
                 </button>
@@ -208,19 +205,16 @@ export default function Login() {
           </section>
 
           <section
-            className="relative -mt-10 flex items-center bg-white px-8 py-10 sm:px-12 lg:-ml-16 lg:mt-0 lg:min-h-screen lg:px-24"
-            style={{
-              clipPath: 'polygon(12% 0, 100% 0, 100% 100%, 0 100%)'
-            }}
+            className="relative flex items-center bg-white px-5 py-8 sm:px-8 sm:py-10 lg:-ml-16 lg:min-h-screen lg:px-24 lg:[clip-path:polygon(12%_0,100%_0,100%_100%,0_100%)]"
           >
-            <div className="mx-auto w-full max-w-xl lg:max-w-2xl">
+            <div className="mx-auto w-full max-w-md lg:max-w-2xl">
               <p className="text-center text-[11px] font-semibold uppercase tracking-[0.34em] text-[#b8860b] lg:text-left">
                 Sign In
               </p>
-              <h2 className="mt-4 text-center font-display text-4xl tracking-tight text-[#2f2b2c] lg:text-left lg:text-6xl">
+              <h2 className="mt-3 text-center font-display text-3xl tracking-tight text-[#2f2b2c] sm:text-4xl lg:text-left lg:text-6xl">
                 Admin login
               </h2>
-              <p className="mt-4 text-center text-[15px] leading-7 text-[#2f2b2c]/60 lg:text-left lg:max-w-[620px] lg:text-[18px] lg:leading-8">
+              <p className="mt-3 text-center text-[14px] leading-6 text-[#2f2b2c]/60 lg:text-left lg:max-w-[620px] lg:text-[18px] lg:leading-8">
                 Continue to the Bestworth administration dashboard.
               </p>
 
@@ -230,7 +224,7 @@ export default function Login() {
                 </div>
               )}
 
-              <form onSubmit={handleSubmit} className="mt-10 space-y-7 lg:max-w-[700px]">
+              <form onSubmit={handleSubmit} className="mt-8 space-y-5 lg:mt-10 lg:max-w-[700px] lg:space-y-7">
                 <div>
                   <label className="block text-[11px] font-semibold uppercase tracking-[0.28em] text-[#2f2b2c]/55">
                     Username
@@ -241,7 +235,7 @@ export default function Login() {
                     onChange={(e) => setUsername(e.target.value)}
                     required
                     autoComplete="username"
-                    className="mt-3 w-full rounded-2xl bg-[#eef4ff] px-5 py-5 text-[#2f2b2c] placeholder:text-[#2f2b2c]/30 focus:outline-none focus:ring-2 focus:ring-[#b8860b]/30"
+                    className="mt-3 w-full rounded-2xl bg-[#eef4ff] px-4 py-4 text-[#2f2b2c] placeholder:text-[#2f2b2c]/30 focus:outline-none focus:ring-2 focus:ring-[#b8860b]/30 lg:px-5 lg:py-5"
                     placeholder="Enter username"
                   />
                 </div>
@@ -265,7 +259,7 @@ export default function Login() {
                     onChange={(e) => setPassword(e.target.value)}
                     required
                     autoComplete="current-password"
-                    className="mt-3 w-full rounded-2xl bg-[#eef4ff] px-5 py-5 text-[#2f2b2c] placeholder:text-[#2f2b2c]/30 focus:outline-none focus:ring-2 focus:ring-[#b8860b]/30"
+                    className="mt-3 w-full rounded-2xl bg-[#eef4ff] px-4 py-4 text-[#2f2b2c] placeholder:text-[#2f2b2c]/30 focus:outline-none focus:ring-2 focus:ring-[#b8860b]/30 lg:px-5 lg:py-5"
                     placeholder="••••••••"
                   />
                 </div>
@@ -273,7 +267,7 @@ export default function Login() {
                 <button
                   type="submit"
                   disabled={loading}
-                  className="mt-2 inline-flex w-full items-center justify-center rounded-full bg-[#b8860b] px-6 py-5 text-[12px] font-semibold uppercase tracking-[0.28em] text-white transition-colors hover:bg-[#9b6f08] disabled:cursor-not-allowed disabled:opacity-50"
+                  className="mt-2 inline-flex w-full items-center justify-center rounded-full bg-[#b8860b] px-6 py-4 text-[11px] font-semibold uppercase tracking-[0.2em] text-white transition-colors hover:bg-[#9b6f08] disabled:cursor-not-allowed disabled:opacity-50 lg:py-5 lg:text-[12px] lg:tracking-[0.28em]"
                 >
                   {loading ? 'Authenticating...' : 'Enter Dashboard'}
                 </button>

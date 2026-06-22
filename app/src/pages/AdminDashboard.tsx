@@ -53,6 +53,7 @@ const HERO_IDLE_HIDE_FALLBACK_SECONDS = 25
 export default function AdminDashboard() {
   const [authorized, setAuthorized] = useState(false)
   const [activeTab, setActiveTab] = useState<'dashboard' | 'products' | 'team' | 'inquiries' | 'cms' | 'settings'>('dashboard')
+  const [mobileNavOpen, setMobileNavOpen] = useState(false)
   const [stats, setStats] = useState({ products: 0, inquiries: 0, team: 0 })
   const [data, setData] = useState<{ products: Product[], inquiries: Inquiry[], team: TeamMember[] }>({ products: [], inquiries: [], team: [] })
   const [cmsContent, setCmsContent] = useState<any>({})
@@ -114,6 +115,14 @@ export default function AdminDashboard() {
   ]
 
   const navigate = useNavigate()
+  const navItems = [
+    { id: 'dashboard', label: 'Overview' },
+    { id: 'products', label: 'Catalog' },
+    { id: 'team', label: 'Leadership' },
+    { id: 'inquiries', label: 'Communications' },
+    { id: 'cms', label: 'Site CMS' },
+    { id: 'settings', label: 'Settings' }
+  ] as const
 
   const redirectToServiceUnavailable = useCallback(() => {
     navigate('/service-unavailable?area=admin')
@@ -714,7 +723,7 @@ export default function AdminDashboard() {
       case 'dashboard':
         return (
           <>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 gap-4 sm:gap-6 md:grid-cols-3">
               {[
                 { label: 'Total Catalog', value: stats.products, color: 'bg-white' },
                 { label: 'New Inquiries', value: stats.inquiries, color: 'bg-white' },
@@ -751,7 +760,7 @@ export default function AdminDashboard() {
         return (
           <div className="space-y-12">
             <div className="bg-white border border-charcoal/5 shadow-sm overflow-hidden">
-              <div className="p-10 border-b border-charcoal/5 flex justify-between items-center">
+              <div className="flex flex-col gap-4 border-b border-charcoal/5 p-6 sm:p-8 lg:flex-row lg:items-center lg:justify-between lg:p-10">
                 <div>
                   <h3 className="text-[10px] uppercase tracking-[0.25em] text-charcoal/40 font-bold">Catalog Management</h3>
                   <p className="text-xs text-charcoal/40 mt-1 uppercase tracking-widest font-medium">Manage product inventory and featured items</p>
@@ -766,7 +775,8 @@ export default function AdminDashboard() {
                   + New Product
                 </button>
               </div>
-              <table className="w-full text-left">
+              <div className="overflow-x-auto">
+              <table className="w-full min-w-[760px] text-left">
                 <thead>
                   <tr className="bg-charcoal/[0.02] text-[10px] uppercase tracking-widest text-charcoal/40 font-bold">
                     <th className="px-10 py-5">Product Details</th>
@@ -812,6 +822,7 @@ export default function AdminDashboard() {
                   ))}
                 </tbody>
               </table>
+              </div>
             </div>
 
             {/* Category Management Section */}
@@ -831,7 +842,7 @@ export default function AdminDashboard() {
                   + Add Category
                 </button>
               </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 p-10">
+              <div className="grid grid-cols-1 gap-4 p-6 sm:p-8 md:grid-cols-2 lg:grid-cols-4 lg:gap-6 lg:p-10">
                 {categories.map((cat: any) => (
                   <div key={cat.id} className="border border-charcoal/5 p-6 flex justify-between items-center group hover:border-brass transition-colors">
                     <div>
@@ -864,12 +875,12 @@ export default function AdminDashboard() {
       case 'inquiries':
         return (
           <div className="bg-white border border-charcoal/5 shadow-sm overflow-hidden relative">
-             <div className="p-10 border-b border-charcoal/5 flex justify-between items-center">
+             <div className="flex flex-col gap-4 border-b border-charcoal/5 p-6 sm:p-8 lg:flex-row lg:items-center lg:justify-between lg:p-10">
               <div>
                 <h3 className="text-[10px] uppercase tracking-[0.25em] text-charcoal/40 font-bold">Customer Inquiries</h3>
                 <p className="text-xs text-charcoal/40 mt-1 uppercase tracking-widest font-medium">Manage incoming business leads and messages</p>
               </div>
-              <div className="flex items-center space-x-6">
+              <div className="flex flex-wrap items-center gap-4">
                 <div className="flex items-center space-x-3">
                   <input
                     type="checkbox"
@@ -907,7 +918,7 @@ export default function AdminDashboard() {
               {data.inquiries.length === 0 ? (
                 <div className="p-20 text-center text-charcoal/20 uppercase tracking-widest text-xs font-bold">No Inquiries Found</div>
               ) : data.inquiries.map((i) => (
-                <div key={i._id} className={`p-10 hover:bg-charcoal/[0.01] transition-colors flex gap-6 ${i.status === 'new' ? 'border-l-4 border-brass' : ''}`}>
+                <div key={i._id} className={`p-6 sm:p-8 lg:p-10 hover:bg-charcoal/[0.01] transition-colors flex flex-col gap-6 md:flex-row ${i.status === 'new' ? 'border-l-4 border-brass' : ''}`}>
                   <div className="pt-2">
                     <input
                       type="checkbox"
@@ -923,7 +934,7 @@ export default function AdminDashboard() {
                     />
                   </div>
                   <div className="flex-1">
-                    <div className="flex justify-between items-start">
+                    <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
                       <div>
                         <h4 className="font-display text-xl text-charcoal font-medium">{i.name}</h4>
                         <p className="text-xs text-charcoal/40 mt-1 uppercase tracking-widest font-bold">{i.company || 'Private Individual'} • {i.email}</p>
@@ -937,7 +948,7 @@ export default function AdminDashboard() {
                           )}
                         </div>
                       </div>
-                      <div className="flex space-x-2">
+                      <div className="flex flex-wrap gap-2">
 
                         <button
                           onClick={() => {
@@ -968,7 +979,7 @@ export default function AdminDashboard() {
       case 'team':
         return (
           <div className="space-y-8">
-            <div className="flex justify-between items-end mb-4">
+            <div className="mb-4 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
                <div>
                 <h3 className="text-[10px] uppercase tracking-[0.25em] text-charcoal/40 font-bold">Leadership Command</h3>
                 <p className="text-xs text-charcoal/40 mt-1 uppercase tracking-widest font-medium">Manage executive board and team profiles</p>
@@ -983,7 +994,7 @@ export default function AdminDashboard() {
                 + Add Executive
               </button>
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+            <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3 lg:gap-8">
               {data.team.map((m) => (
                 <div key={m._id} className="bg-white border border-charcoal/5 p-8 shadow-sm group relative">
                   <div className="aspect-square bg-warm-stone mb-6 overflow-hidden grayscale group-hover:grayscale-0 transition-all duration-700 border border-charcoal/5">
@@ -1693,23 +1704,71 @@ export default function AdminDashboard() {
   }
 
   return (
-    <div className="min-h-screen bg-[#F8F8F5] flex">
+    <div className="min-h-screen bg-[#F8F8F5]">
+      <div className="sticky top-0 z-40 flex items-center justify-between border-b border-charcoal/5 bg-white/95 px-4 py-4 backdrop-blur lg:hidden">
+        <div>
+          <p className="text-[10px] font-bold uppercase tracking-[0.35em] text-brass">Bestworth</p>
+          <p className="mt-1 text-xs font-medium uppercase tracking-widest text-charcoal/45">
+            {navItems.find((item) => item.id === activeTab)?.label}
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={() => setMobileNavOpen((prev) => !prev)}
+          className="rounded-full border border-charcoal/10 px-4 py-2 text-[10px] font-bold uppercase tracking-[0.24em] text-charcoal"
+        >
+          {mobileNavOpen ? 'Close' : 'Menu'}
+        </button>
+      </div>
+
+      {mobileNavOpen && (
+        <div className="fixed inset-0 z-50 lg:hidden">
+          <div className="absolute inset-0 bg-charcoal/55" onClick={() => setMobileNavOpen(false)} />
+          <div className="absolute left-0 top-0 h-full w-[84%] max-w-[320px] bg-charcoal shadow-2xl">
+            <div className="border-b border-white/5 p-6">
+              <h2 className="font-display text-white text-2xl tracking-tighter">BESTWORTH</h2>
+              <p className="mt-2 text-[9px] text-brass tracking-[0.4em] font-bold opacity-80 uppercase">Enterprise Portal</p>
+            </div>
+            <nav className="space-y-2 p-4">
+              {navItems.map((item) => (
+                <button
+                  key={item.id}
+                  onClick={() => {
+                    setActiveTab(item.id)
+                    setMobileNavOpen(false)
+                  }}
+                  className={`w-full rounded-xl px-4 py-4 text-left text-[10px] uppercase tracking-[0.3em] font-bold transition-all ${
+                    activeTab === item.id
+                      ? 'border border-brass/30 bg-white/5 text-white'
+                      : 'text-steel hover:text-white hover:bg-white/[0.02]'
+                  }`}
+                >
+                  {item.label}
+                </button>
+              ))}
+            </nav>
+            <div className="absolute bottom-0 left-0 right-0 border-t border-white/5 p-4">
+              <button
+                onClick={handleLogout}
+                className="w-full rounded-xl border border-white/10 py-4 text-[10px] uppercase tracking-[0.28em] font-bold text-white"
+              >
+                Terminate Session
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+    <div className="flex min-h-screen">
       {/* Sidebar */}
-      <aside className="w-[280px] bg-charcoal flex flex-col fixed h-full z-50 shadow-2xl">
+      <aside className="hidden w-[280px] bg-charcoal fixed h-full z-50 shadow-2xl lg:flex lg:flex-col">
         <div className="p-10 border-b border-white/5">
           <h2 className="font-display text-white text-2xl tracking-tighter">BESTWORTH</h2>
           <p className="text-[9px] text-brass tracking-[0.4em] mt-2 font-bold opacity-80 uppercase">Enterprise Portal</p>
         </div>
         
         <nav className="flex-1 p-8 space-y-3">
-          {[
-            { id: 'dashboard', label: 'Overview' },
-            { id: 'products', label: 'Catalog' },
-            { id: 'team', label: 'Leadership' },
-            { id: 'inquiries', label: 'Communications' },
-            { id: 'cms', label: 'Site CMS' },
-            { id: 'settings', label: 'Settings' }
-          ].map((item) => (
+          {navItems.map((item) => (
             <button 
               key={item.id}
               onClick={() => setActiveTab(item.id as any)}
@@ -1735,11 +1794,11 @@ export default function AdminDashboard() {
       </aside>
 
       {/* Main Content */}
-      <main className="flex-1 ml-[280px] p-16">
-        <header className="flex justify-between items-end mb-16">
+      <main className="flex-1 p-4 sm:p-6 lg:ml-[280px] lg:p-16">
+        <header className="mb-8 flex flex-col gap-5 sm:mb-10 sm:flex-row sm:items-end sm:justify-between lg:mb-16">
           <div>
             <span className="text-[10px] uppercase tracking-[0.4em] text-brass font-bold mb-4 block">Central Command</span>
-            <h1 className="font-display text-6xl text-charcoal tracking-tight font-medium capitalize">
+            <h1 className="font-display text-4xl text-charcoal tracking-tight font-medium capitalize sm:text-5xl lg:text-6xl">
               {activeTab === 'inquiries'
                 ? 'Communications'
                 : activeTab === 'team'
@@ -1751,7 +1810,7 @@ export default function AdminDashboard() {
                       : activeTab}
             </h1>
           </div>
-          <div className="text-right">
+          <div className="text-left sm:text-right">
             <p className="text-[10px] text-charcoal/40 font-bold uppercase tracking-widest">Connected as Admin</p>
             <p className="text-xs text-charcoal/60 mt-1 font-medium">{new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })}</p>
           </div>
@@ -1762,14 +1821,14 @@ export default function AdminDashboard() {
 
       {/* Product Modal */}
       {productModal.show && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-6">
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-4 lg:p-6">
           <div className="absolute inset-0 bg-charcoal/80 backdrop-blur-sm" onClick={() => setProductModal({ show: false, editId: null })}></div>
-          <div className="relative bg-white w-full max-w-2xl border border-charcoal/10 shadow-2xl p-12">
+          <div className="relative max-h-[92vh] w-full max-w-2xl overflow-y-auto border border-charcoal/10 bg-white p-5 shadow-2xl sm:p-8 lg:p-12">
             <h3 className="font-display text-3xl text-charcoal mb-10 tracking-tight">
               {productModal.editId ? 'Edit Product Specification' : 'Initialize New Product'}
             </h3>
             <form onSubmit={handleSaveProduct} className="space-y-6">
-              <div className="grid grid-cols-2 gap-6">
+              <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
                 <div className="space-y-2">
                   <label className="text-[9px] uppercase tracking-widest font-bold text-charcoal/40">Product Name</label>
                   <input 
@@ -1859,7 +1918,7 @@ export default function AdminDashboard() {
 
       {/* Team Modal */}
       {teamModal.show && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-6">
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-4 lg:p-6">
           <div
             className="absolute inset-0 bg-charcoal/80 backdrop-blur-sm"
             onClick={() => {
@@ -1867,8 +1926,8 @@ export default function AdminDashboard() {
               setTeamForm(emptyTeamForm)
             }}
           ></div>
-          <div className="relative bg-white w-full max-w-xl max-h-[90vh] border border-charcoal/10 shadow-2xl overflow-hidden">
-            <div className="max-h-[90vh] overflow-y-auto p-8 md:p-12">
+          <div className="relative bg-white w-full max-w-xl max-h-[92vh] border border-charcoal/10 shadow-2xl overflow-hidden">
+            <div className="max-h-[92vh] overflow-y-auto p-5 sm:p-8 md:p-12">
               <h3 className="font-display text-3xl text-charcoal mb-10 tracking-tight">
                 {teamModal.editId ? 'Update Executive Profile' : 'Register New Executive'}
               </h3>
@@ -1971,9 +2030,9 @@ export default function AdminDashboard() {
       )}
 
       {replyModal.show && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-6">
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-4 lg:p-6">
           <div className="absolute inset-0 bg-charcoal/80 backdrop-blur-sm" onClick={() => setReplyModal({ show: false, inquiry: null })}></div>
-          <div className="relative bg-white w-full max-w-2xl border border-charcoal/10 shadow-2xl p-12 overflow-y-auto max-h-[90vh]">
+          <div className="relative w-full max-w-2xl max-h-[92vh] overflow-y-auto border border-charcoal/10 bg-white p-5 shadow-2xl sm:p-8 lg:p-12">
             <h3 className="font-display text-3xl text-charcoal mb-4 tracking-tight">Communications Center</h3>
             <p className="text-[10px] uppercase tracking-widest text-brass font-bold mb-8">Direct Response Management</p>
             
@@ -2091,9 +2150,9 @@ export default function AdminDashboard() {
       )}
       {/* Category Modal */}
       {categoryModal.show && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-6">
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-4 lg:p-6">
           <div className="absolute inset-0 bg-charcoal/80 backdrop-blur-sm" onClick={() => setCategoryModal({ show: false, editId: null })}></div>
-          <div className="relative bg-white w-full max-w-md border border-charcoal/10 shadow-2xl p-12">
+          <div className="relative w-full max-w-md border border-charcoal/10 bg-white p-5 shadow-2xl sm:p-8 lg:p-12">
             <h3 className="font-display text-2xl text-charcoal mb-8 tracking-tight">
               {categoryModal.editId ? 'Edit Category' : 'New Classification'}
             </h3>
@@ -2135,9 +2194,9 @@ export default function AdminDashboard() {
 
       {/* New Template Modal */}
       {newTemplateModal && (
-        <div className="fixed inset-0 z-[110] flex items-center justify-center p-6">
+        <div className="fixed inset-0 z-[110] flex items-center justify-center p-3 sm:p-4 lg:p-6">
           <div className="absolute inset-0 bg-charcoal/60 backdrop-blur-sm" onClick={() => setNewTemplateModal(false)}></div>
-          <div className="relative bg-white w-full max-w-md border border-charcoal/10 shadow-2xl p-10">
+          <div className="relative w-full max-w-md border border-charcoal/10 bg-white p-5 shadow-2xl sm:p-8 lg:p-10">
             <h4 className="font-display text-xl text-charcoal mb-6 tracking-tight font-medium">Create New Template</h4>
             <div className="space-y-4">
               <div className="space-y-2">
@@ -2171,6 +2230,7 @@ export default function AdminDashboard() {
           </div>
         </div>
       )}
+    </div>
     </div>
   )
 }

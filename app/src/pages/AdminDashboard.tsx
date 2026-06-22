@@ -45,7 +45,7 @@ interface ValueItem {
 
 export default function AdminDashboard() {
   const [authorized, setAuthorized] = useState(false)
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'products' | 'team' | 'inquiries' | 'cms'>('dashboard')
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'products' | 'team' | 'inquiries' | 'cms' | 'settings'>('dashboard')
   const [stats, setStats] = useState({ products: 0, inquiries: 0, team: 0 })
   const [data, setData] = useState<{ products: Product[], inquiries: Inquiry[], team: TeamMember[] }>({ products: [], inquiries: [], team: [] })
   const [cmsContent, setCmsContent] = useState<any>({})
@@ -53,6 +53,13 @@ export default function AdminDashboard() {
   const [uploading, setUploading] = useState<string | null>(null)
   const [savingTeam, setSavingTeam] = useState(false)
   const [deletingTeamId, setDeletingTeamId] = useState<string | null>(null)
+  const [accountSettings, setAccountSettings] = useState({ username: '', notificationEmails: '', currentPassword: '', newPassword: '', confirmNewPassword: '' })
+  const [savingAccountSettings, setSavingAccountSettings] = useState(false)
+  const [showAccountPasswords, setShowAccountPasswords] = useState({
+    currentPassword: false,
+    newPassword: false,
+    confirmNewPassword: false
+  })
   
   // Modal states
   const [productModal, setProductModal] = useState<{ show: boolean, editId: string | null }>({ show: false, editId: null })
@@ -109,9 +116,18 @@ export default function AdminDashboard() {
       const inquiries = await iRes.json()
       const team = await tRes.json()
       const content = await cRes.json()
+      const profileRes = await fetch(apiUrl('/api/auth/me'), { headers: { 'Authorization': `Bearer ${token}` } })
+      const profile = profileRes.ok ? await profileRes.json() : null
 
       setData({ products, inquiries, team })
       setCmsContent(content)
+      if (profile?.username) {
+        setAccountSettings((prev) => ({
+          ...prev,
+          username: profile.username,
+          notificationEmails: Array.isArray(profile.notificationEmails) ? profile.notificationEmails.join(', ') : ''
+        }))
+      }
       setStats({
         products: products.length,
         inquiries: inquiries.filter((i: any) => i.status === 'new').length,
@@ -409,6 +425,52 @@ export default function AdminDashboard() {
   const handleLogout = () => {
     localStorage.removeItem('adminToken')
     navigate('/login')
+  }
+
+  const handleSaveAccountSettings = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (savingAccountSettings) return
+
+    const token = localStorage.getItem('adminToken')
+    if (!token) return
+
+    setSavingAccountSettings(true)
+
+    try {
+      const response = await fetch(apiUrl('/api/auth/settings'), {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify(accountSettings)
+      })
+
+      const result = await response.json().catch(() => null)
+
+      if (!response.ok) {
+        alert(result?.message || 'Failed to update admin settings')
+        return
+      }
+
+      if (result?.token) {
+        localStorage.setItem('adminToken', result.token)
+      }
+
+      setAccountSettings({
+        username: result?.user?.username || accountSettings.username,
+        notificationEmails: Array.isArray(result?.user?.notificationEmails) ? result.user.notificationEmails.join(', ') : accountSettings.notificationEmails,
+        currentPassword: '',
+        newPassword: '',
+        confirmNewPassword: ''
+      })
+      alert(result?.message || 'Admin settings updated successfully')
+    } catch (error) {
+      console.error('Failed to update admin settings:', error)
+      alert('Failed to update admin settings')
+    } finally {
+      setSavingAccountSettings(false)
+    }
   }
 
   const handleUpdateContent = async (key: string, data: any) => {
@@ -1321,6 +1383,114 @@ export default function AdminDashboard() {
             </div>
           </div>
         )
+      case 'settings':
+        return (
+          <div className="max-w-3xl">
+            <div className="bg-white border border-charcoal/5 p-10 shadow-sm">
+              <h3 className="text-[10px] uppercase tracking-[0.25em] text-brass font-bold mb-2">Admin Settings</h3>
+              <p className="text-xs text-charcoal/40 uppercase tracking-widest font-medium mb-8">
+                Update the admin username and password. Password changes must always use a new password.
+              </p>
+
+              <form onSubmit={handleSaveAccountSettings} className="space-y-6">
+                <div>
+                  <label className="block text-[10px] uppercase tracking-widest text-charcoal/40 font-bold mb-2">Admin Username</label>
+                  <input
+                    type="text"
+                    value={accountSettings.username}
+                    onChange={(e) => setAccountSettings((prev) => ({ ...prev, username: e.target.value }))}
+                    className="w-full px-4 py-3 border border-charcoal/10 focus:border-brass outline-none transition-colors text-sm"
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[10px] uppercase tracking-widest text-charcoal/40 font-bold mb-2">Company Notification Emails</label>
+                  <textarea
+                    value={accountSettings.notificationEmails}
+                    onChange={(e) => setAccountSettings((prev) => ({ ...prev, notificationEmails: e.target.value }))}
+                    className="w-full px-4 py-3 border border-charcoal/10 focus:border-brass outline-none transition-colors text-sm min-h-[110px]"
+                    placeholder="sales@company.com, admin@company.com"
+                  />
+                  <p className="mt-2 text-[10px] uppercase tracking-widest text-charcoal/35 font-bold">
+                    Separate multiple emails with commas or new lines.
+                  </p>
+                </div>
+
+                <div>
+                  <label className="block text-[10px] uppercase tracking-widest text-charcoal/40 font-bold mb-2">Current Password</label>
+                  <div className="flex gap-2">
+                    <input
+                      type={showAccountPasswords.currentPassword ? 'text' : 'password'}
+                      value={accountSettings.currentPassword}
+                      onChange={(e) => setAccountSettings((prev) => ({ ...prev, currentPassword: e.target.value }))}
+                      className="flex-1 px-4 py-3 border border-charcoal/10 focus:border-brass outline-none transition-colors text-sm"
+                      required
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowAccountPasswords((prev) => ({ ...prev, currentPassword: !prev.currentPassword }))}
+                      className="px-4 py-3 border border-charcoal/10 text-[10px] uppercase tracking-widest font-bold text-charcoal/50 hover:border-brass hover:text-brass transition-all"
+                    >
+                      {showAccountPasswords.currentPassword ? 'Hide' : 'Show'}
+                    </button>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div>
+                    <label className="block text-[10px] uppercase tracking-widest text-charcoal/40 font-bold mb-2">New Password</label>
+                    <div className="flex gap-2">
+                      <input
+                        type={showAccountPasswords.newPassword ? 'text' : 'password'}
+                        value={accountSettings.newPassword}
+                        onChange={(e) => setAccountSettings((prev) => ({ ...prev, newPassword: e.target.value }))}
+                        className="flex-1 px-4 py-3 border border-charcoal/10 focus:border-brass outline-none transition-colors text-sm"
+                        placeholder="Leave blank to keep current password"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowAccountPasswords((prev) => ({ ...prev, newPassword: !prev.newPassword }))}
+                        className="px-4 py-3 border border-charcoal/10 text-[10px] uppercase tracking-widest font-bold text-charcoal/50 hover:border-brass hover:text-brass transition-all"
+                      >
+                        {showAccountPasswords.newPassword ? 'Hide' : 'Show'}
+                      </button>
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-[10px] uppercase tracking-widest text-charcoal/40 font-bold mb-2">Confirm New Password</label>
+                    <div className="flex gap-2">
+                      <input
+                        type={showAccountPasswords.confirmNewPassword ? 'text' : 'password'}
+                        value={accountSettings.confirmNewPassword}
+                        onChange={(e) => setAccountSettings((prev) => ({ ...prev, confirmNewPassword: e.target.value }))}
+                        className="flex-1 px-4 py-3 border border-charcoal/10 focus:border-brass outline-none transition-colors text-sm"
+                        placeholder="Repeat the new password"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowAccountPasswords((prev) => ({ ...prev, confirmNewPassword: !prev.confirmNewPassword }))}
+                        className="px-4 py-3 border border-charcoal/10 text-[10px] uppercase tracking-widest font-bold text-charcoal/50 hover:border-brass hover:text-brass transition-all"
+                      >
+                        {showAccountPasswords.confirmNewPassword ? 'Hide' : 'Show'}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="pt-4">
+                  <button
+                    type="submit"
+                    disabled={savingAccountSettings}
+                    className="px-10 py-3 bg-charcoal text-white text-[10px] tracking-widest uppercase font-bold hover:bg-brass transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {savingAccountSettings ? 'Saving...' : 'Update Admin Access'}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )
       default:
         return null
     }
@@ -1341,7 +1511,8 @@ export default function AdminDashboard() {
             { id: 'products', label: 'Catalog' },
             { id: 'team', label: 'Leadership' },
             { id: 'inquiries', label: 'Communications' },
-            { id: 'cms', label: 'Site CMS' }
+            { id: 'cms', label: 'Site CMS' },
+            { id: 'settings', label: 'Settings' }
           ].map((item) => (
             <button 
               key={item.id}
@@ -1372,7 +1543,17 @@ export default function AdminDashboard() {
         <header className="flex justify-between items-end mb-16">
           <div>
             <span className="text-[10px] uppercase tracking-[0.4em] text-brass font-bold mb-4 block">Central Command</span>
-            <h1 className="font-display text-6xl text-charcoal tracking-tight font-medium capitalize">{activeTab === 'inquiries' ? 'Communications' : activeTab === 'team' ? 'Leadership' : activeTab}</h1>
+            <h1 className="font-display text-6xl text-charcoal tracking-tight font-medium capitalize">
+              {activeTab === 'inquiries'
+                ? 'Communications'
+                : activeTab === 'team'
+                  ? 'Leadership'
+                  : activeTab === 'cms'
+                    ? 'CMS'
+                    : activeTab === 'settings'
+                      ? 'Settings'
+                      : activeTab}
+            </h1>
           </div>
           <div className="text-right">
             <p className="text-[10px] text-charcoal/40 font-bold uppercase tracking-widest">Connected as Admin</p>

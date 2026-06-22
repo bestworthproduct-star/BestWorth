@@ -87,6 +87,23 @@ function createSmtpTransporter() {
 const smtpTransporter = createSmtpTransporter();
 let verifyPromise = null;
 
+function getCompanyRecipients(cmsData = {}) {
+  const configuredRecipients = Array.isArray(cmsData.notificationEmails)
+    ? cmsData.notificationEmails.filter(Boolean)
+    : [];
+
+  if (configuredRecipients.length > 0) {
+    return configuredRecipients;
+  }
+
+  const envRecipients = String(process.env.COMPANY_EMAIL || process.env.EMAIL_USER || '')
+    .split(',')
+    .map((entry) => entry.trim())
+    .filter(Boolean);
+
+  return envRecipients;
+}
+
 async function fetchAssetAsAttachment(url, fallbackName, contentId) {
   if (!url) {
     return null;
@@ -421,9 +438,10 @@ async function sendMail(mailOptions, contextLabel) {
 }
 
 const sendInquiryNotification = async (inquiry, cmsData = {}) => {
+  const recipients = getCompanyRecipients(cmsData);
   console.log('[email] sendInquiryNotification triggered', {
     inquiryId: String(inquiry._id),
-    to: process.env.COMPANY_EMAIL || process.env.EMAIL_USER,
+    to: recipients,
     replyTo: inquiry.email,
     hasBranding: Boolean(cmsData.branding),
     hasContact: Boolean(cmsData.contact),
@@ -456,7 +474,7 @@ const sendInquiryNotification = async (inquiry, cmsData = {}) => {
 
   const mailOptions = {
     from: process.env.EMAIL_FROM || process.env.EMAIL_USER || `"Bestworth System" <${process.env.EMAIL_USER}>`,
-    to: process.env.COMPANY_EMAIL || process.env.EMAIL_USER,
+    to: recipients,
     replyTo: inquiry.email,
     subject: `[Lead] New Inquiry from ${inquiry.company || inquiry.name}`,
     html: EmailLayout(

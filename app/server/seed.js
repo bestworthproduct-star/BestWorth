@@ -93,7 +93,8 @@ const seed = async () => {
           socials: {
             facebook: 'https://facebook.com/bestworth',
             linkedin: 'https://linkedin.com/company/bestworth',
-            instagram: 'https://instagram.com/bestworth'
+            instagram: 'https://instagram.com/bestworth',
+            extra: []
           }
         }
       }

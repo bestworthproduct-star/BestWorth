@@ -53,7 +53,8 @@ const seed = async () => {
           subtitle: 'Precision-crafted nails, screws, and fasteners designed for durability in the world\'s most demanding environments.',
           buttonText: 'EXPLORE CATALOG',
           videoUrls: ['/assets/Hero-Video.mp4'],
-          establishmentDate: 'EST. 1987'
+          establishmentDate: 'EST. 1987',
+          idleHideDelaySeconds: 25
         }
       },
       {

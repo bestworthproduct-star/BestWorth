@@ -16,16 +16,36 @@ interface HeroData {
   buttonText: string
   videoUrls: string[]
   establishmentDate?: string
+  idleHideDelaySeconds?: number | null
+}
+
+const HERO_IDLE_HIDE_FALLBACK_SECONDS = 25
+
+function resolveHeroIdleDelaySeconds(value?: number | null) {
+  if (value === null) {
+    return null
+  }
+
+  if (typeof value === 'number' && Number.isFinite(value)) {
+    return Math.max(15, value)
+  }
+
+  return HERO_IDLE_HIDE_FALLBACK_SECONDS
 }
 
 export default function HeroSection({ scrollTo }: HeroSectionProps) {
   const [heroData, setHeroData] = useState<HeroData | null>(null)
   const [currentVideoIndex, setCurrentVideoIndex] = useState(0)
+  const [isHeroActive, setIsHeroActive] = useState(true)
   const heroRef = useRef<HTMLElement>(null)
+  const overlayRef = useRef<HTMLDivElement>(null)
+  const contentWrapRef = useRef<HTMLDivElement>(null)
   const labelRef = useRef<HTMLSpanElement>(null)
   const headlineRef = useRef<HTMLHeadingElement>(null)
   const subtitleRef = useRef<HTMLDivElement>(null)
   const ctaRef = useRef<HTMLButtonElement>(null)
+  const idleTimeoutRef = useRef<number | null>(null)
+  const idleHiddenRef = useRef(false)
 
   useEffect(() => {
     fetch(apiUrl('/api/content/hero'))
@@ -37,6 +57,20 @@ export default function HeroSection({ scrollTo }: HeroSectionProps) {
   useSocket('content_change', (payload: any) => {
     if (payload.key === 'hero') setHeroData(payload.data)
   })
+
+  useEffect(() => {
+    if (!heroRef.current) return
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        setIsHeroActive(entry.isIntersecting && entry.intersectionRatio >= 0.55)
+      },
+      { threshold: [0.3, 0.55, 0.8] }
+    )
+
+    observer.observe(heroRef.current)
+    return () => observer.disconnect()
+  }, [])
 
   // Auto-slide effect
   useEffect(() => {
@@ -99,6 +133,107 @@ export default function HeroSection({ scrollTo }: HeroSectionProps) {
     )
   }, { scope: heroRef, dependencies: [heroData] })
 
+  useEffect(() => {
+    const heroElement = heroRef.current
+    const contentElement = contentWrapRef.current
+    const overlayElement = overlayRef.current
+
+    if (!heroElement || !contentElement || !overlayElement) return
+    if (!isHeroActive) {
+      if (idleTimeoutRef.current) {
+        window.clearTimeout(idleTimeoutRef.current)
+        idleTimeoutRef.current = null
+      }
+      idleHiddenRef.current = false
+      gsap.to(contentElement, { opacity: 1, y: 0, duration: 0.25, ease: 'power2.out', overwrite: true })
+      gsap.to(overlayElement, { opacity: 1, duration: 0.25, ease: 'power2.out', overwrite: true })
+      return
+    }
+
+    const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    const isMobileViewport = window.matchMedia('(max-width: 767px)').matches
+
+    if (prefersReducedMotion || isMobileViewport) {
+      return
+    }
+
+    const idleDelaySeconds = resolveHeroIdleDelaySeconds(heroData?.idleHideDelaySeconds)
+
+    if (idleDelaySeconds === null) {
+      return
+    }
+
+    const hideHeroContent = () => {
+      idleHiddenRef.current = true
+      gsap.to(contentElement, {
+        opacity: 0,
+        y: 18,
+        duration: 0.8,
+        ease: 'power2.out',
+        overwrite: true
+      })
+      gsap.to(overlayElement, {
+        opacity: 0.45,
+        duration: 1,
+        ease: 'power2.out',
+        overwrite: true
+      })
+    }
+
+    const showHeroContent = () => {
+      const shouldAnimate = idleHiddenRef.current
+      idleHiddenRef.current = false
+      gsap.to(contentElement, {
+        opacity: 1,
+        y: 0,
+        duration: shouldAnimate ? 0.28 : 0.18,
+        ease: 'power2.out',
+        overwrite: true
+      })
+      gsap.to(overlayElement, {
+        opacity: 1,
+        duration: shouldAnimate ? 0.28 : 0.18,
+        ease: 'power2.out',
+        overwrite: true
+      })
+    }
+
+    const scheduleIdleHide = () => {
+      if (idleTimeoutRef.current) {
+        window.clearTimeout(idleTimeoutRef.current)
+      }
+      idleTimeoutRef.current = window.setTimeout(hideHeroContent, idleDelaySeconds * 1000)
+    }
+
+    const handleInteraction = () => {
+      showHeroContent()
+      scheduleIdleHide()
+    }
+
+    scheduleIdleHide()
+
+    heroElement.addEventListener('mouseenter', handleInteraction)
+    heroElement.addEventListener('mousemove', handleInteraction)
+    heroElement.addEventListener('touchstart', handleInteraction, { passive: true })
+    heroElement.addEventListener('focusin', handleInteraction)
+    window.addEventListener('scroll', handleInteraction, { passive: true })
+
+    return () => {
+      heroElement.removeEventListener('mouseenter', handleInteraction)
+      heroElement.removeEventListener('mousemove', handleInteraction)
+      heroElement.removeEventListener('touchstart', handleInteraction)
+      heroElement.removeEventListener('focusin', handleInteraction)
+      window.removeEventListener('scroll', handleInteraction)
+      if (idleTimeoutRef.current) {
+        window.clearTimeout(idleTimeoutRef.current)
+        idleTimeoutRef.current = null
+      }
+      idleHiddenRef.current = false
+      gsap.to(contentElement, { opacity: 1, y: 0, duration: 0.2, ease: 'power2.out', overwrite: true })
+      gsap.to(overlayElement, { opacity: 1, duration: 0.2, ease: 'power2.out', overwrite: true })
+    }
+  }, [isHeroActive, heroData])
+
   const headlineWords = (heroData?.title || 'THE STANDARD IN FASTENERS').split(' ')
 
   if (!heroData) return (
@@ -146,6 +281,7 @@ export default function HeroSection({ scrollTo }: HeroSectionProps) {
 
       {/* Gradient Overlay */}
       <div
+        ref={overlayRef}
         className="absolute inset-0 z-[2]"
         style={{
           background: 'linear-gradient(180deg, rgba(43,43,43,0.3) 0%, rgba(43,43,43,0.6) 100%)',
@@ -153,7 +289,7 @@ export default function HeroSection({ scrollTo }: HeroSectionProps) {
       />
 
       {/* Content */}
-      <div className="relative z-[3] px-6 md:px-20 py-20 max-w-[900px]">
+      <div ref={contentWrapRef} className="relative z-[3] px-6 md:px-20 py-20 max-w-[900px] will-change-transform">
         <span
           ref={labelRef}
           className="section-label section-label-dark opacity-0"

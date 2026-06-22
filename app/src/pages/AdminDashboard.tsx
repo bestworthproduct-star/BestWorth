@@ -43,6 +43,8 @@ interface ValueItem {
   icon: string
 }
 
+const HERO_IDLE_HIDE_FALLBACK_SECONDS = 25
+
 export default function AdminDashboard() {
   const [authorized, setAuthorized] = useState(false)
   const [activeTab, setActiveTab] = useState<'dashboard' | 'products' | 'team' | 'inquiries' | 'cms' | 'settings'>('dashboard')
@@ -476,13 +478,33 @@ export default function AdminDashboard() {
   const handleUpdateContent = async (key: string, data: any) => {
     const token = localStorage.getItem('adminToken')
     try {
+      let payload = data
+      if (key === 'hero') {
+        const rawDelay = data?.idleHideDelaySeconds
+        let idleHideDelaySeconds = HERO_IDLE_HIDE_FALLBACK_SECONDS
+
+        if (rawDelay === null || rawDelay === 'never') {
+          idleHideDelaySeconds = null as any
+        } else {
+          const parsedDelay = Number(rawDelay)
+          idleHideDelaySeconds = Number.isFinite(parsedDelay)
+            ? Math.max(15, parsedDelay)
+            : HERO_IDLE_HIDE_FALLBACK_SECONDS
+        }
+
+        payload = {
+          ...data,
+          idleHideDelaySeconds
+        }
+      }
+
       const res = await fetch(apiUrl(`/api/content/${key}`), {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
         },
-        body: JSON.stringify(data)
+        body: JSON.stringify(payload)
       })
       if (res.ok) {
         alert('Content updated successfully')
@@ -1035,6 +1057,53 @@ export default function AdminDashboard() {
                       className="w-full px-4 py-3 border border-charcoal/10 focus:border-brass outline-none transition-colors text-sm min-h-[100px]" 
                     />
                   </div>
+                  <div>
+                    <label className="block text-[10px] uppercase tracking-widest text-charcoal/40 font-bold mb-2">Hero Content Idle Fade</label>
+                    <select
+                      value={cmsContent.hero?.idleHideDelaySeconds === null ? 'never' : 'timed'}
+                      onChange={(e) => {
+                        const value = e.target.value
+                        setCmsContent({
+                          ...cmsContent,
+                          hero: {
+                            ...cmsContent.hero,
+                            idleHideDelaySeconds: value === 'never'
+                              ? null
+                              : Math.max(15, Number(cmsContent.hero?.idleHideDelaySeconds) || HERO_IDLE_HIDE_FALLBACK_SECONDS)
+                          }
+                        })
+                      }}
+                      className="w-full px-4 py-3 border border-charcoal/10 focus:border-brass outline-none transition-colors text-sm"
+                    >
+                      <option value="timed">Fade after delay</option>
+                      <option value="never">Off / Never fade</option>
+                    </select>
+                    <p className="mt-2 text-[10px] uppercase tracking-widest text-charcoal/35 font-bold">
+                      Desktop only. Mobile and reduced-motion users keep the content visible.
+                    </p>
+                  </div>
+                  {cmsContent.hero?.idleHideDelaySeconds !== null && (
+                    <div>
+                      <label className="block text-[10px] uppercase tracking-widest text-charcoal/40 font-bold mb-2">Idle Fade Delay (Seconds)</label>
+                      <input
+                        type="number"
+                        min={15}
+                        step={1}
+                        value={cmsContent.hero?.idleHideDelaySeconds ?? HERO_IDLE_HIDE_FALLBACK_SECONDS}
+                        onChange={(e) => setCmsContent({
+                          ...cmsContent,
+                          hero: {
+                            ...cmsContent.hero,
+                            idleHideDelaySeconds: Math.max(15, Number(e.target.value) || HERO_IDLE_HIDE_FALLBACK_SECONDS)
+                          }
+                        })}
+                        className="w-full px-4 py-3 border border-charcoal/10 focus:border-brass outline-none transition-colors text-sm"
+                      />
+                      <p className="mt-2 text-[10px] uppercase tracking-widest text-charcoal/35 font-bold">
+                        Minimum allowed delay is 15 seconds. Fallback is {HERO_IDLE_HIDE_FALLBACK_SECONDS} seconds.
+                      </p>
+                    </div>
+                  )}
                 </div>
                 <div className="space-y-6">
                   <div>

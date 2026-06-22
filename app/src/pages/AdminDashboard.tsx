@@ -115,6 +115,10 @@ export default function AdminDashboard() {
 
   const navigate = useNavigate()
 
+  const redirectToServiceUnavailable = useCallback(() => {
+    navigate('/service-unavailable?area=admin')
+  }, [navigate])
+
   const fetchDashboardData = useCallback(async (token: string) => {
     try {
       const [pRes, iRes, tRes, cRes] = await Promise.all([
@@ -124,11 +128,34 @@ export default function AdminDashboard() {
         fetch(apiUrl('/api/content'), { headers: { 'Authorization': `Bearer ${token}` } })
       ])
 
+      const responses = [pRes, iRes, tRes, cRes]
+      if (responses.some((response) => response.status === 503)) {
+        redirectToServiceUnavailable()
+        return
+      }
+
+      if (responses.some((response) => response.status === 401 || response.status === 403)) {
+        localStorage.removeItem('adminToken')
+        navigate('/login')
+        return
+      }
+
       const products = await pRes.json()
       const inquiries = await iRes.json()
       const team = await tRes.json()
       const content = await cRes.json()
       const profileRes = await fetch(apiUrl('/api/auth/me'), { headers: { 'Authorization': `Bearer ${token}` } })
+      if (profileRes.status === 503) {
+        redirectToServiceUnavailable()
+        return
+      }
+
+      if (profileRes.status === 401 || profileRes.status === 403) {
+        localStorage.removeItem('adminToken')
+        navigate('/login')
+        return
+      }
+
       const profile = profileRes.ok ? await profileRes.json() : null
 
       setData({ products, inquiries, team })
@@ -148,9 +175,9 @@ export default function AdminDashboard() {
       setLoading(false)
     } catch (err) {
       console.error('Error fetching dashboard data:', err)
-      setLoading(false)
+      redirectToServiceUnavailable()
     }
-  }, [])
+  }, [navigate, redirectToServiceUnavailable])
 
   const onDataChange = useCallback(() => {
     const token = localStorage.getItem('adminToken')
@@ -174,6 +201,11 @@ export default function AdminDashboard() {
         const response = await fetch(apiUrl('/api/admin/check'), {
           headers: { 'Authorization': `Bearer ${token}` }
         })
+        if (response.status === 503) {
+          redirectToServiceUnavailable()
+          return
+        }
+
         if (response.ok) {
           setAuthorized(true)
           fetchDashboardData(token)
@@ -182,12 +214,12 @@ export default function AdminDashboard() {
           navigate('/login')
         }
       } catch (err) {
-        navigate('/login')
+        redirectToServiceUnavailable()
       }
     }
 
     checkAuth()
-  }, [navigate, fetchDashboardData])
+  }, [navigate, fetchDashboardData, redirectToServiceUnavailable])
 
   const formatDate = (dateString: string) => {
     if (!dateString) return ''

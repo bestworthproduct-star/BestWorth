@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef } from 'react'
-import { Routes, Route, useLocation } from 'react-router-dom'
+import { Routes, Route, useLocation, useNavigate } from 'react-router-dom'
 import gsap from 'gsap'
 import { ScrollTrigger } from 'gsap/ScrollTrigger'
 import Lenis from 'lenis'
@@ -14,6 +14,8 @@ import ManagementSection from './sections/ManagementSection'
 import ContactSection from './sections/ContactSection'
 import Login from './pages/Login'
 import AdminDashboard from './pages/AdminDashboard'
+import NotFound from './pages/NotFound'
+import ServiceUnavailable from './pages/ServiceUnavailable'
 import { apiUrl } from './lib/api'
 import { resolveMediaUrl } from './lib/media'
 import { useSocket } from './hooks/useSocket'
@@ -25,7 +27,9 @@ const FALLBACK_FAVICON = '/assets/Favicon Logo.png'
 function App() {
   const lenisRef = useRef<Lenis | null>(null)
   const location = useLocation()
+  const navigate = useNavigate()
   const isAdminPath = location.pathname === '/admin' || location.pathname === '/login'
+  const isServiceUnavailablePath = location.pathname === '/service-unavailable'
 
   const applyFavicon = useCallback((faviconUrl?: string | null) => {
     if (typeof document === 'undefined') return
@@ -85,6 +89,38 @@ function App() {
     fetchBranding()
   }, [fetchBranding])
 
+  useEffect(() => {
+    if (isServiceUnavailablePath) {
+      return
+    }
+
+    const abortController = new AbortController()
+
+    const checkHealth = async () => {
+      try {
+        const response = await fetch(apiUrl('/api/system/health'), {
+          signal: abortController.signal
+        })
+
+        if (response.status === 503) {
+          navigate(`/service-unavailable?area=${isAdminPath ? 'admin' : 'public'}`, { replace: true })
+        }
+      } catch (error) {
+        if ((error as Error).name === 'AbortError') {
+          return
+        }
+
+        navigate(`/service-unavailable?area=${isAdminPath ? 'admin' : 'public'}`, { replace: true })
+      }
+    }
+
+    checkHealth()
+
+    return () => {
+      abortController.abort()
+    }
+  }, [isAdminPath, isServiceUnavailablePath, navigate])
+
   useSocket('content_change', useCallback((payload: any) => {
     if (payload.key === 'branding') {
       applyFavicon(payload.data?.faviconUrl || FALLBACK_FAVICON)
@@ -101,6 +137,7 @@ function App() {
     <Routes>
       <Route path="/login" element={<Login />} />
       <Route path="/admin" element={<AdminDashboard />} />
+      <Route path="/service-unavailable" element={<ServiceUnavailable />} />
       <Route path="/" element={
         <div className="relative">
           <GrainCanvas />
@@ -116,6 +153,7 @@ function App() {
           </main>
         </div>
       } />
+      <Route path="*" element={<NotFound />} />
     </Routes>
   )
 }

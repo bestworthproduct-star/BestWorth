@@ -5,6 +5,9 @@ const path = require('path');
 const fs = require('fs');
 const { spawn } = require('child_process');
 const connectDB = require('./config/db');
+const requireDb = require('./middleware/require-db');
+const { getDatabaseStatus, setDatabaseAvailable, setLastDatabaseError } = require('./utils/db-state');
+const mongoose = require('mongoose');
 
 const http = require('http');
 const { Server } = require('socket.io');
@@ -95,17 +98,39 @@ io.on('connection', (socket) => {
 });
 
 // Routes
-app.use('/api/auth', require('./routes/auth'));
-app.use('/api/products', require('./routes/products'));
-app.use('/api/team', require('./routes/team'));
-app.use('/api/inquiries', require('./routes/inquiries'));
-app.use('/api/content', require('./routes/content'));
-app.use('/api/upload', require('./routes/upload'));
-app.use('/api/media', require('./routes/media'));
+app.use('/api/auth', requireDb, require('./routes/auth'));
+app.get('/api/system/health', (req, res) => {
+  const databaseStatus = getDatabaseStatus();
+  const statusCode = databaseStatus.available ? 200 : 503;
+  res.status(statusCode).json({
+    ok: databaseStatus.available,
+    database: databaseStatus
+  });
+});
+app.use('/api/products', requireDb, require('./routes/products'));
+app.use('/api/team', requireDb, require('./routes/team'));
+app.use('/api/inquiries', requireDb, require('./routes/inquiries'));
+app.use('/api/content', requireDb, require('./routes/content'));
+app.use('/api/upload', requireDb, require('./routes/upload'));
+app.use('/api/media', requireDb, require('./routes/media'));
 
 // Health check
-app.get('/api/admin/check', require('./middleware/auth'), (req, res) => {
+app.get('/api/admin/check', requireDb, require('./middleware/auth'), (req, res) => {
   res.json({ authorized: true });
+});
+
+mongoose.connection.on('connected', () => {
+  setDatabaseAvailable(true);
+});
+
+mongoose.connection.on('disconnected', () => {
+  setDatabaseAvailable(false);
+  setLastDatabaseError(new Error('MongoDB connection lost'));
+});
+
+mongoose.connection.on('error', (error) => {
+  setDatabaseAvailable(false);
+  setLastDatabaseError(error);
 });
 
 if (isProduction && fs.existsSync(frontendDist)) {

@@ -5,6 +5,10 @@ const jwt = require('jsonwebtoken');
 const User = require('../models/User');
 const auth = require('../middleware/auth');
 
+const MAX_LOGIN_ATTEMPTS = 5;
+const LOGIN_WINDOW_MS = 15 * 60 * 1000;
+const loginAttemptStore = new Map();
+
 function normalizeUsername(username) {
   return typeof username === 'string' ? username.trim() : '';
 }
@@ -36,16 +40,54 @@ async function hasUsedPassword(user, plainPassword) {
   return false;
 }
 
+function getClientLoginKey(req, username) {
+  const forwardedFor = req.headers['x-forwarded-for'];
+  const ipAddress = typeof forwardedFor === 'string'
+    ? forwardedFor.split(',')[0].trim()
+    : req.ip;
+
+  return `${ipAddress}:${username || 'unknown'}`;
+}
+
+function getAttemptRecord(key) {
+  const now = Date.now();
+  const existingRecord = loginAttemptStore.get(key);
+
+  if (!existingRecord || existingRecord.expiresAt <= now) {
+    const freshRecord = { attempts: 0, expiresAt: now + LOGIN_WINDOW_MS };
+    loginAttemptStore.set(key, freshRecord);
+    return freshRecord;
+  }
+
+  return existingRecord;
+}
+
 router.post('/login', async (req, res) => {
   const username = normalizeUsername(req.body?.username);
   const password = req.body?.password;
+  const loginKey = getClientLoginKey(req, username);
+  const attemptRecord = getAttemptRecord(loginKey);
 
   try {
+    if (attemptRecord.attempts >= MAX_LOGIN_ATTEMPTS) {
+      return res.status(429).json({
+        message: 'Too many failed login attempts. Please wait before trying again.'
+      });
+    }
+
     const user = await User.findOne({ username });
-    if (!user) return res.status(400).json({ message: 'User not found' });
+    if (!user) {
+      attemptRecord.attempts += 1;
+      return res.status(400).json({ message: 'Invalid username or password' });
+    }
 
     const validPass = await bcrypt.compare(password, user.password);
-    if (!validPass) return res.status(400).json({ message: 'Invalid password' });
+    if (!validPass) {
+      attemptRecord.attempts += 1;
+      return res.status(400).json({ message: 'Invalid username or password' });
+    }
+
+    loginAttemptStore.delete(loginKey);
 
     const token = jwt.sign(
       { id: user._id },

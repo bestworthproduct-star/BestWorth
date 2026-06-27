@@ -1728,10 +1728,15 @@ export default function AdminDashboard() {
                   <div className="flex gap-2">
                     <input
                       type={showAccountPasswords.currentPassword ? 'text' : 'password'}
-                      value={accountSettings.currentPassword}
-                      onChange={(e) => setAccountSettings((prev) => ({ ...prev, currentPassword: e.target.value }))}
+                      value={passwordChangeLocked ? '••••••••' : accountSettings.currentPassword}
+                      onChange={(e) => {
+                        if (passwordChangeLocked) return
+                        setAccountSettings((prev) => ({ ...prev, currentPassword: e.target.value }))
+                      }}
                       className="flex-1 px-4 py-3 border border-charcoal/10 focus:border-brass outline-none transition-colors text-sm"
-                      required
+                      required={!passwordChangeLocked}
+                      readOnly={passwordChangeLocked}
+                      disabled={passwordChangeLocked}
                     />
                     <button
                       type="button"

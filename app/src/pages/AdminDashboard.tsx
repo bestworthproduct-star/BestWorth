@@ -68,6 +68,7 @@ export default function AdminDashboard() {
   const [savingTeam, setSavingTeam] = useState(false)
   const [deletingTeamId, setDeletingTeamId] = useState<string | null>(null)
   const [accountSettings, setAccountSettings] = useState({ username: '', notificationEmails: '', currentPassword: '', newPassword: '', confirmNewPassword: '' })
+  const [passwordChangeLocked, setPasswordChangeLocked] = useState(false)
   const [savingAccountSettings, setSavingAccountSettings] = useState(false)
   const [showAccountPasswords, setShowAccountPasswords] = useState({
     currentPassword: false,
@@ -193,6 +194,7 @@ export default function AdminDashboard() {
           username: profile.username,
           notificationEmails: Array.isArray(profile.notificationEmails) ? profile.notificationEmails.join(', ') : ''
         }))
+        setPasswordChangeLocked(Boolean(profile.passwordChangeLocked))
       }
       setStats({
         products: products.length,
@@ -535,6 +537,7 @@ export default function AdminDashboard() {
         newPassword: '',
         confirmNewPassword: ''
       })
+      setPasswordChangeLocked(Boolean(result?.user?.passwordChangeLocked))
       alert(result?.message || 'Admin settings updated successfully')
     } catch (error) {
       console.error('Failed to update admin settings:', error)
@@ -1686,6 +1689,15 @@ export default function AdminDashboard() {
                 Update the admin username and password. Password changes must always use a new password.
               </p>
 
+              {passwordChangeLocked && (
+                <div className="mb-8 border border-brass/20 bg-brass/5 px-4 py-4">
+                  <p className="text-[10px] uppercase tracking-widest font-bold text-brass">Preview Lock Active</p>
+                  <p className="mt-2 text-sm text-charcoal/65">
+                    Password changes are temporarily disabled during preview. The current admin password still works for sign-in.
+                  </p>
+                </div>
+              )}
+
               <form onSubmit={handleSaveAccountSettings} className="space-y-6">
                 <div>
                   <label className="block text-[10px] uppercase tracking-widest text-charcoal/40 font-bold mb-2">Admin Username</label>
@@ -1741,6 +1753,7 @@ export default function AdminDashboard() {
                         onChange={(e) => setAccountSettings((prev) => ({ ...prev, newPassword: e.target.value }))}
                         className="flex-1 px-4 py-3 border border-charcoal/10 focus:border-brass outline-none transition-colors text-sm"
                         placeholder="Leave blank to keep current password"
+                        disabled={passwordChangeLocked}
                       />
                       <button
                         type="button"
@@ -1760,6 +1773,7 @@ export default function AdminDashboard() {
                         onChange={(e) => setAccountSettings((prev) => ({ ...prev, confirmNewPassword: e.target.value }))}
                         className="flex-1 px-4 py-3 border border-charcoal/10 focus:border-brass outline-none transition-colors text-sm"
                         placeholder="Repeat the new password"
+                        disabled={passwordChangeLocked}
                       />
                       <button
                         type="button"

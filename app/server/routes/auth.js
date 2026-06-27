@@ -9,6 +9,10 @@ const MAX_LOGIN_ATTEMPTS = 5;
 const LOGIN_WINDOW_MS = 15 * 60 * 1000;
 const loginAttemptStore = new Map();
 
+function isAdminPasswordChangeAllowed() {
+  return process.env.ALLOW_ADMIN_PASSWORD_CHANGE !== 'false';
+}
+
 function normalizeUsername(username) {
   return typeof username === 'string' ? username.trim() : '';
 }
@@ -118,6 +122,7 @@ router.get('/me', auth, async (req, res) => {
       id: String(user._id),
       username: user.username,
       notificationEmails: user.notificationEmails || [],
+      passwordChangeLocked: !isAdminPasswordChangeAllowed(),
       createdAt: user.createdAt,
       updatedAt: user.updatedAt
     });
@@ -161,6 +166,10 @@ router.post('/settings', auth, async (req, res) => {
 
     let passwordChanged = false;
     if (newPassword || confirmNewPassword) {
+      if (!isAdminPasswordChangeAllowed()) {
+        return res.status(403).json({ message: 'Password changes are temporarily disabled during preview.' });
+      }
+
       if (!newPassword || !confirmNewPassword) {
         return res.status(400).json({ message: 'Enter and confirm the new password' });
       }
@@ -201,7 +210,8 @@ router.post('/settings', auth, async (req, res) => {
       user: {
         id: String(user._id),
         username: user.username,
-        notificationEmails: user.notificationEmails || []
+        notificationEmails: user.notificationEmails || [],
+        passwordChangeLocked: !isAdminPasswordChangeAllowed()
       }
     });
   } catch (err) {

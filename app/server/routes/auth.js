@@ -144,9 +144,11 @@ router.post('/settings', auth, async (req, res) => {
       return res.status(404).json({ message: 'Admin account not found' });
     }
 
-    const validCurrentPassword = await bcrypt.compare(currentPassword || '', user.password);
-    if (!validCurrentPassword) {
-      return res.status(400).json({ message: 'Current password is incorrect' });
+    if (isAdminPasswordChangeAllowed()) {
+      const validCurrentPassword = await bcrypt.compare(currentPassword || '', user.password);
+      if (!validCurrentPassword) {
+        return res.status(400).json({ message: 'Current password is incorrect' });
+      }
     }
 
     if (!nextUsername) {

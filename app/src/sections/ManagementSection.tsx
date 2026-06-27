@@ -1,6 +1,7 @@
-import { useRef, useEffect, useState, useCallback } from 'react'
+import { useRef, useEffect, useState, useCallback, useMemo } from 'react'
 import gsap from 'gsap'
 import { useGSAP } from '@gsap/react'
+import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { useSocket } from '../hooks/useSocket'
 import { apiUrl } from '@/lib/api'
 import { resolveMediaUrl } from '@/lib/media'
@@ -13,9 +14,29 @@ interface TeamMember {
   image: string
 }
 
+interface LeadershipSettings {
+  autoSlide: boolean
+  delaySeconds: number
+}
+
+const DEFAULT_LEADERSHIP_SETTINGS: LeadershipSettings = {
+  autoSlide: true,
+  delaySeconds: 15
+}
+
+function getCardsPerSlide(width: number) {
+  if (width >= 1024) return 6
+  if (width >= 640) return 4
+  return 3
+}
+
 export default function ManagementSection() {
   const [team, setTeam] = useState<TeamMember[]>([])
   const [selectedMember, setSelectedMember] = useState<TeamMember | null>(null)
+  const [leadershipSettings, setLeadershipSettings] = useState<LeadershipSettings>(DEFAULT_LEADERSHIP_SETTINGS)
+  const [cardsPerSlide, setCardsPerSlide] = useState<number>(() => getCardsPerSlide(typeof window !== 'undefined' ? window.innerWidth : 1280))
+  const [activeSlideIndex, setActiveSlideIndex] = useState(0)
+  const [isSliderPaused, setIsSliderPaused] = useState(false)
   const sectionRef = useRef<HTMLElement>(null)
   const headerRef = useRef<HTMLDivElement>(null)
   const cardsRef = useRef<HTMLDivElement>(null)
@@ -24,13 +45,38 @@ export default function ManagementSection() {
   const fetchTeam = useCallback(() => {
     fetch(apiUrl('/api/team'))
       .then(res => res.json())
-      .then(data => setTeam(data))
+      .then(data => setTeam(Array.isArray(data) ? data : []))
       .catch(err => console.error('Error fetching team:', err))
+  }, [])
+
+  const fetchLeadershipSettings = useCallback(() => {
+    fetch(apiUrl('/api/content/leadership'))
+      .then((res) => (res.ok ? res.json() : DEFAULT_LEADERSHIP_SETTINGS))
+      .then((data) => {
+        const parsedDelay = Number(data?.delaySeconds)
+        setLeadershipSettings({
+          autoSlide: data?.autoSlide !== false,
+          delaySeconds: Number.isFinite(parsedDelay) && parsedDelay >= 5 ? parsedDelay : DEFAULT_LEADERSHIP_SETTINGS.delaySeconds
+        })
+      })
+      .catch(() => setLeadershipSettings(DEFAULT_LEADERSHIP_SETTINGS))
   }, [])
 
   useEffect(() => {
     fetchTeam()
-  }, [fetchTeam])
+    fetchLeadershipSettings()
+  }, [fetchTeam, fetchLeadershipSettings])
+
+  useEffect(() => {
+    const updateCardsPerSlide = () => {
+      setCardsPerSlide(getCardsPerSlide(window.innerWidth))
+    }
+
+    updateCardsPerSlide()
+    window.addEventListener('resize', updateCardsPerSlide)
+
+    return () => window.removeEventListener('resize', updateCardsPerSlide)
+  }, [])
 
   useEffect(() => {
     if (!selectedMember) {
@@ -90,6 +136,65 @@ export default function ManagementSection() {
   }, [selectedMember])
 
   useSocket('team_change', fetchTeam)
+  useSocket('content_change', useCallback((payload: any) => {
+    if (payload.key === 'leadership') {
+      const parsedDelay = Number(payload.data?.delaySeconds)
+      setLeadershipSettings({
+        autoSlide: payload.data?.autoSlide !== false,
+        delaySeconds: Number.isFinite(parsedDelay) && parsedDelay >= 5 ? parsedDelay : DEFAULT_LEADERSHIP_SETTINGS.delaySeconds
+      })
+    }
+  }, []))
+
+  const slides = useMemo(() => {
+    const preparedSlides = []
+
+    for (let index = 0; index < team.length; index += cardsPerSlide) {
+      preparedSlides.push(team.slice(index, index + cardsPerSlide))
+    }
+
+    return preparedSlides
+  }, [team, cardsPerSlide])
+
+  const totalSlides = slides.length
+  const hasMultipleSlides = totalSlides > 1
+  const activeSlideMembers = slides[activeSlideIndex] || []
+
+  useEffect(() => {
+    setActiveSlideIndex((current) => Math.min(current, Math.max(totalSlides - 1, 0)))
+  }, [totalSlides])
+
+  useEffect(() => {
+    if (!hasMultipleSlides || !leadershipSettings.autoSlide || isSliderPaused) {
+      return
+    }
+
+    const timeout = window.setTimeout(() => {
+      setActiveSlideIndex((current) => (current + 1) % totalSlides)
+    }, leadershipSettings.delaySeconds * 1000)
+
+    return () => window.clearTimeout(timeout)
+  }, [hasMultipleSlides, leadershipSettings, isSliderPaused, totalSlides, activeSlideIndex])
+
+  const goToNextSlide = () => {
+    if (!hasMultipleSlides) return
+    setActiveSlideIndex((current) => (current + 1) % totalSlides)
+    setIsSliderPaused(true)
+    window.setTimeout(() => setIsSliderPaused(false), leadershipSettings.delaySeconds * 1000)
+  }
+
+  const goToPreviousSlide = () => {
+    if (!hasMultipleSlides) return
+    setActiveSlideIndex((current) => (current - 1 + totalSlides) % totalSlides)
+    setIsSliderPaused(true)
+    window.setTimeout(() => setIsSliderPaused(false), leadershipSettings.delaySeconds * 1000)
+  }
+
+  const jumpToSlide = (index: number) => {
+    setActiveSlideIndex(index)
+    setIsSliderPaused(true)
+    window.setTimeout(() => setIsSliderPaused(false), leadershipSettings.delaySeconds * 1000)
+  }
 
   useGSAP(() => {
     if (!sectionRef.current || team.length === 0) return
@@ -113,27 +218,39 @@ export default function ManagementSection() {
         }
       )
     }
-
-    if (cardsRef.current) {
-      const cards = cardsRef.current.querySelectorAll('.team-card')
-      gsap.fromTo(
-        cards,
-        { opacity: 0, y: 60 },
-        {
-          opacity: 1,
-          y: 0,
-          duration: 0.9,
-          stagger: 0.15,
-          ease: 'power3.out',
-          scrollTrigger: {
-            trigger: cardsRef.current,
-            start: 'top 78%',
-            toggleActions: 'play none none none',
-          },
-        }
-      )
-    }
   }, { scope: sectionRef, dependencies: [team] })
+
+  useGSAP(() => {
+    if (!cardsRef.current || activeSlideMembers.length === 0) return
+
+    const cards = cardsRef.current.querySelectorAll('.team-card')
+    const timeline = gsap.timeline()
+
+    timeline.fromTo(
+      cardsRef.current,
+      { opacity: 0, x: 18 },
+      {
+        opacity: 1,
+        x: 0,
+        duration: 0.55,
+        ease: 'power2.out'
+      }
+    )
+
+    timeline.fromTo(
+      cards,
+      { opacity: 0, y: 18, scale: 0.985 },
+      {
+        opacity: 1,
+        y: 0,
+        scale: 1,
+        duration: 0.5,
+        stagger: 0.045,
+        ease: 'power3.out'
+      },
+      0.05
+    )
+  }, { scope: cardsRef, dependencies: [activeSlideIndex, activeSlideMembers.length] })
 
   return (
     <section
@@ -155,56 +272,107 @@ export default function ManagementSection() {
         </div>
 
         <div
-          ref={cardsRef}
-          className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8 md:gap-10"
+          className="space-y-8"
+          onMouseEnter={() => hasMultipleSlides && setIsSliderPaused(true)}
+          onMouseLeave={() => hasMultipleSlides && setIsSliderPaused(false)}
         >
-          {team.map((member) => {
-            const hasBio = Boolean(member.bio?.trim())
+          <div
+            ref={cardsRef}
+            className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 lg:gap-5"
+          >
+            {activeSlideMembers.map((member) => {
+              const hasBio = Boolean(member.bio?.trim())
 
-            return (
-              <div
-                key={member._id}
-                onClick={() => hasBio && setSelectedMember(member)}
-                className={`team-card bg-white/[0.03] border border-white/[0.05] overflow-hidden group transition-all duration-500 hover:border-brass/30 ${hasBio ? 'cursor-pointer hover:bg-white/[0.05]' : 'cursor-default'}`}
-              >
-                <div className="aspect-[4/4.4] overflow-hidden relative">
-                  <img
-                    src={resolveMediaUrl(member.image)}
-                    alt={member.name}
-                    className="w-full h-full object-cover grayscale transition-all duration-[800ms] group-hover:grayscale-0 group-hover:scale-[1.05]"
-                  />
-                  {hasBio && (
-                    <div className="absolute inset-0 bg-charcoal/40 opacity-0 group-hover:opacity-100 transition-opacity duration-500 flex items-center justify-center">
-                      <span className="text-[10px] text-white font-bold uppercase tracking-[0.3em] border border-white/20 px-4 py-2 backdrop-blur-sm">
-                        View Biography
-                      </span>
+              return (
+                <div
+                  key={member._id}
+                  onClick={() => hasBio && setSelectedMember(member)}
+                  className={`team-card bg-white/[0.03] border border-white/[0.05] overflow-hidden group transition-all duration-500 hover:border-brass/30 ${hasBio ? 'cursor-pointer hover:bg-white/[0.05]' : 'cursor-default'}`}
+                >
+                  <div className="grid min-h-full grid-cols-[92px_minmax(0,1fr)] sm:grid-cols-[100px_minmax(0,1fr)] lg:grid-cols-[110px_minmax(0,1fr)]">
+                    <div className="relative h-full min-h-[136px] overflow-hidden bg-white/[0.03] sm:min-h-[144px] lg:min-h-[148px]">
+                      <img
+                        src={resolveMediaUrl(member.image)}
+                        alt={member.name}
+                        className="w-full h-full object-cover grayscale transition-all duration-[800ms] group-hover:grayscale-0 group-hover:scale-[1.05]"
+                      />
                     </div>
-                  )}
-                </div>
 
-                <div className="p-6 md:p-7 min-h-[170px] flex flex-col justify-between">
-                  <div>
-                    <span className="inline-block font-body font-bold text-[10px] uppercase tracking-[0.15em] text-brass mb-3">
-                      {member.role}
-                    </span>
-                    <h3 className="font-display font-medium text-[24px] text-white tracking-tight leading-tight">
-                      {member.name}
-                    </h3>
+                    <div className="flex min-h-[136px] flex-col justify-between p-3.5 sm:min-h-[144px] sm:p-4 lg:min-h-[148px] lg:p-4">
+                      <div>
+                        <span className="inline-block font-body font-bold text-[9px] uppercase tracking-[0.15em] text-brass mb-2">
+                          {member.role}
+                        </span>
+                        <h3 className="font-display font-medium text-[16px] sm:text-[18px] lg:text-[19px] text-white tracking-tight leading-tight">
+                          {member.name}
+                        </h3>
+                      </div>
+
+                      {hasBio ? (
+                        <p className="mt-2 text-[8px] text-white/30 uppercase font-bold tracking-widest group-hover:text-brass transition-colors flex items-center gap-1.5">
+                          Read Profile <span className="text-sm">→</span>
+                        </p>
+                      ) : (
+                        <p className="mt-2 text-[8px] text-white/20 uppercase font-bold tracking-widest">
+                          Leadership Team
+                        </p>
+                      )}
+                    </div>
                   </div>
-
-                  {hasBio ? (
-                    <p className="text-[11px] text-white/30 uppercase font-bold tracking-widest mt-5 group-hover:text-brass transition-colors flex items-center gap-2">
-                      Read Profile <span className="text-lg">→</span>
-                    </p>
-                  ) : (
-                    <p className="text-[11px] text-white/20 uppercase font-bold tracking-widest mt-5">
-                      Leadership Team
-                    </p>
-                  )}
                 </div>
+              )
+            })}
+          </div>
+
+          {hasMultipleSlides && (
+            <div className="flex flex-col items-center gap-5">
+              <div className="flex items-center gap-3">
+                <button
+                  type="button"
+                  onClick={goToPreviousSlide}
+                  className="w-11 h-11 rounded-full border border-white/10 text-white flex items-center justify-center hover:border-brass hover:text-brass transition-colors"
+                  aria-label="Previous leadership slide"
+                >
+                  <ChevronLeft size={18} />
+                </button>
+
+                <div className="flex items-center gap-2">
+                  {slides.map((_, index) => (
+                    <button
+                      key={index}
+                      type="button"
+                      onClick={() => jumpToSlide(index)}
+                      className={`transition-all rounded-full ${
+                        totalSlides <= 6
+                          ? activeSlideIndex === index
+                            ? 'w-9 h-2.5 bg-brass'
+                            : 'w-2.5 h-2.5 bg-white/25 hover:bg-white/45'
+                          : activeSlideIndex === index
+                            ? 'px-3.5 h-8 bg-brass text-charcoal text-[10px] font-bold'
+                            : 'px-3 h-8 border border-white/10 text-white/65 text-[10px] font-bold hover:border-brass'
+                      }`}
+                      aria-label={`Go to slide ${index + 1}`}
+                    >
+                      {totalSlides > 6 ? index + 1 : ''}
+                    </button>
+                  ))}
+                </div>
+
+                <button
+                  type="button"
+                  onClick={goToNextSlide}
+                  className="w-11 h-11 rounded-full border border-white/10 text-white flex items-center justify-center hover:border-brass hover:text-brass transition-colors"
+                  aria-label="Next leadership slide"
+                >
+                  <ChevronRight size={18} />
+                </button>
               </div>
-            )
-          })}
+
+              <p className="text-[10px] uppercase tracking-[0.28em] text-white/25 font-bold">
+                Slide {activeSlideIndex + 1} of {totalSlides}
+              </p>
+            </div>
+          )}
         </div>
       </div>
 

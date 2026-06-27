@@ -48,7 +48,13 @@ interface FooterSocialLink {
   url: string
 }
 
+interface LeadershipSettings {
+  autoSlide: boolean
+  delaySeconds: number
+}
+
 const HERO_IDLE_HIDE_FALLBACK_SECONDS = 25
+const LEADERSHIP_SLIDE_DELAY_FALLBACK_SECONDS = 15
 
 export default function AdminDashboard() {
   const [authorized, setAuthorized] = useState(false)
@@ -97,6 +103,18 @@ export default function AdminDashboard() {
   const defaultFooterSocialLink: FooterSocialLink = {
     label: '',
     url: ''
+  }
+
+  const getLeadershipSettings = (): LeadershipSettings => {
+    const rawSettings = cmsContent.leadership || {}
+    const parsedDelay = Number(rawSettings.delaySeconds)
+
+    return {
+      autoSlide: rawSettings.autoSlide !== false,
+      delaySeconds: Number.isFinite(parsedDelay) && parsedDelay >= 5
+        ? parsedDelay
+        : LEADERSHIP_SLIDE_DELAY_FALLBACK_SECONDS
+    }
   }
 
   const replyTemplates = [
@@ -977,8 +995,77 @@ export default function AdminDashboard() {
           </div>
         )
       case 'team':
+        const leadershipSettings = getLeadershipSettings()
         return (
           <div className="space-y-8">
+            <div className="bg-white border border-charcoal/5 p-6 shadow-sm sm:p-8">
+              <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
+                <div>
+                  <h3 className="text-[10px] uppercase tracking-[0.25em] text-brass font-bold">Public Leadership Slider</h3>
+                  <p className="text-xs text-charcoal/40 mt-1 uppercase tracking-widest font-medium">
+                    Control the public leadership slide timing and auto-advance behavior
+                  </p>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => handleUpdateContent('leadership', leadershipSettings)}
+                  className="px-8 py-3 bg-charcoal text-white text-[10px] tracking-[0.2em] uppercase font-bold hover:bg-brass transition-all"
+                >
+                  Save Slider Settings
+                </button>
+              </div>
+
+              <div className="mt-6 grid grid-cols-1 gap-6 md:grid-cols-2">
+                <div className="space-y-2">
+                  <label className="block text-[10px] uppercase tracking-widest text-charcoal/40 font-bold">
+                    Auto-Slide
+                  </label>
+                  <select
+                    value={leadershipSettings.autoSlide ? 'on' : 'off'}
+                    onChange={(e) =>
+                      setCmsContent({
+                        ...cmsContent,
+                        leadership: {
+                          ...leadershipSettings,
+                          autoSlide: e.target.value === 'on'
+                        }
+                      })
+                    }
+                    className="w-full px-4 py-3 border border-charcoal/10 focus:border-brass outline-none transition-colors text-sm"
+                  >
+                    <option value="on">On</option>
+                    <option value="off">Off</option>
+                  </select>
+                </div>
+
+                <div className="space-y-2">
+                  <label className="block text-[10px] uppercase tracking-widest text-charcoal/40 font-bold">
+                    Delay Seconds
+                  </label>
+                  <input
+                    type="number"
+                    min="5"
+                    step="1"
+                    value={leadershipSettings.delaySeconds}
+                    onChange={(e) =>
+                      setCmsContent({
+                        ...cmsContent,
+                        leadership: {
+                          ...leadershipSettings,
+                          delaySeconds: Math.max(5, Number(e.target.value) || LEADERSHIP_SLIDE_DELAY_FALLBACK_SECONDS)
+                        }
+                      })
+                    }
+                    className="w-full px-4 py-3 border border-charcoal/10 focus:border-brass outline-none transition-colors text-sm"
+                  />
+                  <p className="text-[10px] uppercase tracking-widest text-charcoal/30 font-bold">
+                    Default is 15 seconds.
+                  </p>
+                </div>
+              </div>
+            </div>
+
             <div className="mb-4 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
                <div>
                 <h3 className="text-[10px] uppercase tracking-[0.25em] text-charcoal/40 font-bold">Leadership Command</h3>

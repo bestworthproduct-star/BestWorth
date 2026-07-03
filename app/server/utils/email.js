@@ -5,6 +5,10 @@ function buildAppUrl() {
   return (process.env.PUBLIC_APP_URL || 'https://bestworthproduct.ng').replace(/\/$/, '');
 }
 
+function buildPublicWebsiteUrl() {
+  return 'https://bestworthproduct.ng';
+}
+
 function makePseudoRequest(appUrl) {
   return {
     protocol: appUrl.startsWith('https://') ? 'https' : 'http',
@@ -180,7 +184,7 @@ async function buildEmailBranding(cmsData = {}) {
   const branding = cmsData.branding || {};
 
   const address = contact.address || 'Plot 15, Industrial Estate, Phase II, Lagos, Nigeria';
-  const website = appUrl;
+  const website = buildPublicWebsiteUrl();
   const linkedin = footerData.socials?.linkedin || 'https://linkedin.com/company/bestworth';
   const twitter = footerData.socials?.twitter || 'https://twitter.com/bestworth';
 

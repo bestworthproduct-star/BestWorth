@@ -2,7 +2,7 @@ const nodemailer = require('nodemailer');
 const { toAbsoluteUrl } = require('./public-url');
 
 function buildAppUrl() {
-  return (process.env.PUBLIC_APP_URL || 'https://bestworth.onrender.com').replace(/\/$/, '');
+  return (process.env.PUBLIC_APP_URL || 'https://bestworthproduct.ng').replace(/\/$/, '');
 }
 
 function makePseudoRequest(appUrl) {
@@ -180,7 +180,6 @@ async function buildEmailBranding(cmsData = {}) {
   const branding = cmsData.branding || {};
 
   const address = contact.address || 'Plot 15, Industrial Estate, Phase II, Lagos, Nigeria';
-  const regNo = footerData.registrationNumber || 'RC: 1191234';
   const website = appUrl;
   const linkedin = footerData.socials?.linkedin || 'https://linkedin.com/company/bestworth';
   const twitter = footerData.socials?.twitter || 'https://twitter.com/bestworth';
@@ -194,7 +193,6 @@ async function buildEmailBranding(cmsData = {}) {
     charcoal,
     lightBg,
     address,
-    regNo,
     website,
     linkedin,
     twitter,
@@ -211,7 +209,6 @@ const EmailLayout = (content, previewText, brandingData) => {
     charcoal,
     lightBg,
     address,
-    regNo,
     website,
     linkedin,
     twitter,
@@ -251,7 +248,7 @@ const EmailLayout = (content, previewText, brandingData) => {
           <div style="display: flex; align-items: center; justify-content: center; gap: 8px;">
             <img src="${faviconUrl}" style="height: 12px; width: 12px; display: inline-block;" alt="">
             <div style="color: ${brandColor}; font-size: 8px; letter-spacing: 4px; font-weight: bold; text-transform: uppercase; display: inline-block;">
-              Industrial Excellence
+              Built To Last
             </div>
           </div>
         </div>
@@ -261,8 +258,7 @@ const EmailLayout = (content, previewText, brandingData) => {
         <div class="footer">
           <div style="font-size: 14px; margin-bottom: 20px; letter-spacing: 2px;">BESTWORTH PRODUCTS LIMITED</div>
           <p style="opacity: 0.6; line-height: 1.8;">
-            ${address}<br>
-            ${regNo} • Established 1998
+            ${address}
           </p>
           <div class="divider" style="background-color: rgba(255,255,255,0.1);"></div>
           <p style="opacity: 0.8;">

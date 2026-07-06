@@ -128,8 +128,16 @@ function App() {
   }, [applyFavicon]))
 
   const scrollTo = (target: string) => {
-    if (lenisRef.current) {
-      lenisRef.current.scrollTo(target, { offset: 0 })
+    const resolvedTarget = target.startsWith('#') ? target : `#${target}`
+    const element = typeof document !== 'undefined' ? document.querySelector(resolvedTarget) : null
+
+    if (lenisRef.current && element) {
+      lenisRef.current.scrollTo(element, { offset: 0 })
+      return
+    }
+
+    if (element) {
+      element.scrollIntoView({ behavior: 'smooth', block: 'start' })
     }
   }
 

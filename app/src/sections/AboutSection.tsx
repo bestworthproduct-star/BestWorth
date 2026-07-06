@@ -120,16 +120,6 @@ export default function AboutSection() {
                 {para}
               </p>
             ))}
-
-            <button
-              className="reveal-item btn-secondary mt-10"
-              onClick={() => {
-                const el = document.getElementById('contact')
-                if (el) el.scrollIntoView({ behavior: 'smooth' })
-              }}
-            >
-              LEARN MORE
-            </button>
           </div>
         </div>
       </div>

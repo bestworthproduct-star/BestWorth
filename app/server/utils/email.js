@@ -9,6 +9,25 @@ function buildPublicWebsiteUrl() {
   return 'https://bestworthproduct.ng';
 }
 
+function normalizePlatformName(value = '') {
+  return String(value).trim().toLowerCase();
+}
+
+function buildPhoneHref(value = '') {
+  const trimmedValue = String(value).trim();
+  if (!trimmedValue) return '';
+  if (/^tel:/i.test(trimmedValue)) return trimmedValue;
+  return `tel:${trimmedValue}`;
+}
+
+function buildWhatsAppHref(value = '') {
+  const trimmedValue = String(value).trim();
+  if (!trimmedValue) return '';
+  if (/^https?:\/\//i.test(trimmedValue)) return trimmedValue;
+  const digitsOnly = trimmedValue.replace(/[^\d+]/g, '');
+  return `https://wa.me/${digitsOnly.replace(/^\+/, '')}`;
+}
+
 function makePseudoRequest(appUrl) {
   return {
     protocol: appUrl.startsWith('https://') ? 'https' : 'http',
@@ -186,7 +205,21 @@ async function buildEmailBranding(cmsData = {}) {
   const address = contact.address || 'Plot 15, Industrial Estate, Phase II, Lagos, Nigeria';
   const website = buildPublicWebsiteUrl();
   const linkedin = footerData.socials?.linkedin || 'https://linkedin.com/company/bestworth';
-  const twitter = footerData.socials?.twitter || 'https://twitter.com/bestworth';
+  const footerExtraLinks = Array.isArray(footerData.socials?.extra) ? footerData.socials.extra : [];
+  const whatsappEntry = footerExtraLinks.find((item) => normalizePlatformName(item?.label) === 'whatsapp');
+  const phoneEntry = footerExtraLinks.find((item) => ['phone', 'telephone', 'call'].includes(normalizePlatformName(item?.label)));
+  const phoneValue = phoneEntry?.url || contact.phone || '';
+  const contactLink = whatsappEntry?.url
+    ? {
+        href: buildWhatsAppHref(whatsappEntry.url),
+        label: 'WHATSAPP'
+      }
+    : phoneValue
+      ? {
+          href: buildPhoneHref(phoneValue),
+          label: 'PHONE'
+        }
+      : null;
 
   const logoUrl = toAbsoluteUrl(requestLike, branding.logoUrl || '/assets/Closed Sidebar Logo.jpg');
   const faviconUrl = toAbsoluteUrl(requestLike, branding.faviconUrl || '/assets/Favicon Logo.png');
@@ -199,7 +232,7 @@ async function buildEmailBranding(cmsData = {}) {
     address,
     website,
     linkedin,
-    twitter,
+    contactLink,
     logoUrl,
     faviconUrl,
     logoSrc: logoAttachment ? 'cid:bestworth-logo' : logoUrl,
@@ -215,7 +248,7 @@ const EmailLayout = (content, previewText, brandingData) => {
     address,
     website,
     linkedin,
-    twitter,
+    contactLink,
     logoSrc,
     faviconUrl
   } = brandingData;
@@ -249,11 +282,13 @@ const EmailLayout = (content, previewText, brandingData) => {
           <div style="margin-bottom: 20px;">
             <img src="${logoSrc}" alt="Bestworth Products Limited" style="height: 40px; width: auto; filter: brightness(0) invert(1);">
           </div>
-          <div style="display: flex; align-items: center; justify-content: center; gap: 8px;">
+          <div style="display: flex; align-items: center; justify-content: center; gap: 10px; margin-top: 4px;">
+            <span style="display: inline-block; width: 26px; height: 1px; background-color: rgba(197,160,89,0.45);"></span>
             <img src="${faviconUrl}" style="height: 12px; width: 12px; display: inline-block;" alt="">
-            <div style="color: ${brandColor}; font-size: 8px; letter-spacing: 4px; font-weight: bold; text-transform: uppercase; display: inline-block;">
+            <div style="color: ${brandColor}; font-size: 9px; letter-spacing: 3.2px; font-weight: 700; text-transform: uppercase; display: inline-block;">
               Built To Last
             </div>
+            <span style="display: inline-block; width: 26px; height: 1px; background-color: rgba(197,160,89,0.45);"></span>
           </div>
         </div>
         <div class="content">
@@ -267,8 +302,9 @@ const EmailLayout = (content, previewText, brandingData) => {
           <div class="divider" style="background-color: rgba(255,255,255,0.1);"></div>
           <p style="opacity: 0.8;">
             <a href="${website}">WEBSITE</a> &nbsp;•&nbsp;
-            <a href="${linkedin}">LINKEDIN</a> &nbsp;•&nbsp;
-            <a href="${twitter}">TWITTER</a>
+            <a href="${linkedin}">LINKEDIN</a>${
+              contactLink ? ` &nbsp;•&nbsp; <a href="${contactLink.href}">${contactLink.label}</a>` : ''
+            }
           </p>
           <p style="margin-top: 30px; opacity: 0.4; font-size: 9px;">
             &copy; ${new Date().getFullYear()} Bestworth Products Limited. All Rights Reserved.

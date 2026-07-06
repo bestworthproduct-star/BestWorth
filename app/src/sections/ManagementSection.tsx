@@ -19,6 +19,10 @@ interface LeadershipSettings {
   delaySeconds: number
 }
 
+interface HeroContentData {
+  establishmentDate?: string
+}
+
 const DEFAULT_LEADERSHIP_SETTINGS: LeadershipSettings = {
   autoSlide: true,
   delaySeconds: 15
@@ -34,6 +38,7 @@ export default function ManagementSection() {
   const [team, setTeam] = useState<TeamMember[]>([])
   const [selectedMember, setSelectedMember] = useState<TeamMember | null>(null)
   const [leadershipSettings, setLeadershipSettings] = useState<LeadershipSettings>(DEFAULT_LEADERSHIP_SETTINGS)
+  const [heroContent, setHeroContent] = useState<HeroContentData | null>(null)
   const [cardsPerSlide, setCardsPerSlide] = useState<number>(() => getCardsPerSlide(typeof window !== 'undefined' ? window.innerWidth : 1280))
   const [activeSlideIndex, setActiveSlideIndex] = useState(0)
   const [isSliderPaused, setIsSliderPaused] = useState(false)
@@ -62,10 +67,18 @@ export default function ManagementSection() {
       .catch(() => setLeadershipSettings(DEFAULT_LEADERSHIP_SETTINGS))
   }, [])
 
+  const fetchHeroContent = useCallback(() => {
+    fetch(apiUrl('/api/content/hero'))
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => setHeroContent(data))
+      .catch(() => setHeroContent(null))
+  }, [])
+
   useEffect(() => {
     fetchTeam()
     fetchLeadershipSettings()
-  }, [fetchTeam, fetchLeadershipSettings])
+    fetchHeroContent()
+  }, [fetchTeam, fetchLeadershipSettings, fetchHeroContent])
 
   useEffect(() => {
     const updateCardsPerSlide = () => {
@@ -144,7 +157,25 @@ export default function ManagementSection() {
         delaySeconds: Number.isFinite(parsedDelay) && parsedDelay >= 5 ? parsedDelay : DEFAULT_LEADERSHIP_SETTINGS.delaySeconds
       })
     }
+    if (payload.key === 'hero') {
+      setHeroContent(payload.data || null)
+    }
   }, []))
+
+  const leadershipExperienceCopy = useMemo(() => {
+    const currentYear = new Date().getFullYear()
+    const match = heroContent?.establishmentDate?.match(/(19|20)\d{2}/)
+    const establishedYear = match ? Number(match[0]) : null
+
+    if (!establishedYear || establishedYear > currentYear) {
+      return 'Built on proven manufacturing experience, united by a commitment to quality and service.'
+    }
+
+    const years = Math.max(1, currentYear - establishedYear)
+    const yearsLabel = years === 1 ? 'year' : 'years'
+
+    return `${years} ${yearsLabel} of industry expertise, united by a commitment to quality and service.`
+  }, [heroContent?.establishmentDate])
 
   const slides = useMemo(() => {
     const preparedSlides = []
@@ -267,7 +298,7 @@ export default function ManagementSection() {
             The People Behind the Products
           </h2>
           <p className="reveal-item font-body text-lg md:text-xl text-white/60 leading-relaxed mt-4 max-w-[600px] mx-auto">
-            Three decades of industry expertise, united by a commitment to quality and service.
+            {leadershipExperienceCopy}
           </p>
         </div>
 

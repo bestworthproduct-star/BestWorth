@@ -95,6 +95,17 @@ export default function HeroSection({ scrollTo }: HeroSectionProps) {
     }
   }
 
+  const handleExploreCatalog = () => {
+    const productsSection = document.getElementById('products')
+
+    if (productsSection) {
+      productsSection.scrollIntoView({ behavior: 'smooth', block: 'start' })
+      return
+    }
+
+    scrollTo('#products')
+  }
+
   useGSAP(() => {
     if (!heroData) return
     const tl = gsap.timeline({ delay: 0.3 })
@@ -316,9 +327,10 @@ export default function HeroSection({ scrollTo }: HeroSectionProps) {
         </div>
 
         <button
+          type="button"
           ref={ctaRef}
-          onClick={() => scrollTo('#products')}
-          className="btn-primary mt-10 opacity-0"
+          onClick={handleExploreCatalog}
+          className="btn-primary mt-10 opacity-0 pointer-events-auto relative z-[5]"
         >
           {heroData.buttonText}
         </button>
@@ -326,16 +338,16 @@ export default function HeroSection({ scrollTo }: HeroSectionProps) {
 
       {/* Navigation Arrows */}
       {heroData.videoUrls && heroData.videoUrls.length > 1 && (
-        <div className="absolute inset-y-0 left-0 right-0 flex items-center justify-between px-4 md:px-10 z-[4]">
+        <div className="absolute inset-y-0 left-0 right-0 flex items-center justify-between px-4 md:px-10 z-[4] pointer-events-none">
           <button 
             onClick={prevVideo}
-            className="p-3 rounded-full border border-white/20 text-white/50 hover:text-white hover:border-white transition-all bg-charcoal/20 backdrop-blur-sm"
+            className="p-3 rounded-full border border-white/20 text-white/50 hover:text-white hover:border-white transition-all bg-charcoal/20 backdrop-blur-sm pointer-events-auto"
           >
             <ChevronLeft size={24} />
           </button>
           <button 
             onClick={nextVideo}
-            className="p-3 rounded-full border border-white/20 text-white/50 hover:text-white hover:border-white transition-all bg-charcoal/20 backdrop-blur-sm"
+            className="p-3 rounded-full border border-white/20 text-white/50 hover:text-white hover:border-white transition-all bg-charcoal/20 backdrop-blur-sm pointer-events-auto"
           >
             <ChevronRight size={24} />
           </button>

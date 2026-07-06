@@ -129,7 +129,9 @@ function App() {
 
   const scrollTo = (target: string) => {
     const resolvedTarget = target.startsWith('#') ? target : `#${target}`
-    const element = typeof document !== 'undefined' ? document.querySelector(resolvedTarget) : null
+    const element = typeof document !== 'undefined'
+      ? document.querySelector<HTMLElement>(resolvedTarget)
+      : null
 
     if (lenisRef.current && element) {
       lenisRef.current.scrollTo(element, { offset: 0 })

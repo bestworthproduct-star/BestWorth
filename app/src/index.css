@@ -4,25 +4,25 @@
 
 @layer base {
   :root {
-    --background: 40 20% 95%;
-    --foreground: 0 0% 17%;
+    --background: 210 40% 97%;
+    --foreground: 215 35% 18%;
     --card: 0 0% 100%;
-    --card-foreground: 0 0% 17%;
+    --card-foreground: 215 35% 18%;
     --popover: 0 0% 100%;
-    --popover-foreground: 0 0% 17%;
-    --primary: 0 0% 17%;
+    --popover-foreground: 215 35% 18%;
+    --primary: 240 95% 23%;
     --primary-foreground: 0 0% 100%;
-    --secondary: 40 20% 95%;
-    --secondary-foreground: 0 0% 17%;
-    --muted: 40 20% 95%;
-    --muted-foreground: 210 10% 50%;
-    --accent: 181 80% 26%;
+    --secondary: 210 40% 97%;
+    --secondary-foreground: 215 35% 18%;
+    --muted: 210 40% 97%;
+    --muted-foreground: 213 18% 46%;
+    --accent: 0 66% 50%;
     --accent-foreground: 0 0% 100%;
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 0 0% 100%;
-    --border: 0 0% 17% / 0.15;
-    --input: 0 0% 17% / 0.15;
-    --ring: 181 80% 26%;
+    --border: 212 71% 28% / 0.15;
+    --input: 212 71% 28% / 0.15;
+    --ring: 212 71% 28%;
     --radius: 0px;
   }
 
@@ -32,8 +32,8 @@
 
   body {
     font-family: 'Inter', sans-serif;
-    color: #2B2B2B;
-    background-color: #F2EFE9;
+    color: #102B4C;
+    background-color: #F5F8FC;
     overflow-x: hidden;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
@@ -44,15 +44,15 @@
   }
 
   ::selection {
-    background-color: rgba(13, 115, 119, 0.25);
-    color: #2B2B2B;
+    background-color: rgba(15, 76, 129, 0.2);
+    color: #102B4C;
   }
 }
 
 @layer components {
   .modal-scrollbar {
     scrollbar-width: thin;
-    scrollbar-color: rgba(197, 160, 89, 0.7) rgba(255, 255, 255, 0.06);
+    scrollbar-color: rgba(214, 69, 69, 0.7) rgba(255, 255, 255, 0.06);
   }
 
   .modal-scrollbar::-webkit-scrollbar {
@@ -65,13 +65,13 @@
   }
 
   .modal-scrollbar::-webkit-scrollbar-thumb {
-    background: linear-gradient(180deg, rgba(197, 160, 89, 0.95), rgba(197, 160, 89, 0.55));
+    background: linear-gradient(180deg, rgba(214, 69, 69, 0.95), rgba(214, 69, 69, 0.55));
     border-radius: 999px;
-    border: 2px solid rgba(26, 26, 26, 0.55);
+    border: 2px solid rgba(16, 43, 76, 0.55);
   }
 
   .modal-scrollbar::-webkit-scrollbar-thumb:hover {
-    background: linear-gradient(180deg, rgba(197, 160, 89, 1), rgba(197, 160, 89, 0.7));
+    background: linear-gradient(180deg, rgba(214, 69, 69, 1), rgba(214, 69, 69, 0.7));
   }
 
   .section-label {
@@ -83,16 +83,16 @@
   }
 
   .section-label-light {
-    color: #0D7377;
+    color: #060273;
   }
 
   .section-label-dark {
-    color: #B8860B;
+    color: #D64545;
   }
 
   .btn-primary {
     display: inline-block;
-    background-color: #2B2B2B;
+    background-color: #060273;
     color: #FFFFFF;
     padding: 16px 36px;
     font-family: 'Inter', sans-serif;
@@ -106,52 +106,52 @@
   }
 
   .btn-primary:hover {
-    background-color: #0D7377;
+    background-color: #D64545;
     transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(13, 115, 119, 0.25);
+    box-shadow: 0 4px 12px rgba(6, 2, 115, 0.25);
   }
 
   .btn-secondary {
     display: inline-block;
     background-color: transparent;
-    color: #2B2B2B;
+    color: #102B4C;
     padding: 16px 36px;
     font-family: 'Inter', sans-serif;
     font-weight: 600;
     font-size: 15px;
     text-transform: uppercase;
     letter-spacing: 0.04em;
-    border: 2px solid #2B2B2B;
+    border: 2px solid #060273;
     cursor: pointer;
     transition: all 0.35s cubic-bezier(0.22, 1, 0.36, 1);
   }
 
   .btn-secondary:hover {
-    background-color: #2B2B2B;
+    background-color: #060273;
     color: #FFFFFF;
   }
 
   .btn-filter {
     display: inline-block;
     background-color: transparent;
-    color: #2B2B2B;
+    color: #102B4C;
     padding: 10px 24px;
     font-family: 'Inter', sans-serif;
     font-weight: 500;
     font-size: 13px;
     text-transform: uppercase;
-    border: 1px solid rgba(43, 43, 43, 0.15);
+    border: 1px solid rgba(6, 2, 115, 0.15);
     cursor: pointer;
     transition: all 0.3s ease;
   }
 
   .btn-filter:hover {
-    background-color: rgba(184, 134, 11, 0.2);
+    background-color: rgba(214, 69, 69, 0.12);
   }
 
   .btn-filter.active {
-    background-color: #B8860B;
+    background-color: #D64545;
     color: #FFFFFF;
-    border-color: #B8860B;
+    border-color: #D64545;
   }
 }

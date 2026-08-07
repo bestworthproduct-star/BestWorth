@@ -5,13 +5,13 @@ module.exports = {
   theme: {
     extend: {
       colors: {
-        charcoal: '#2B2B2B',
-        'warm-stone': '#F2EFE9',
-        cream: '#FBF9F4',
-        'deep-teal': '#0D7377',
-        brass: '#B8860B',
-        steel: '#6B7B8D',
-        'dark-surface': '#1C1C1E',
+        charcoal: '#060273',
+        'warm-stone': '#F5F8FC',
+        cream: '#F8FBFF',
+        'deep-teal': '#060273',
+        brass: '#D64545',
+        steel: '#5A7895',
+        'dark-surface': '#060273',
         border: "hsl(var(--border))",
         input: "hsl(var(--input))",
         ring: "hsl(var(--ring))",

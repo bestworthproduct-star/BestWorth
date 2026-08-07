@@ -121,7 +121,7 @@ export default function ContactSection() {
   }
 
   const inputClass =
-    'w-full bg-transparent border-0 border-b-2 border-charcoal/15 py-4 px-0 font-body text-base text-charcoal placeholder:text-steel focus:outline-none focus:border-deep-teal transition-colors duration-300'
+    'w-full bg-transparent border-0 border-b-2 border-charcoal/15 py-4 px-0 font-body text-base text-charcoal placeholder:text-steel focus:outline-none focus:border-[#060273] transition-colors duration-300'
 
   return (
     <section
@@ -141,8 +141,8 @@ export default function ContactSection() {
             </h2>
 
             {submitted ? (
-              <div className="mt-10 p-8 bg-deep-teal/10 border border-deep-teal/30">
-                <p className="font-body text-lg text-deep-teal font-medium">
+              <div className="mt-10 p-8 bg-[#060273]/10 border border-[#060273]/30">
+                <p className="font-body text-lg text-[#060273] font-medium">
                   Thank you for your inquiry!
                 </p>
                 <p className="font-body text-base text-charcoal mt-2">
@@ -209,7 +209,7 @@ export default function ContactSection() {
               <div className="space-y-10">
                 {/* Address */}
                 <div>
-                  <span className="section-label section-label-dark" style={{ color: '#B8860B' }}>
+                  <span className="section-label section-label-dark" style={{ color: '#D64545' }}>
                     HEAD OFFICE
                   </span>
                   <p className="font-body text-base md:text-[17px] text-charcoal leading-[1.7] mt-3">
@@ -219,7 +219,7 @@ export default function ContactSection() {
 
                 {/* Phone */}
                 <div>
-                  <span className="section-label section-label-dark" style={{ color: '#B8860B' }}>
+                  <span className="section-label section-label-dark" style={{ color: '#D64545' }}>
                     CALL US
                   </span>
                   <p className="font-body text-base md:text-[17px] text-charcoal leading-[1.7] mt-3">
@@ -229,7 +229,7 @@ export default function ContactSection() {
 
                 {/* Email */}
                 <div>
-                  <span className="section-label section-label-dark" style={{ color: '#B8860B' }}>
+                  <span className="section-label section-label-dark" style={{ color: '#D64545' }}>
                     EMAIL
                   </span>
                   <p className="font-body text-base md:text-[17px] text-charcoal leading-[1.7] mt-3">

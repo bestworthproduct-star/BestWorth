@@ -1810,7 +1810,7 @@ export default function AdminDashboard() {
   }
 
   return (
-    <div className="min-h-screen overflow-x-hidden bg-[#F8F8F5]">
+    <div className="min-h-screen overflow-x-hidden bg-[#F5F8FC]">
       <div className="sticky top-0 z-40 flex items-center justify-between border-b border-charcoal/5 bg-white/95 px-4 py-4 backdrop-blur lg:hidden">
         <div>
           <p className="text-[10px] font-bold uppercase tracking-[0.35em] text-brass">Bestworth</p>

@@ -93,7 +93,7 @@ export default function ValuesSection() {
       <div className="max-w-[1280px] mx-auto px-6 md:px-10">
         {/* Header */}
         <div ref={headerRef} className="text-center mb-12 md:mb-16">
-          <span className="reveal-item section-label section-label-dark" style={{ color: '#B8860B' }}>
+          <span className="reveal-item section-label section-label-dark" style={{ color: '#D64545' }}>
             OUR VALUES
           </span>
           <h2 className="reveal-item font-display font-medium text-[36px] md:text-[72px] text-charcoal leading-[1] tracking-[-0.025em] mt-4">

@@ -128,16 +128,16 @@ export default function Login() {
   }
 
   return (
-    <div className="min-h-screen bg-[#efe2bd]">
+    <div className="min-h-screen bg-[#F5F8FC]">
       <div className="flex min-h-screen flex-col lg:grid lg:grid-cols-[1.03fr_0.97fr]">
           <section
-            className="relative min-h-[32vh] overflow-hidden bg-[#2f2b2c] text-white lg:min-h-screen lg:[clip-path:polygon(0_0,92%_0,100%_100%,0_100%)]"
+            className="relative min-h-[32vh] overflow-hidden bg-[#060273] text-white lg:min-h-screen lg:[clip-path:polygon(0_0,92%_0,100%_100%,0_100%)]"
           >
-            <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,_rgba(184,134,11,0.2),_transparent_36%)]" />
+            <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,_rgba(214,69,69,0.2),_transparent_36%)]" />
 
             <div className="relative flex h-full flex-col justify-between px-5 py-5 sm:px-8 sm:py-8 lg:px-20 lg:py-14">
               <div>
-                <p className="text-[11px] font-semibold uppercase tracking-[0.34em] text-[#d4af37]">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.34em] text-[#D64545]">
                   Bestworth
                 </p>
               </div>
@@ -185,7 +185,7 @@ export default function Login() {
                       onClick={() => setActiveSlideIndex(index)}
                       className={`rounded-full transition-all ${
                         index === activeSlideIndex
-                          ? 'h-2.5 w-8 bg-[#d4af37]'
+                          ? 'h-2.5 w-8 bg-[#D64545]'
                           : 'h-2.5 w-2.5 bg-white/28 hover:bg-white/52'
                       }`}
                       aria-label={`Show slide ${index + 1}`}
@@ -196,7 +196,7 @@ export default function Login() {
                 <button
                   type="button"
                   onClick={goToProducts}
-                  className="inline-flex items-center justify-center rounded-full border border-[#d4af37]/70 px-4 py-2 text-[9px] font-semibold uppercase tracking-[0.18em] text-[#f0d98a] transition-colors hover:bg-[#d4af37] hover:text-[#2f2b2c] sm:px-5 sm:py-2.5 sm:text-[10px] lg:px-5 lg:py-3 lg:text-[11px] lg:tracking-[0.24em]"
+                  className="inline-flex items-center justify-center rounded-full border border-[#D64545]/70 px-4 py-2 text-[9px] font-semibold uppercase tracking-[0.18em] text-[#f7c1b7] transition-colors hover:bg-[#D64545] hover:text-white sm:px-5 sm:py-2.5 sm:text-[10px] lg:px-5 lg:py-3 lg:text-[11px] lg:tracking-[0.24em]"
                 >
                   View Products
                 </button>
@@ -208,13 +208,13 @@ export default function Login() {
             className="relative flex items-center bg-white px-5 py-8 sm:px-8 sm:py-10 lg:-ml-16 lg:min-h-screen lg:px-24 lg:[clip-path:polygon(12%_0,100%_0,100%_100%,0_100%)]"
           >
             <div className="mx-auto w-full max-w-md lg:max-w-2xl">
-              <p className="text-center text-[11px] font-semibold uppercase tracking-[0.34em] text-[#b8860b] lg:text-left">
+              <p className="text-center text-[11px] font-semibold uppercase tracking-[0.34em] text-[#060273] lg:text-left">
                 Sign In
               </p>
-              <h2 className="mt-3 text-center font-display text-3xl tracking-tight text-[#2f2b2c] sm:text-4xl lg:text-left lg:text-6xl">
+              <h2 className="mt-3 text-center font-display text-3xl tracking-tight text-[#102B4C] sm:text-4xl lg:text-left lg:text-6xl">
                 Admin login
               </h2>
-              <p className="mt-3 text-center text-[14px] leading-6 text-[#2f2b2c]/60 lg:text-left lg:max-w-[620px] lg:text-[18px] lg:leading-8">
+              <p className="mt-3 text-center text-[14px] leading-6 text-[#102B4C]/70 lg:text-left lg:max-w-[620px] lg:text-[18px] lg:leading-8">
                 Continue to the Bestworth administration dashboard.
               </p>
 
@@ -226,7 +226,7 @@ export default function Login() {
 
               <form onSubmit={handleSubmit} className="mt-8 space-y-5 lg:mt-10 lg:max-w-[700px] lg:space-y-7">
                 <div>
-                  <label className="block text-[11px] font-semibold uppercase tracking-[0.28em] text-[#2f2b2c]/55">
+                  <label className="block text-[11px] font-semibold uppercase tracking-[0.28em] text-[#102B4C]/65">
                     Username
                   </label>
                   <input
@@ -235,20 +235,20 @@ export default function Login() {
                     onChange={(e) => setUsername(e.target.value)}
                     required
                     autoComplete="username"
-                    className="mt-3 w-full rounded-2xl bg-[#eef4ff] px-4 py-4 text-[#2f2b2c] placeholder:text-[#2f2b2c]/30 focus:outline-none focus:ring-2 focus:ring-[#b8860b]/30 lg:px-5 lg:py-5"
+                    className="mt-3 w-full rounded-2xl bg-[#f7fbff] px-4 py-4 text-[#102B4C] placeholder:text-[#102B4C]/35 focus:outline-none focus:ring-2 focus:ring-[#060273]/25 lg:px-5 lg:py-5"
                     placeholder="Enter username"
                   />
                 </div>
 
                 <div>
                   <div className="flex items-center justify-between gap-4">
-                    <label className="block text-[11px] font-semibold uppercase tracking-[0.28em] text-[#2f2b2c]/55">
+                    <label className="block text-[11px] font-semibold uppercase tracking-[0.28em] text-[#102B4C]/65">
                       Password
                     </label>
                     <button
                       type="button"
                       onClick={() => setShowPassword((prev) => !prev)}
-                      className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[#b8860b] transition-colors hover:text-[#2f2b2c]"
+                      className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[#060273] transition-colors hover:text-[#D64545]"
                     >
                       {showPassword ? 'Hide' : 'Show'}
                     </button>
@@ -259,7 +259,7 @@ export default function Login() {
                     onChange={(e) => setPassword(e.target.value)}
                     required
                     autoComplete="current-password"
-                    className="mt-3 w-full rounded-2xl bg-[#eef4ff] px-4 py-4 text-[#2f2b2c] placeholder:text-[#2f2b2c]/30 focus:outline-none focus:ring-2 focus:ring-[#b8860b]/30 lg:px-5 lg:py-5"
+                    className="mt-3 w-full rounded-2xl bg-[#f7fbff] px-4 py-4 text-[#102B4C] placeholder:text-[#102B4C]/35 focus:outline-none focus:ring-2 focus:ring-[#060273]/25 lg:px-5 lg:py-5"
                     placeholder="••••••••"
                   />
                 </div>
@@ -267,7 +267,7 @@ export default function Login() {
                 <button
                   type="submit"
                   disabled={loading}
-                  className="mt-2 inline-flex w-full items-center justify-center rounded-full bg-[#b8860b] px-6 py-4 text-[11px] font-semibold uppercase tracking-[0.2em] text-white transition-colors hover:bg-[#9b6f08] disabled:cursor-not-allowed disabled:opacity-50 lg:py-5 lg:text-[12px] lg:tracking-[0.28em]"
+                  className="mt-2 inline-flex w-full items-center justify-center rounded-full bg-[#060273] px-6 py-4 text-[11px] font-semibold uppercase tracking-[0.2em] text-white transition-colors hover:bg-[#D64545] disabled:cursor-not-allowed disabled:opacity-50 lg:py-5 lg:text-[12px] lg:tracking-[0.28em]"
                 >
                   {loading ? 'Authenticating...' : 'Enter Dashboard'}
                 </button>
@@ -276,7 +276,7 @@ export default function Login() {
               <button
                 type="button"
                 onClick={() => navigate('/')}
-                className="mt-8 inline-flex text-[11px] font-semibold uppercase tracking-[0.24em] text-[#2f2b2c]/50 transition-colors hover:text-[#b8860b]"
+                className="mt-8 inline-flex text-[11px] font-semibold uppercase tracking-[0.24em] text-[#102B4C]/60 transition-colors hover:text-[#D64545]"
               >
                 ← Back to Public Site
               </button>

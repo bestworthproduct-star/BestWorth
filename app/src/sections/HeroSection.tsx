@@ -249,7 +249,7 @@ export default function HeroSection({ scrollTo }: HeroSectionProps) {
 
   if (!heroData) return (
     <section id="hero" className="min-h-screen bg-charcoal flex items-center justify-center">
-       <div className="w-12 h-12 border-2 border-white/5 border-t-brass rounded-full animate-spin"></div>
+       <div className="w-12 h-12 border-2 border-white/10 border-t-[#D64545] rounded-full animate-spin"></div>
     </section>
   )
 
@@ -295,7 +295,7 @@ export default function HeroSection({ scrollTo }: HeroSectionProps) {
         ref={overlayRef}
         className="absolute inset-0 z-[2]"
         style={{
-          background: 'linear-gradient(180deg, rgba(43,43,43,0.3) 0%, rgba(43,43,43,0.6) 100%)',
+          background: 'linear-gradient(180deg, rgba(10,34,64,0.3) 0%, rgba(10,34,64,0.72) 100%)',
         }}
       />
 
@@ -304,7 +304,7 @@ export default function HeroSection({ scrollTo }: HeroSectionProps) {
         <span
           ref={labelRef}
           className="section-label section-label-dark opacity-0"
-          style={{ color: '#B8860B' }}
+          style={{ color: '#FFFFFF', textShadow: '0 2px 12px rgba(0, 0, 0, 0.38)' }}
         >
           {heroData.establishmentDate || 'EST. 1987'}
         </span>

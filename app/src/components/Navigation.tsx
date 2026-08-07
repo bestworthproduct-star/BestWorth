@@ -89,9 +89,9 @@ export default function Navigation({ scrollTo }: { scrollTo: (target: string) =>
       <nav
         className="hidden md:flex fixed top-0 left-0 right-0 h-24 items-center justify-between px-12 z-50 transition-all duration-500"
         style={{
-          backgroundColor: scrolled ? 'rgba(43,43,43,0.85)' : 'transparent',
+          backgroundColor: scrolled ? 'rgb(6, 2, 115)' : 'transparent',
           backdropFilter: scrolled ? 'blur(12px)' : 'none',
-          borderBottom: scrolled ? '1px solid rgba(184,134,11,0.2)' : 'none'
+          borderBottom: scrolled ? '1px solid rgba(214,69,69,0.3)' : 'none'
         }}
       >
         {/* Logo Left */}
@@ -116,18 +116,18 @@ export default function Navigation({ scrollTo }: { scrollTo: (target: string) =>
               onClick={() => handleNavClick(link.target)}
               className="font-body font-medium text-[13px] uppercase tracking-[0.15em] transition-all duration-300 relative group"
               style={{
-                color: activeSection === link.target.slice(1) ? '#B8860B' : 'rgba(255,255,255,0.7)',
+                color: activeSection === link.target.slice(1) ? '#D64545' : 'rgba(255,255,255,0.78)',
               }}
             >
-              <span className="relative z-10">{link.label}</span>
+              <span className="relative z-10 group-hover:text-[#D64545]">{link.label}</span>
               <div 
-                className={`absolute -bottom-2 left-0 w-full h-[1px] bg-[#B8860B] transition-all duration-300 origin-left ${activeSection === link.target.slice(1) ? 'scale-x-100' : 'scale-x-0 group-hover:scale-x-100'}`}
+                className={`absolute -bottom-2 left-0 w-full h-[1px] bg-[#D64545] transition-all duration-300 origin-left ${activeSection === link.target.slice(1) ? 'scale-x-100' : 'scale-x-0 group-hover:scale-x-100'}`}
               />
             </button>
           ))}
           <button
             onClick={goToAdminLogin}
-            className="border border-white/20 px-4 py-2 font-body text-[11px] uppercase tracking-[0.18em] text-white/80 transition-all duration-300 hover:border-[#B8860B] hover:text-[#B8860B]"
+            className="border border-white/20 px-4 py-2 font-body text-[11px] uppercase tracking-[0.18em] text-white/80 transition-all duration-300 hover:border-[#D64545] hover:text-[#D64545]"
           >
             Admin Login
           </button>
@@ -164,7 +164,7 @@ export default function Navigation({ scrollTo }: { scrollTo: (target: string) =>
             <button
               key={link.target}
               onClick={() => handleNavClick(link.target)}
-              className="mobile-nav-link font-display font-medium text-[28px] text-white/90 hover:text-[#B8860B] transition-colors duration-300"
+              className="mobile-nav-link font-display font-medium text-[28px] text-white/90 hover:text-[#060273] transition-colors duration-300"
             >
               {link.label}
             </button>

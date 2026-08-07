@@ -118,7 +118,7 @@ export default function ValuesSection() {
               >
                 <Icon
                   size={48}
-                  className="text-deep-teal mb-6 transition-transform duration-300 group-hover:scale-110"
+                  className="text-[#D64545] mb-6 transition-transform duration-300 group-hover:scale-110"
                   strokeWidth={1.5}
                 />
                 <h3 className="font-display font-medium text-[22px] md:text-[28px] text-charcoal leading-[1.2] tracking-[-0.01em]">

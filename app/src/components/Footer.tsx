@@ -181,22 +181,22 @@ export default function Footer({ scrollTo }: FooterProps) {
           </span>
           <div className="flex gap-5">
             {footerData?.socials.facebook && (
-              <a href={footerData.socials.facebook} target="_blank" rel="noopener noreferrer" className="text-white/70 hover:text-[#B8860B] transition-colors duration-300">
+              <a href={footerData.socials.facebook} target="_blank" rel="noopener noreferrer" className="text-white/70 hover:text-[#D64545] transition-colors duration-300">
                 <Facebook size={24} />
               </a>
             )}
             {footerData?.socials.linkedin && (
-              <a href={footerData.socials.linkedin} target="_blank" rel="noopener noreferrer" className="text-white/70 hover:text-[#B8860B] transition-colors duration-300">
+              <a href={footerData.socials.linkedin} target="_blank" rel="noopener noreferrer" className="text-white/70 hover:text-[#D64545] transition-colors duration-300">
                 <Linkedin size={24} />
               </a>
             )}
             {footerData?.socials.instagram && (
-              <a href={footerData.socials.instagram} target="_blank" rel="noopener noreferrer" className="text-white/70 hover:text-[#B8860B] transition-colors duration-300">
+              <a href={footerData.socials.instagram} target="_blank" rel="noopener noreferrer" className="text-white/70 hover:text-[#D64545] transition-colors duration-300">
                 <Instagram size={24} />
               </a>
             )}
             {footerData?.socials.twitter && (
-              <a href={footerData.socials.twitter} target="_blank" rel="noopener noreferrer" className="text-white/70 hover:text-[#B8860B] transition-colors duration-300">
+              <a href={footerData.socials.twitter} target="_blank" rel="noopener noreferrer" className="text-white/70 hover:text-[#D64545] transition-colors duration-300">
                 <Twitter size={24} />
               </a>
             )}
@@ -208,7 +208,7 @@ export default function Footer({ scrollTo }: FooterProps) {
                 rel={normalizePlatform(item.label) === 'phone' || normalizePlatform(item.label) === 'telephone' || normalizePlatform(item.label) === 'call' || normalizePlatform(item.label) === 'email' || normalizePlatform(item.label) === 'mail' ? undefined : 'noopener noreferrer'}
                 aria-label={item.label}
                 title={item.label}
-                className="text-white/70 hover:text-[#B8860B] transition-colors duration-300"
+                className="text-white/70 hover:text-[#D64545] transition-colors duration-300"
               >
                 <BrandIcon platform={item.label} />
               </a>

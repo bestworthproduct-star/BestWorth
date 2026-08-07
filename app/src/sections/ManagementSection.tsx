@@ -291,7 +291,7 @@ export default function ManagementSection() {
     >
       <div className="max-w-[1280px] mx-auto px-6 md:px-10">
         <div ref={headerRef} className="text-center mb-12 md:mb-16">
-          <span className="reveal-item section-label section-label-dark" style={{ color: '#C5A059' }}>
+          <span className="reveal-item section-label section-label-dark" style={{ color: '#D64545' }}>
             LEADERSHIP
           </span>
           <h2 className="reveal-item font-display font-medium text-[36px] md:text-[64px] text-white leading-[1.1] tracking-[-0.025em] mt-4">
@@ -416,11 +416,11 @@ export default function ManagementSection() {
 
           <div
             data-lenis-prevent
-            className="relative bg-[#171717] border border-white/10 w-full max-w-5xl h-[min(78vh,720px)] overflow-hidden grid grid-rows-[200px_minmax(0,1fr)] md:grid-rows-1 md:grid-cols-[300px_minmax(0,1fr)] shadow-[0_30px_80px_rgba(0,0,0,0.45)] animate-in fade-in zoom-in duration-300 rounded-[20px]"
+            className="relative bg-[rgb(6,2,115)] border border-[#060273]/30 w-full max-w-5xl h-[min(78vh,720px)] overflow-hidden grid grid-rows-[200px_minmax(0,1fr)] md:grid-rows-1 md:grid-cols-[300px_minmax(0,1fr)] shadow-[0_30px_80px_rgba(0,0,0,0.45)] animate-in fade-in zoom-in duration-300 rounded-[20px]"
           >
             <button
               onClick={() => setSelectedMember(null)}
-              className="absolute top-5 right-5 z-10 w-10 h-10 border border-white/10 bg-black/20 flex items-center justify-center text-white hover:bg-white/10 transition-all rounded-full"
+              className="absolute top-5 right-5 z-10 w-10 h-10 border border-[#060273]/25 bg-[#060273]/15 flex items-center justify-center text-white hover:bg-[#060273]/25 transition-all rounded-full"
             >
               ✕
             </button>
@@ -438,7 +438,7 @@ export default function ManagementSection() {
               data-lenis-prevent
               className="min-h-0 overflow-y-auto overscroll-contain modal-scrollbar px-6 py-6 md:px-10 md:py-10 pr-5 md:pr-6"
             >
-              <span className="text-[10px] font-bold text-brass uppercase tracking-[0.28em] mb-3 block">
+              <span className="text-[10px] font-bold text-[#D64545] uppercase tracking-[0.28em] mb-3 block">
                 Executive Profile
               </span>
               <h3 className="font-display text-[28px] md:text-[46px] text-white tracking-[-0.03em] font-medium mb-2 leading-[1.02]">
@@ -456,7 +456,7 @@ export default function ManagementSection() {
                 ))}
               </div>
 
-              <div className="mt-8 pt-5 border-t border-white/5 max-w-2xl">
+              <div className="mt-8 pt-5 border-t border-[#060273]/20 max-w-2xl">
                 <p className="text-[9px] uppercase tracking-widest text-white/30 font-bold">
                   Bestworth Products Limited • Leadership Board
                 </p>

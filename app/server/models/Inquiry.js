@@ -5,6 +5,8 @@ const inquirySchema = new mongoose.Schema({
   email: { type: String, required: true },
   company: { type: String },
   message: { type: String, required: true },
+  policyAcknowledged: { type: Boolean, required: true },
+  policyAcknowledgedAt: { type: Date, required: true },
   status: { 
     type: String, 
     enum: ['new', 'read', 'archived'],

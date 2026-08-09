@@ -4,6 +4,7 @@ import { useGSAP } from '@gsap/react'
 import { Facebook, Linkedin, Instagram, Twitter, Phone, Mail, Globe, Play, Send } from 'lucide-react'
 import { useSocket } from '../hooks/useSocket'
 import { apiUrl } from '@/lib/api'
+import { Link } from 'react-router-dom'
 
 interface FooterProps {
   scrollTo: (target: string) => void
@@ -231,6 +232,18 @@ export default function Footer({ scrollTo }: FooterProps) {
                 {link.label}
               </button>
             ))}
+            <Link
+              to="/privacy-policy"
+              className="font-body text-sm text-white/70 hover:text-white transition-colors duration-300"
+            >
+              Privacy Policy
+            </Link>
+            <Link
+              to="/cookie-policy"
+              className="font-body text-sm text-white/70 hover:text-white transition-colors duration-300"
+            >
+              Cookie Policy
+            </Link>
           </div>
           {footerData?.registrationNumber && (
             <span className="font-body text-[13px] text-white/50">

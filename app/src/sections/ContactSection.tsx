@@ -3,6 +3,7 @@ import gsap from 'gsap'
 import { useGSAP } from '@gsap/react'
 import { useSocket } from '../hooks/useSocket'
 import { apiUrl } from '@/lib/api'
+import { Link } from 'react-router-dom'
 
 interface ContactData {
   address: string
@@ -37,6 +38,24 @@ export default function ContactSection() {
   const [submitted, setSubmitted] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [submitError, setSubmitError] = useState('')
+  const [policyAcknowledged, setPolicyAcknowledged] = useState(false)
+
+  useEffect(() => {
+    const handleProductInquiry = (event: Event) => {
+      const detail = (event as CustomEvent<{ productName?: string; categoryName?: string }>).detail
+      if (!detail?.productName) return
+
+      setSubmitted(false)
+      setSubmitError('')
+      setFormData((current) => ({
+        ...current,
+        message: `I would like to make an inquiry about ${detail.productName}${detail.categoryName ? ` (${detail.categoryName})` : ''}.`,
+      }))
+    }
+
+    window.addEventListener('bestworth:product-inquiry', handleProductInquiry)
+    return () => window.removeEventListener('bestworth:product-inquiry', handleProductInquiry)
+  }, [])
 
   useGSAP(() => {
     if (!sectionRef.current) return
@@ -92,7 +111,7 @@ export default function ContactSection() {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(formData),
+        body: JSON.stringify({ ...formData, policyAcknowledged }),
       })
       const data = await response.json().catch(() => null)
 
@@ -101,6 +120,7 @@ export default function ContactSection() {
         setTimeout(() => {
           setSubmitted(false)
           setFormData({ name: '', email: '', company: '', message: '' })
+          setPolicyAcknowledged(false)
         }, 3000)
         if (data?.emailSent === false) {
           setSubmitError('Inquiry saved, but email notification could not be sent yet.')
@@ -196,6 +216,25 @@ export default function ContactSection() {
                   rows={4}
                   className={`${inputClass} resize-none min-h-[120px]`}
                 />
+                <label className="flex cursor-pointer items-start gap-3 border border-charcoal/10 bg-white/60 p-4 text-sm leading-6 text-charcoal/70">
+                  <input
+                    type="checkbox"
+                    checked={policyAcknowledged}
+                    onChange={(event) => setPolicyAcknowledged(event.target.checked)}
+                    required
+                    className="mt-1 h-4 w-4 shrink-0 accent-[#D64545]"
+                  />
+                  <span>
+                    I have read and acknowledge the{' '}
+                    <Link to="/privacy-policy" target="_blank" className="font-semibold text-[#060273] underline underline-offset-2 hover:text-[#D64545]">
+                      Privacy Policy
+                    </Link>{' '}
+                    and{' '}
+                    <Link to="/cookie-policy" target="_blank" className="font-semibold text-[#060273] underline underline-offset-2 hover:text-[#D64545]">
+                      Cookie Policy
+                    </Link>.
+                  </span>
+                </label>
                 <button type="submit" disabled={submitting} className="btn-primary w-full mt-4 disabled:opacity-60 disabled:cursor-not-allowed">
                   {submitting ? 'SENDING...' : 'SEND INQUIRY'}
                 </button>

@@ -6,8 +6,10 @@ const User = require('../models/User');
 const auth = require('../middleware/auth');
 
 const MAX_LOGIN_ATTEMPTS = 5;
+const MAX_LOGIN_REQUESTS = 10;
 const LOGIN_WINDOW_MS = 15 * 60 * 1000;
 const loginAttemptStore = new Map();
+const loginRequestStore = new Map();
 
 function isAdminPasswordChangeAllowed() {
   return process.env.ALLOW_ADMIN_PASSWORD_CHANGE !== 'false';
@@ -44,13 +46,12 @@ async function hasUsedPassword(user, plainPassword) {
   return false;
 }
 
-function getClientLoginKey(req, username) {
-  const forwardedFor = req.headers['x-forwarded-for'];
-  const ipAddress = typeof forwardedFor === 'string'
-    ? forwardedFor.split(',')[0].trim()
-    : req.ip;
+function getClientIp(req) {
+  return req.ip || req.socket?.remoteAddress || 'unknown';
+}
 
-  return `${ipAddress}:${username || 'unknown'}`;
+function getClientLoginKey(req, username) {
+  return `${getClientIp(req)}:${username || 'unknown'}`;
 }
 
 function getAttemptRecord(key) {
@@ -66,7 +67,34 @@ function getAttemptRecord(key) {
   return existingRecord;
 }
 
-router.post('/login', async (req, res) => {
+function enforceLoginRateLimit(req, res, next) {
+  const now = Date.now();
+  const clientIp = getClientIp(req);
+  const existingRecord = loginRequestStore.get(clientIp);
+  const record = !existingRecord || existingRecord.expiresAt <= now
+    ? { requests: 0, expiresAt: now + LOGIN_WINDOW_MS }
+    : existingRecord;
+
+  record.requests += 1;
+  loginRequestStore.set(clientIp, record);
+
+  const retryAfterSeconds = Math.max(Math.ceil((record.expiresAt - now) / 1000), 1);
+  res.setHeader('RateLimit-Limit', MAX_LOGIN_REQUESTS);
+  res.setHeader('RateLimit-Remaining', Math.max(MAX_LOGIN_REQUESTS - record.requests, 0));
+  res.setHeader('RateLimit-Reset', retryAfterSeconds);
+
+  if (record.requests > MAX_LOGIN_REQUESTS) {
+    res.setHeader('Retry-After', retryAfterSeconds);
+    return res.status(429).json({
+      message: 'Too many login requests. Please wait before trying again.',
+      retryAfterSeconds
+    });
+  }
+
+  return next();
+}
+
+router.post('/login', enforceLoginRateLimit, async (req, res) => {
   const username = normalizeUsername(req.body?.username);
   const password = req.body?.password;
   const loginKey = getClientLoginKey(req, username);
@@ -74,8 +102,11 @@ router.post('/login', async (req, res) => {
 
   try {
     if (attemptRecord.attempts >= MAX_LOGIN_ATTEMPTS) {
+      const retryAfterSeconds = Math.max(Math.ceil((attemptRecord.expiresAt - Date.now()) / 1000), 1);
+      res.setHeader('Retry-After', retryAfterSeconds);
       return res.status(429).json({
-        message: 'Too many failed login attempts. Please wait before trying again.'
+        message: 'Too many failed login attempts. Please wait before trying again.',
+        retryAfterSeconds
       });
     }
 

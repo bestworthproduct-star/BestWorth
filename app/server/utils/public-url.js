@@ -1,4 +1,9 @@
 const LOCAL_HOSTS = new Set(['localhost', '127.0.0.1']);
+const LEGACY_PUBLIC_HOSTS = new Set([
+  'bestworthproduct.ng',
+  'www.bestworthproduct.ng',
+  'bestworth.onrender.com'
+]);
 
 function getRequestOrigin(req) {
   if (process.env.PUBLIC_APP_URL) {
@@ -22,7 +27,7 @@ function normalizeMediaUrlForStorage(value) {
 
   try {
     const parsed = new URL(value);
-    if (LOCAL_HOSTS.has(parsed.hostname) && isMediaPath(parsed.pathname)) {
+    if ((LOCAL_HOSTS.has(parsed.hostname) || LEGACY_PUBLIC_HOSTS.has(parsed.hostname)) && isMediaPath(parsed.pathname)) {
       return `${parsed.pathname}${parsed.search}${parsed.hash}`;
     }
   } catch {
@@ -43,7 +48,7 @@ function toAbsoluteUrl(req, value) {
 
   try {
     const parsed = new URL(value);
-    if (LOCAL_HOSTS.has(parsed.hostname) && isMediaPath(parsed.pathname)) {
+    if ((LOCAL_HOSTS.has(parsed.hostname) || LEGACY_PUBLIC_HOSTS.has(parsed.hostname)) && isMediaPath(parsed.pathname)) {
       return `${getRequestOrigin(req)}${parsed.pathname}${parsed.search}${parsed.hash}`;
     }
   } catch {

@@ -38,7 +38,15 @@ const seed = async () => {
     const inquiryCount = await Inquiry.countDocuments();
     if (inquiryCount === 0) {
       await Inquiry.create([
-        { name: 'John Doe', email: 'john@example.com', company: 'JD Construction', message: 'Interested in bulk orders of roofing nails.', status: 'new' }
+        {
+          name: 'John Doe',
+          email: 'john@example.com',
+          company: 'JD Construction',
+          message: 'Interested in bulk orders of roofing nails.',
+          status: 'new',
+          policyAcknowledged: true,
+          policyAcknowledgedAt: new Date()
+        }
       ]);
       console.log('Sample inquiry seeded');
     }
@@ -97,6 +105,18 @@ const seed = async () => {
             extra: []
           }
         }
+      },
+      {
+        key: 'privacy_policy',
+        data: { html: '' }
+      },
+      {
+        key: 'values_settings',
+        data: { autoSlide: true, delaySeconds: 15 }
+      },
+      {
+        key: 'cookie_policy',
+        data: { html: '' }
       }
     ]);
     console.log('Site content seeded');

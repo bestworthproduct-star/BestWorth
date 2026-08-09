@@ -16,6 +16,7 @@ import Login from './pages/Login'
 import AdminDashboard from './pages/AdminDashboard'
 import NotFound from './pages/NotFound'
 import ServiceUnavailable from './pages/ServiceUnavailable'
+import LegalPolicy from './pages/LegalPolicy'
 import { apiUrl } from './lib/api'
 import { resolveMediaUrl } from './lib/media'
 import { useSocket } from './hooks/useSocket'
@@ -148,6 +149,8 @@ function App() {
       <Route path="/login" element={<Login />} />
       <Route path="/admin" element={<AdminDashboard />} />
       <Route path="/service-unavailable" element={<ServiceUnavailable />} />
+      <Route path="/privacy-policy" element={<LegalPolicy policyKey="privacy_policy" title="Privacy Policy" />} />
+      <Route path="/cookie-policy" element={<LegalPolicy policyKey="cookie_policy" title="Cookie Policy" />} />
       <Route path="/" element={
         <div className="relative">
           <GrainCanvas />

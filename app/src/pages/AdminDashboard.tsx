@@ -53,8 +53,14 @@ interface LeadershipSettings {
   delaySeconds: number
 }
 
+interface ValuesSliderSettings {
+  autoSlide: boolean
+  delaySeconds: number
+}
+
 const HERO_IDLE_HIDE_FALLBACK_SECONDS = 25
 const LEADERSHIP_SLIDE_DELAY_FALLBACK_SECONDS = 15
+const VALUES_SLIDE_DELAY_FALLBACK_SECONDS = 15
 
 export default function AdminDashboard() {
   const [authorized, setAuthorized] = useState(false)
@@ -65,6 +71,8 @@ export default function AdminDashboard() {
   const [cmsContent, setCmsContent] = useState<any>({})
   const [loading, setLoading] = useState(true)
   const [uploading, setUploading] = useState<string | null>(null)
+  const [uploadProgress, setUploadProgress] = useState<number | null>(null)
+  const [savingProduct, setSavingProduct] = useState(false)
   const [savingTeam, setSavingTeam] = useState(false)
   const [deletingTeamId, setDeletingTeamId] = useState<string | null>(null)
   const [accountSettings, setAccountSettings] = useState({ username: '', notificationEmails: '', currentPassword: '', newPassword: '', confirmNewPassword: '' })
@@ -115,6 +123,18 @@ export default function AdminDashboard() {
       delaySeconds: Number.isFinite(parsedDelay) && parsedDelay >= 5
         ? parsedDelay
         : LEADERSHIP_SLIDE_DELAY_FALLBACK_SECONDS
+    }
+  }
+
+  const getValuesSliderSettings = (): ValuesSliderSettings => {
+    const rawSettings = cmsContent.values_settings || {}
+    const parsedDelay = Number(rawSettings.delaySeconds)
+
+    return {
+      autoSlide: rawSettings.autoSlide !== false,
+      delaySeconds: Number.isFinite(parsedDelay) && parsedDelay >= 5
+        ? parsedDelay
+        : VALUES_SLIDE_DELAY_FALLBACK_SECONDS
     }
   }
 
@@ -272,28 +292,49 @@ export default function AdminDashboard() {
     }
 
     setUploading(target)
+    setUploadProgress(0)
     const formData = new FormData()
     formData.append('file', file)
 
     try {
-      const response = await fetch(apiUrl('/api/upload'), {
-        method: 'POST',
-        headers: { 'Authorization': `Bearer ${token}` },
-        body: formData
-      })
+      await new Promise<void>((resolve, reject) => {
+        const request = new XMLHttpRequest()
+        request.open('POST', apiUrl('/api/upload'))
+        request.setRequestHeader('Authorization', `Bearer ${token}`)
 
-      if (response.ok) {
-        const result = await response.json()
-        callback(result.url)
-      } else {
-        const result = await response.json().catch(() => null)
-        alert(result?.message || 'Upload failed')
-      }
+        request.upload.onprogress = (event) => {
+          if (event.lengthComputable) {
+            setUploadProgress(Math.round((event.loaded / event.total) * 100))
+          }
+        }
+
+        request.onload = () => {
+          let result: { url?: string, message?: string } | null = null
+          try {
+            result = JSON.parse(request.responseText)
+          } catch {
+            result = null
+          }
+
+          if (request.status >= 200 && request.status < 300 && result?.url) {
+            setUploadProgress(100)
+            callback(result.url)
+            resolve()
+            return
+          }
+
+          reject(new Error(result?.message || 'Upload failed'))
+        }
+
+        request.onerror = () => reject(new Error('Upload error'))
+        request.send(formData)
+      })
     } catch (err) {
       console.error('Upload error:', err)
-      alert('Upload error')
+      alert(err instanceof Error ? err.message : 'Upload error')
     } finally {
       setUploading(null)
+      setUploadProgress(null)
     }
   }
 
@@ -404,7 +445,12 @@ export default function AdminDashboard() {
 
   const handleSaveProduct = async (e: React.FormEvent) => {
     e.preventDefault()
+    if (savingProduct || uploading === 'product') return
+
     const token = localStorage.getItem('adminToken')
+    if (!token) return
+
+    setSavingProduct(true)
     const method = productModal.editId ? 'PUT' : 'POST'
     const url = productModal.editId 
       ? apiUrl(`/api/products/${productModal.editId}`)
@@ -420,12 +466,18 @@ export default function AdminDashboard() {
         body: JSON.stringify(productForm)
       })
       if (res.ok) {
+        await fetchDashboardData(token)
         setProductModal({ show: false, editId: null })
         setProductForm({ name: '', category: 'nails', description: '', image: '', featured: false })
-        fetchDashboardData(token!)
+      } else {
+        const result = await res.json().catch(() => null)
+        alert(result?.message || 'Unable to save product')
       }
     } catch (err) {
       console.error(err)
+      alert('Unable to save product')
+    } finally {
+      setSavingProduct(false)
     }
   }
 
@@ -1499,6 +1551,64 @@ export default function AdminDashboard() {
                   + Add Value
                 </button>
               </div>
+
+              <div className="mb-8 border border-charcoal/5 bg-warm-stone/20 p-6">
+                <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
+                  <div>
+                    <h4 className="text-[10px] font-bold uppercase tracking-[0.25em] text-charcoal/60">Public Values Slider</h4>
+                    <p className="mt-1 text-[10px] font-bold uppercase tracking-widest text-charcoal/30">
+                      Control automatic page changes on the public Values section
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => handleUpdateContent('values_settings', getValuesSliderSettings())}
+                    className="px-7 py-3 bg-charcoal text-white text-[10px] tracking-[0.2em] uppercase font-bold hover:bg-brass transition-all"
+                  >
+                    Save Slider Settings
+                  </button>
+                </div>
+
+                <div className="mt-6 grid grid-cols-1 gap-5 md:grid-cols-2">
+                  <div className="space-y-2">
+                    <label className="block text-[10px] uppercase tracking-widest text-charcoal/40 font-bold">Auto-Slide</label>
+                    <select
+                      value={getValuesSliderSettings().autoSlide ? 'on' : 'off'}
+                      onChange={(event) => setCmsContent({
+                        ...cmsContent,
+                        values_settings: {
+                          ...getValuesSliderSettings(),
+                          autoSlide: event.target.value === 'on'
+                        }
+                      })}
+                      className="w-full px-4 py-3 border border-charcoal/10 focus:border-brass outline-none transition-colors text-sm"
+                    >
+                      <option value="on">On</option>
+                      <option value="off">Off</option>
+                    </select>
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="block text-[10px] uppercase tracking-widest text-charcoal/40 font-bold">Delay Seconds</label>
+                    <input
+                      type="number"
+                      min="5"
+                      step="1"
+                      value={getValuesSliderSettings().delaySeconds}
+                      onChange={(event) => setCmsContent({
+                        ...cmsContent,
+                        values_settings: {
+                          ...getValuesSliderSettings(),
+                          delaySeconds: Math.max(5, Number(event.target.value) || VALUES_SLIDE_DELAY_FALLBACK_SECONDS)
+                        }
+                      })}
+                      className="w-full px-4 py-3 border border-charcoal/10 focus:border-brass outline-none transition-colors text-sm"
+                    />
+                    <p className="text-[10px] uppercase tracking-widest text-charcoal/30 font-bold">Default is 15 seconds.</p>
+                  </div>
+                </div>
+              </div>
+
               <div className="space-y-8">
                 {getValuesContent().map((value: ValueItem, index: number) => (
                   <div key={index} className="p-6 border border-charcoal/5 bg-warm-stone/20 space-y-4">
@@ -1677,6 +1787,72 @@ export default function AdminDashboard() {
                 </div>
               </div>
               <button onClick={() => handleUpdateContent('footer', cmsContent.footer)} className="mt-8 px-10 py-3 bg-charcoal text-white text-[10px] tracking-widest uppercase font-bold hover:bg-brass transition-all">Update Footer Content</button>
+            </div>
+
+            {/* Legal Policies CMS */}
+            <div className="bg-white border border-charcoal/5 p-10 shadow-sm">
+              <h3 className="text-[10px] uppercase tracking-[0.25em] text-brass font-bold mb-2">Footer Legal Policies</h3>
+              <p className="mb-8 max-w-3xl text-xs leading-5 text-charcoal/50">
+                Paste the complete HTML exported by Termly. Visitors will see the formatted document on a secure, isolated policy page rather than raw HTML.
+              </p>
+
+              <div className="space-y-10">
+                <div>
+                  <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+                    <label className="block text-[10px] uppercase tracking-widest text-charcoal/50 font-bold">Privacy Policy HTML</label>
+                    <a href="/privacy-policy" target="_blank" rel="noreferrer" className="text-[9px] font-bold uppercase tracking-widest text-brass hover:underline">
+                      Open public page
+                    </a>
+                  </div>
+                  <textarea
+                    value={cmsContent.privacy_policy?.html || ''}
+                    onChange={(event) => setCmsContent({
+                      ...cmsContent,
+                      privacy_policy: { ...cmsContent.privacy_policy, html: event.target.value }
+                    })}
+                    rows={12}
+                    spellCheck={false}
+                    className="w-full resize-y border border-charcoal/10 bg-warm-stone/20 px-4 py-3 font-mono text-[11px] leading-5 outline-none transition-colors focus:border-brass"
+                    placeholder="Paste the complete Termly Privacy Policy HTML here..."
+                  />
+                  <button
+                    type="button"
+                    onClick={() => handleUpdateContent('privacy_policy', { html: cmsContent.privacy_policy?.html || '' })}
+                    className="mt-4 px-8 py-3 bg-charcoal text-white text-[10px] tracking-widest uppercase font-bold hover:bg-brass transition-all"
+                  >
+                    Update Privacy Policy
+                  </button>
+                </div>
+
+                <div className="h-px bg-charcoal/10" />
+
+                <div>
+                  <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+                    <label className="block text-[10px] uppercase tracking-widest text-charcoal/50 font-bold">Cookie Policy HTML</label>
+                    <a href="/cookie-policy" target="_blank" rel="noreferrer" className="text-[9px] font-bold uppercase tracking-widest text-brass hover:underline">
+                      Open public page
+                    </a>
+                  </div>
+                  <textarea
+                    value={cmsContent.cookie_policy?.html || ''}
+                    onChange={(event) => setCmsContent({
+                      ...cmsContent,
+                      cookie_policy: { ...cmsContent.cookie_policy, html: event.target.value }
+                    })}
+                    rows={12}
+                    spellCheck={false}
+                    className="w-full resize-y border border-charcoal/10 bg-warm-stone/20 px-4 py-3 font-mono text-[11px] leading-5 outline-none transition-colors focus:border-brass"
+                    placeholder="Paste the complete Termly Cookie Policy HTML here..."
+                  />
+                  <button
+                    type="button"
+                    onClick={() => handleUpdateContent('cookie_policy', { html: cmsContent.cookie_policy?.html || '' })}
+                    className="mt-4 px-8 py-3 bg-charcoal text-white text-[10px] tracking-widest uppercase font-bold hover:bg-brass transition-all"
+                  >
+                    Update Cookie Policy
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
         )
@@ -1928,7 +2104,14 @@ export default function AdminDashboard() {
       {/* Product Modal */}
       {productModal.show && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-4 lg:p-6">
-          <div className="absolute inset-0 bg-charcoal/80 backdrop-blur-sm" onClick={() => setProductModal({ show: false, editId: null })}></div>
+          <div
+            className="absolute inset-0 bg-charcoal/80 backdrop-blur-sm"
+            onClick={() => {
+              if (uploading !== 'product' && !savingProduct) {
+                setProductModal({ show: false, editId: null })
+              }
+            }}
+          ></div>
           <div className="relative max-h-[92vh] w-full max-w-2xl overflow-y-auto border border-charcoal/10 bg-white p-5 shadow-2xl sm:p-8 lg:p-12">
             <h3 className="font-display text-3xl text-charcoal mb-10 tracking-tight">
               {productModal.editId ? 'Edit Product Specification' : 'Initialize New Product'}
@@ -1966,23 +2149,50 @@ export default function AdminDashboard() {
                 <label className="text-[9px] uppercase tracking-widest font-bold text-charcoal/40">Image URL</label>
                 <div className="flex gap-2">
                   <input 
-                    type="text" required
+                    type="text" required disabled={uploading === 'product'}
                     placeholder="/assets/product-..."
-                    className="flex-1 bg-warm-stone/30 border border-charcoal/10 px-4 py-3 text-sm focus:border-brass outline-none transition-colors font-mono"
+                    className="flex-1 bg-warm-stone/30 border border-charcoal/10 px-4 py-3 text-sm focus:border-brass outline-none transition-colors font-mono disabled:cursor-not-allowed disabled:opacity-50"
                     value={productForm.image}
                     onChange={e => setProductForm({ ...productForm, image: e.target.value })}
                   />
-                  <label className="px-4 py-3 bg-brass text-white text-[10px] uppercase font-bold cursor-pointer hover:bg-charcoal transition-colors flex items-center justify-center min-w-[100px]">
-                    {uploading === 'product' ? '...' : 'Upload'}
+                  <label className={`px-4 py-3 text-white text-[10px] uppercase font-bold transition-colors flex items-center justify-center min-w-[110px] ${uploading === 'product' ? 'cursor-not-allowed bg-brass/50' : 'cursor-pointer bg-brass hover:bg-charcoal'}`}>
+                    {uploading === 'product' ? `${uploadProgress ?? 0}%` : 'Upload'}
                     <input 
-                      type="file" className="hidden" accept="image/*"
+                      type="file" className="hidden" accept="image/jpeg,image/png,image/gif,image/webp,image/svg+xml" disabled={uploading === 'product'}
                       onChange={e => {
                         const file = e.target.files?.[0]
-                        if (file) handleUpload(file, 'product', url => setProductForm({ ...productForm, image: url }))
+                        if (file) handleUpload(file, 'product', url => setProductForm(current => ({ ...current, image: url })))
+                        e.currentTarget.value = ''
                       }}
                     />
                   </label>
                 </div>
+                {uploading === 'product' && (
+                  <div className="space-y-2" role="status" aria-live="polite">
+                    <div className="h-2 overflow-hidden bg-charcoal/10">
+                      <div
+                        className="h-full bg-brass transition-[width] duration-200"
+                        style={{ width: `${uploadProgress ?? 0}%` }}
+                      />
+                    </div>
+                    <p className="text-[9px] font-bold uppercase tracking-widest text-charcoal/50">
+                      Uploading image — {uploadProgress ?? 0}% complete
+                    </p>
+                  </div>
+                )}
+                {productForm.image && uploading !== 'product' && (
+                  <div className="flex items-center gap-4 border border-charcoal/10 bg-warm-stone/20 p-3" aria-live="polite">
+                    <img
+                      src={resolveMediaUrl(productForm.image)}
+                      alt="Selected product preview"
+                      className="h-20 w-24 flex-none object-cover"
+                    />
+                    <div>
+                      <p className="text-[9px] font-bold uppercase tracking-widest text-primary">Image ready</p>
+                      <p className="mt-1 text-xs text-charcoal/50">The uploaded image will be used for this product.</p>
+                    </div>
+                  </div>
+                )}
               </div>
               <div className="space-y-2">
                 <label className="text-[9px] uppercase tracking-widest font-bold text-charcoal/40">Technical Description</label>
@@ -2005,16 +2215,18 @@ export default function AdminDashboard() {
               <div className="pt-8 flex justify-end space-x-4">
                 <button 
                   type="button"
+                  disabled={uploading === 'product' || savingProduct}
                   onClick={() => setProductModal({ show: false, editId: null })}
-                  className="px-8 py-3 text-[10px] uppercase tracking-widest font-bold text-charcoal/40 hover:text-charcoal transition-colors"
+                  className="px-8 py-3 text-[10px] uppercase tracking-widest font-bold text-charcoal/40 hover:text-charcoal transition-colors disabled:cursor-not-allowed disabled:opacity-40"
                 >
                   Cancel
                 </button>
                 <button 
                   type="submit"
-                  className="px-10 py-3 bg-charcoal text-white text-[10px] uppercase tracking-[0.2em] font-bold hover:bg-brass transition-all"
+                  disabled={uploading === 'product' || savingProduct}
+                  className="px-10 py-3 bg-charcoal text-white text-[10px] uppercase tracking-[0.2em] font-bold hover:bg-brass transition-all disabled:cursor-not-allowed disabled:opacity-50"
                 >
-                  {productModal.editId ? 'Commit Changes' : 'Finalize Product'}
+                  {savingProduct ? 'Saving...' : productModal.editId ? 'Commit Changes' : 'Finalize Product'}
                 </button>
               </div>
             </form>

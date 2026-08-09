@@ -2,11 +2,11 @@ const nodemailer = require('nodemailer');
 const { toAbsoluteUrl } = require('./public-url');
 
 function buildAppUrl() {
-  return (process.env.PUBLIC_APP_URL || 'https://bestworthproduct.ng').replace(/\/$/, '');
+  return (process.env.PUBLIC_APP_URL || 'https://bestworthproductsltd.ng').replace(/\/$/, '');
 }
 
 function buildPublicWebsiteUrl() {
-  return 'https://bestworthproduct.ng';
+  return buildAppUrl();
 }
 
 function normalizePlatformName(value = '') {

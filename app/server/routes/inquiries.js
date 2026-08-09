@@ -23,7 +23,22 @@ async function getCmsEmailData() {
 
 // Public: Submit inquiry
 router.post('/', async (req, res) => {
-  const inquiry = new Inquiry(req.body);
+  const { name, email, company, message, policyAcknowledged } = req.body || {};
+
+  if (policyAcknowledged !== true) {
+    return res.status(400).json({
+      message: 'Please acknowledge the Privacy Policy and Cookie Policy before submitting your inquiry.'
+    });
+  }
+
+  const inquiry = new Inquiry({
+    name,
+    email,
+    company,
+    message,
+    policyAcknowledged: true,
+    policyAcknowledgedAt: new Date()
+  });
   try {
     console.log('[inquiries] create route hit', {
       name: req.body?.name,

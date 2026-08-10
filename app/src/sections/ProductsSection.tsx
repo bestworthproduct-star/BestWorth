@@ -540,56 +540,58 @@ export default function ProductsSection() {
       </div>
 
       {selectedProduct && (
-        <div className="fixed inset-0 z-[10000] flex items-center justify-center p-4 md:p-8" role="dialog" aria-modal="true" aria-labelledby="product-modal-title">
+        <div className="fixed inset-0 z-[10000] flex items-end justify-center p-0 sm:items-center sm:p-4 md:p-8" role="dialog" aria-modal="true" aria-labelledby="product-modal-title">
           <button
             type="button"
             className="absolute inset-0 bg-charcoal/90 backdrop-blur-sm"
             onClick={() => setSelectedProduct(null)}
             aria-label="Close product details"
           />
-          <div
-            ref={modalScrollRef}
-            data-lenis-prevent
-            className="relative grid max-h-[88vh] w-full max-w-5xl overscroll-contain overflow-y-auto border border-white/10 bg-white shadow-[0_35px_100px_rgba(0,0,0,0.45)] md:grid-cols-[0.95fr_1.05fr]"
-          >
+          <div className="relative max-h-[92dvh] w-full max-w-5xl overflow-hidden rounded-t-2xl border border-white/10 bg-white shadow-[0_35px_100px_rgba(0,0,0,0.45)] sm:rounded-none md:max-h-[88vh]">
             <button
               type="button"
               onClick={() => setSelectedProduct(null)}
-              className="absolute right-4 top-4 z-20 flex h-10 w-10 items-center justify-center bg-charcoal text-white transition-colors hover:bg-brass"
+              className="absolute right-3 top-3 z-30 flex h-12 w-12 items-center justify-center rounded-full bg-charcoal text-white shadow-lg transition-colors hover:bg-brass sm:right-4 sm:top-4 sm:h-10 sm:w-10 sm:rounded-none"
               aria-label="Close product details"
             >
               <X size={19} />
             </button>
-            <div className="relative min-h-[260px] bg-charcoal/[0.04] md:min-h-[560px]">
-              <img
-                src={resolveMediaUrl(selectedProduct.image)}
-                alt={selectedProduct.name}
-                className="absolute inset-0 h-full w-full object-cover"
-              />
-              {selectedProduct.featured && (
-                <span className="absolute left-5 top-5 bg-brass px-4 py-2 font-body text-[10px] font-bold uppercase tracking-[0.16em] text-white">
-                  Featured Product
+            <div
+              ref={modalScrollRef}
+              data-lenis-prevent
+              className="grid max-h-[92dvh] overscroll-contain overflow-y-auto md:max-h-[88vh] md:grid-cols-[0.95fr_1.05fr]"
+            >
+              <div className="relative min-h-[190px] bg-charcoal/[0.04] sm:min-h-[260px] md:min-h-[560px]">
+                <img
+                  src={resolveMediaUrl(selectedProduct.image)}
+                  alt={selectedProduct.name}
+                  className="absolute inset-0 h-full w-full object-cover"
+                />
+                {selectedProduct.featured && (
+                  <span className="absolute left-4 top-4 bg-brass px-3 py-1.5 font-body text-[9px] font-bold uppercase tracking-[0.14em] text-white sm:left-5 sm:top-5 sm:px-4 sm:py-2 sm:text-[10px] sm:tracking-[0.16em]">
+                    Featured Product
+                  </span>
+                )}
+              </div>
+              <div className="flex flex-col justify-center p-5 sm:p-7 md:p-10 lg:p-14">
+                <span className="font-body text-[10px] font-bold uppercase tracking-[0.22em] text-brass">
+                  {getCategoryName(selectedProduct.category)}
                 </span>
-              )}
-            </div>
-            <div className="flex flex-col justify-center p-7 md:p-10 lg:p-14">
-              <span className="font-body text-[10px] font-bold uppercase tracking-[0.22em] text-brass">
-                {getCategoryName(selectedProduct.category)}
-              </span>
-              <h2 id="product-modal-title" className="mt-4 pr-10 font-display text-3xl font-medium leading-[1.05] tracking-[-0.03em] text-charcoal md:text-5xl">
-                {selectedProduct.name}
-              </h2>
-              <div className="my-7 h-px w-16 bg-brass" />
-              <p className="font-body text-sm leading-7 text-charcoal/70 md:text-base">
-                {selectedProduct.description}
-              </p>
-              <button
-                type="button"
-                onClick={() => startProductInquiry(selectedProduct)}
-                className="mt-9 inline-flex items-center justify-center gap-3 bg-charcoal px-7 py-4 font-body text-[10px] font-bold uppercase tracking-[0.2em] text-white transition-colors hover:bg-brass"
-              >
-                Send an Inquiry <ArrowRight size={16} />
-              </button>
+                <h2 id="product-modal-title" className="mt-3 pr-10 font-display text-2xl font-medium leading-[1.05] tracking-[-0.03em] text-charcoal sm:mt-4 sm:text-3xl md:text-5xl">
+                  {selectedProduct.name}
+                </h2>
+                <div className="my-5 h-px w-16 bg-brass sm:my-7" />
+                <p className="font-body text-sm leading-6 text-charcoal/70 sm:leading-7 md:text-base">
+                  {selectedProduct.description}
+                </p>
+                <button
+                  type="button"
+                  onClick={() => startProductInquiry(selectedProduct)}
+                  className="mt-6 inline-flex items-center justify-center gap-3 bg-charcoal px-7 py-3.5 font-body text-[10px] font-bold uppercase tracking-[0.2em] text-white transition-colors hover:bg-brass sm:mt-9 sm:py-4"
+                >
+                  Send an Inquiry <ArrowRight size={16} />
+                </button>
+              </div>
             </div>
           </div>
         </div>

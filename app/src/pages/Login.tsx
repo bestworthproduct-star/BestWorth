@@ -219,7 +219,7 @@ export default function Login() {
               </p>
 
               {error && (
-                <div className="mt-6 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600">
+                <div className="mt-6 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600">
                   {error}
                 </div>
               )}
@@ -235,7 +235,7 @@ export default function Login() {
                     onChange={(e) => setUsername(e.target.value)}
                     required
                     autoComplete="username"
-                    className="mt-3 w-full rounded-2xl bg-[#f7fbff] px-4 py-4 text-[#102B4C] placeholder:text-[#102B4C]/35 focus:outline-none focus:ring-2 focus:ring-[#060273]/25 lg:px-5 lg:py-5"
+                    className="mt-3 w-full rounded-lg bg-[#f7fbff] px-4 py-4 text-[#102B4C] placeholder:text-[#102B4C]/35 focus:outline-none focus:ring-2 focus:ring-[#060273]/25 lg:px-5 lg:py-5"
                     placeholder="Enter username"
                   />
                 </div>
@@ -259,7 +259,7 @@ export default function Login() {
                     onChange={(e) => setPassword(e.target.value)}
                     required
                     autoComplete="current-password"
-                    className="mt-3 w-full rounded-2xl bg-[#f7fbff] px-4 py-4 text-[#102B4C] placeholder:text-[#102B4C]/35 focus:outline-none focus:ring-2 focus:ring-[#060273]/25 lg:px-5 lg:py-5"
+                    className="mt-3 w-full rounded-lg bg-[#f7fbff] px-4 py-4 text-[#102B4C] placeholder:text-[#102B4C]/35 focus:outline-none focus:ring-2 focus:ring-[#060273]/25 lg:px-5 lg:py-5"
                     placeholder="••••••••"
                   />
                 </div>
@@ -267,7 +267,7 @@ export default function Login() {
                 <button
                   type="submit"
                   disabled={loading}
-                  className="mt-2 inline-flex w-full items-center justify-center rounded-full bg-[#060273] px-6 py-4 text-[11px] font-semibold uppercase tracking-[0.2em] text-white transition-colors hover:bg-[#D64545] disabled:cursor-not-allowed disabled:opacity-50 lg:py-5 lg:text-[12px] lg:tracking-[0.28em]"
+                  className="mt-2 inline-flex w-full items-center justify-center rounded-lg bg-[#060273] px-6 py-4 text-[11px] font-semibold uppercase tracking-[0.2em] text-white transition-colors hover:bg-[#D64545] disabled:cursor-not-allowed disabled:opacity-50 lg:py-5 lg:text-[12px] lg:tracking-[0.28em]"
                 >
                   {loading ? 'Authenticating...' : 'Enter Dashboard'}
                 </button>

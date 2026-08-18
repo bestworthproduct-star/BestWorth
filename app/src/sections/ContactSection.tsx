@@ -147,21 +147,21 @@ export default function ContactSection() {
     <section
       id="contact"
       ref={sectionRef}
-      className="bg-warm-stone relative z-10 min-h-screen flex items-center py-16 md:py-[120px]"
+      className="bg-warm-stone relative z-10 min-h-screen flex items-center py-14 md:py-[100px]"
     >
       <div className="max-w-[1280px] mx-auto px-6 md:px-10">
         <div className="flex flex-col lg:flex-row gap-12 lg:gap-16">
           {/* Left Column - Form */}
           <div ref={leftRef} className="w-full lg:w-1/2">
-            <span className="section-label section-label-light">
+            <span className="section-label section-label-light text-[12px]">
               GET IN TOUCH
             </span>
-            <h2 className="font-display font-medium text-[28px] md:text-5xl text-charcoal leading-[1.1] tracking-[-0.02em] mt-4">
+            <h2 className="font-display font-medium text-[26px] md:text-[42px] text-charcoal leading-[1.15] tracking-[-0.02em] mt-3">
               Let's Build Something Together
             </h2>
 
             {submitted ? (
-              <div className="mt-10 p-8 bg-[#060273]/10 border border-[#060273]/30">
+              <div className="mt-10 p-8 bg-[#060273]/10 border border-[#060273]/30 rounded-lg">
                 <p className="font-body text-lg text-[#060273] font-medium">
                   Thank you for your inquiry!
                 </p>
@@ -216,7 +216,7 @@ export default function ContactSection() {
                   rows={4}
                   className={`${inputClass} resize-none min-h-[120px]`}
                 />
-                <label className="flex cursor-pointer items-start gap-3 border border-charcoal/10 bg-white/60 p-4 text-sm leading-6 text-charcoal/70">
+                <label className="flex cursor-pointer items-start gap-3 border border-charcoal/10 bg-white/60 p-4 text-sm leading-6 text-charcoal/70 rounded-lg">
                   <input
                     type="checkbox"
                     checked={policyAcknowledged}
@@ -277,7 +277,7 @@ export default function ContactSection() {
                 </div>
 
                 {/* Map */}
-                <div className="mt-10 relative aspect-[4/3] overflow-hidden">
+                <div className="mt-10 relative aspect-[4/3] overflow-hidden rounded-lg">
                   <iframe
                     src={contactData.mapUrl}
                     width="100%"

@@ -802,14 +802,14 @@ export default function AdminDashboard() {
                 { label: 'New Inquiries', value: stats.inquiries, color: 'bg-white' },
                 { label: 'Core Team', value: stats.team, color: 'bg-white' },
               ].map((stat, i) => (
-                <div key={i} className={`${stat.color} border border-charcoal/5 p-10 shadow-sm transition-transform hover:-translate-y-1 duration-500`}>
+                <div key={i} className={`${stat.color} border border-charcoal/5 p-10 shadow-sm transition-transform hover:-translate-y-1 duration-500 rounded-lg`}>
                   <p className="text-[10px] uppercase tracking-[0.25em] text-charcoal/40 font-bold mb-6">{stat.label}</p>
                   <p className="text-5xl font-display text-charcoal font-medium">{stat.value}</p>
                 </div>
               ))}
             </div>
 
-            <div className="mt-12 bg-white border border-charcoal/5 p-10 shadow-sm">
+            <div className="mt-12 bg-white border border-charcoal/5 p-10 shadow-sm rounded-lg">
               <h3 className="text-[10px] uppercase tracking-[0.25em] text-charcoal/40 font-bold mb-10">System Status</h3>
               <div className="flex items-center space-x-4 text-sm text-charcoal/80">
                 <div className="w-2.5 h-2.5 rounded-full bg-green-500 shadow-[0_0_12px_rgba(34,197,94,0.6)]"></div>
@@ -832,7 +832,7 @@ export default function AdminDashboard() {
         ]
         return (
           <div className="space-y-12">
-            <div className="bg-white border border-charcoal/5 shadow-sm overflow-hidden">
+            <div className="bg-white border border-charcoal/5 shadow-sm overflow-hidden rounded-lg">
               <div className="flex flex-col gap-4 border-b border-charcoal/5 p-6 sm:p-8 lg:flex-row lg:items-center lg:justify-between lg:p-10">
                 <div>
                   <h3 className="text-[10px] uppercase tracking-[0.25em] text-charcoal/40 font-bold">Catalog Management</h3>
@@ -899,7 +899,7 @@ export default function AdminDashboard() {
             </div>
 
             {/* Category Management Section */}
-            <div className="bg-white border border-charcoal/5 shadow-sm overflow-hidden">
+            <div className="bg-white border border-charcoal/5 shadow-sm overflow-hidden rounded-lg">
               <div className="p-10 border-b border-charcoal/5 flex justify-between items-center">
                 <div>
                   <h3 className="text-[10px] uppercase tracking-[0.25em] text-brass font-bold">Category Management</h3>
@@ -1053,7 +1053,7 @@ export default function AdminDashboard() {
         const leadershipSettings = getLeadershipSettings()
         return (
           <div className="space-y-8">
-            <div className="bg-white border border-charcoal/5 p-6 shadow-sm sm:p-8">
+            <div className="bg-white border border-charcoal/5 p-6 shadow-sm sm:p-8 rounded-lg">
               <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
                 <div>
                   <h3 className="text-[10px] uppercase tracking-[0.25em] text-brass font-bold">Public Leadership Slider</h3>
@@ -1138,7 +1138,7 @@ export default function AdminDashboard() {
             </div>
             <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3 lg:gap-8">
               {data.team.map((m) => (
-                <div key={m._id} className="bg-white border border-charcoal/5 p-8 shadow-sm group relative">
+                <div key={m._id} className="bg-white border border-charcoal/5 p-8 shadow-sm group relative rounded-lg">
                   <div className="aspect-square bg-warm-stone mb-6 overflow-hidden grayscale group-hover:grayscale-0 transition-all duration-700 border border-charcoal/5">
                     <img src={resolveMediaUrl(m.image)} alt={m.name} className="w-full h-full object-cover transform group-hover:scale-110 transition-transform duration-[2s]" />
                   </div>
@@ -1176,7 +1176,7 @@ export default function AdminDashboard() {
         return (
           <div className="space-y-12 pb-20">
             {/* Branding CMS */}
-            <div className="bg-white border border-charcoal/5 p-10 shadow-sm">
+            <div className="bg-white border border-charcoal/5 p-10 shadow-sm rounded-lg">
               <h3 className="text-[10px] uppercase tracking-[0.25em] text-brass font-bold mb-8">Branding Assets</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                 <div>
@@ -1265,7 +1265,7 @@ export default function AdminDashboard() {
             </div>
 
             {/* Hero CMS */}
-            <div className="bg-white border border-charcoal/5 p-10 shadow-sm">
+            <div className="bg-white border border-charcoal/5 p-10 shadow-sm rounded-lg">
               <h3 className="text-[10px] uppercase tracking-[0.25em] text-brass font-bold mb-8">Hero Section</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                 <div className="space-y-6">
@@ -1426,7 +1426,7 @@ export default function AdminDashboard() {
             </div>
 
             {/* About CMS */}
-            <div className="bg-white border border-charcoal/5 p-10 shadow-sm">
+            <div className="bg-white border border-charcoal/5 p-10 shadow-sm rounded-lg">
               <h3 className="text-[10px] uppercase tracking-[0.25em] text-brass font-bold mb-8">About Us Section</h3>
               <div className="space-y-6">
                 <div>
@@ -1494,7 +1494,7 @@ export default function AdminDashboard() {
             </div>
 
             {/* Contact CMS */}
-            <div className="bg-white border border-charcoal/5 p-10 shadow-sm">
+            <div className="bg-white border border-charcoal/5 p-10 shadow-sm rounded-lg">
               <h3 className="text-[10px] uppercase tracking-[0.25em] text-brass font-bold mb-8">Contact Information</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                 <div>
@@ -1538,7 +1538,7 @@ export default function AdminDashboard() {
             </div>
 
             {/* Values CMS */}
-            <div className="bg-white border border-charcoal/5 p-10 shadow-sm">
+            <div className="bg-white border border-charcoal/5 p-10 shadow-sm rounded-lg">
               <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4 mb-8">
                 <div>
                   <h3 className="text-[10px] uppercase tracking-[0.25em] text-brass font-bold">Our Values</h3>
@@ -1675,7 +1675,7 @@ export default function AdminDashboard() {
             </div>
 
             {/* Footer CMS */}
-            <div className="bg-white border border-charcoal/5 p-10 shadow-sm">
+            <div className="bg-white border border-charcoal/5 p-10 shadow-sm rounded-lg">
               <h3 className="text-[10px] uppercase tracking-[0.25em] text-brass font-bold mb-8">Footer & Socials</h3>
               <div className="space-y-6">
                 <div>
@@ -1790,7 +1790,7 @@ export default function AdminDashboard() {
             </div>
 
             {/* Legal Policies CMS */}
-            <div className="bg-white border border-charcoal/5 p-10 shadow-sm">
+            <div className="bg-white border border-charcoal/5 p-10 shadow-sm rounded-lg">
               <h3 className="text-[10px] uppercase tracking-[0.25em] text-brass font-bold mb-2">Footer Legal Policies</h3>
               <p className="mb-8 max-w-3xl text-xs leading-5 text-charcoal/50">
                 Paste the complete HTML exported by Termly. Visitors will see the formatted document on a secure, isolated policy page rather than raw HTML.
@@ -1859,7 +1859,7 @@ export default function AdminDashboard() {
       case 'settings':
         return (
           <div className="max-w-3xl">
-            <div className="bg-white border border-charcoal/5 p-10 shadow-sm">
+            <div className="bg-white border border-charcoal/5 p-10 shadow-sm rounded-lg">
               <h3 className="text-[10px] uppercase tracking-[0.25em] text-brass font-bold mb-2">Admin Settings</h3>
               <p className="text-xs text-charcoal/40 uppercase tracking-widest font-medium mb-8">
                 Update the admin username and password. Password changes must always use a new password.

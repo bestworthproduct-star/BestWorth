@@ -287,17 +287,17 @@ export default function ManagementSection() {
     <section
       id="management"
       ref={sectionRef}
-      className="bg-dark-surface relative z-10 min-h-screen py-16 md:py-[120px]"
+      className="bg-dark-surface relative z-10 min-h-screen py-14 md:py-[100px]"
     >
       <div className="max-w-[1280px] mx-auto px-6 md:px-10">
-        <div ref={headerRef} className="text-center mb-12 md:mb-16">
-          <span className="reveal-item section-label section-label-dark" style={{ color: '#D64545' }}>
+        <div ref={headerRef} className="text-center mb-10 md:mb-14">
+          <span className="reveal-item section-label section-label-dark text-[12px]" style={{ color: '#D64545' }}>
             LEADERSHIP
           </span>
-          <h2 className="reveal-item font-display font-medium text-[36px] md:text-[64px] text-white leading-[1.1] tracking-[-0.025em] mt-4">
+          <h2 className="reveal-item font-display font-medium text-[28px] md:text-[44px] text-white leading-[1.15] tracking-[-0.025em] mt-3">
             The People Behind the Products
           </h2>
-          <p className="reveal-item font-body text-lg md:text-xl text-white/60 leading-relaxed mt-4 max-w-[600px] mx-auto">
+          <p className="reveal-item font-body text-[16px] md:text-[18px] text-white/60 leading-relaxed mt-3 max-w-[600px] mx-auto">
             {leadershipExperienceCopy}
           </p>
         </div>
@@ -318,7 +318,7 @@ export default function ManagementSection() {
                 <div
                   key={member._id}
                   onClick={() => hasBio && setSelectedMember(member)}
-                  className={`team-card bg-white/[0.03] border border-white/[0.05] overflow-hidden group transition-all duration-500 hover:border-brass/30 ${hasBio ? 'cursor-pointer hover:bg-white/[0.05]' : 'cursor-default'}`}
+                  className={`team-card bg-white/[0.03] border border-white/[0.05] overflow-hidden group transition-all duration-500 rounded-lg hover:border-brass/30 ${hasBio ? 'cursor-pointer hover:bg-white/[0.05]' : 'cursor-default'}`}
                 >
                   <div className="grid min-h-full grid-cols-[92px_minmax(0,1fr)] sm:grid-cols-[100px_minmax(0,1fr)] lg:grid-cols-[110px_minmax(0,1fr)]">
                     <div className="relative h-full min-h-[136px] overflow-hidden bg-white/[0.03] sm:min-h-[144px] lg:min-h-[148px]">
@@ -334,7 +334,7 @@ export default function ManagementSection() {
                         <span className="inline-block font-body font-bold text-[9px] uppercase tracking-[0.15em] text-brass mb-2">
                           {member.role}
                         </span>
-                        <h3 className="font-display font-medium text-[16px] sm:text-[18px] lg:text-[19px] text-white tracking-tight leading-tight">
+                        <h3 className="font-display font-medium text-[16px] sm:text-[17px] lg:text-[18px] text-white tracking-tight leading-tight">
                           {member.name}
                         </h3>
                       </div>
@@ -416,7 +416,7 @@ export default function ManagementSection() {
 
           <div
             data-lenis-prevent
-            className="relative bg-[rgb(6,2,115)] border border-[#060273]/30 w-full max-w-5xl h-[min(78vh,720px)] overflow-hidden grid grid-rows-[200px_minmax(0,1fr)] md:grid-rows-1 md:grid-cols-[300px_minmax(0,1fr)] shadow-[0_30px_80px_rgba(0,0,0,0.45)] animate-in fade-in zoom-in duration-300 rounded-[20px]"
+            className="relative bg-[rgb(6,2,115)] border border-[#060273]/30 w-full max-w-5xl h-[min(78vh,720px)] overflow-hidden grid grid-rows-[200px_minmax(0,1fr)] md:grid-rows-1 md:grid-cols-[300px_minmax(0,1fr)] shadow-[0_30px_80px_rgba(0,0,0,0.45)] animate-in fade-in zoom-in duration-300 rounded-2xl"
           >
             <button
               onClick={() => setSelectedMember(null)}

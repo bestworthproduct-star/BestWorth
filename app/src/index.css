@@ -1,3 +1,5 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&family=Plus+Jakarta+Sans:ital,wght@0,200..800;1,200..800&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -23,7 +25,7 @@
     --border: 212 71% 28% / 0.15;
     --input: 212 71% 28% / 0.15;
     --ring: 212 71% 28%;
-    --radius: 0px;
+    --radius: 8px;
   }
 
   html {
@@ -102,6 +104,7 @@
     letter-spacing: 0.04em;
     border: none;
     cursor: pointer;
+    border-radius: var(--radius);
     transition: all 0.35s cubic-bezier(0.22, 1, 0.36, 1);
   }
 
@@ -123,6 +126,7 @@
     letter-spacing: 0.04em;
     border: 2px solid #060273;
     cursor: pointer;
+    border-radius: var(--radius);
     transition: all 0.35s cubic-bezier(0.22, 1, 0.36, 1);
   }
 
@@ -142,6 +146,7 @@
     text-transform: uppercase;
     border: 1px solid rgba(6, 2, 115, 0.15);
     cursor: pointer;
+    border-radius: 9999px;
     transition: all 0.3s ease;
   }
 
@@ -153,5 +158,15 @@
     background-color: #D64545;
     color: #FFFFFF;
     border-color: #D64545;
+  }
+}
+
+@layer utilities {
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
   }
 }

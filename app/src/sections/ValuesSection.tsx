@@ -72,7 +72,7 @@ export default function ValuesSection() {
   const sectionRef = useRef<HTMLElement>(null)
   const headerRef = useRef<HTMLDivElement>(null)
   const cardsRef = useRef<HTMLDivElement>(null)
-  const touchStartXRef = useRef<number | null>(null)
+  const scrollContainerRef = useRef<HTMLDivElement>(null)
   const interactionResumeTimeoutRef = useRef<number | null>(null)
 
   const fetchValues = useCallback(() => {
@@ -127,29 +127,17 @@ export default function ValuesSection() {
   const safeActiveSlideIndex = Math.min(activeSlideIndex, Math.max(totalSlides - 1, 0))
   const activeValues = slides[safeActiveSlideIndex] || []
   const hasMultipleSlides = totalSlides > 1
-  const nextValue = values[(safeActiveSlideIndex + 1) % Math.max(values.length, 1)]
-  const gridLayoutClass = cardsPerSlide === 1
-    ? hasMultipleSlides
-      ? 'mr-7 grid-cols-1 sm:mr-0'
-      : 'grid-cols-1'
-    : activeValues.length === 1
-      ? 'mx-auto w-full max-w-[430px] grid-cols-1'
-      : activeValues.length === 2
-        ? 'mx-auto w-full max-w-[860px] grid-cols-2'
-        : 'grid-cols-3'
 
+  // Handle auto-slide timing
   useEffect(() => {
     if (!hasMultipleSlides || !sliderSettings.autoSlide || isAutoSlidePaused) return
 
     const timeout = window.setTimeout(() => {
-      setActiveSlideIndex((current) => {
-        const safeCurrent = Math.min(current, Math.max(totalSlides - 1, 0))
-        return (safeCurrent + 1) % totalSlides
-      })
+      setActiveSlideIndex((current) => (current + 1) % totalSlides)
     }, sliderSettings.delaySeconds * 1000)
 
     return () => window.clearTimeout(timeout)
-  }, [hasMultipleSlides, isAutoSlidePaused, safeActiveSlideIndex, sliderSettings, totalSlides])
+  }, [hasMultipleSlides, isAutoSlidePaused, sliderSettings.autoSlide, sliderSettings.delaySeconds, totalSlides])
 
   const pauseAutoSlideTemporarily = () => {
     setIsAutoSlidePaused(true)
@@ -164,36 +152,88 @@ export default function ValuesSection() {
 
   const goToSlide = (index: number) => {
     if (!hasMultipleSlides) return
-    setActiveSlideIndex((index + totalSlides) % totalSlides)
+    const newIndex = (index + totalSlides) % totalSlides
+    setActiveSlideIndex(newIndex)
     pauseAutoSlideTemporarily()
+
+    // If on mobile, also scroll the container
+    if (cardsPerSlide === 1 && scrollContainerRef.current) {
+      const card = scrollContainerRef.current.children[newIndex] as HTMLElement
+      if (card) {
+        scrollContainerRef.current.scrollTo({
+          left: card.offsetLeft - (scrollContainerRef.current.offsetWidth - card.offsetWidth) / 2,
+          behavior: 'smooth'
+        })
+      }
+    }
   }
 
   const goToPreviousSlide = () => goToSlide(safeActiveSlideIndex - 1)
   const goToNextSlide = () => goToSlide(safeActiveSlideIndex + 1)
 
-  const handleTouchStart = (event: React.TouchEvent<HTMLDivElement>) => {
-    touchStartXRef.current = event.touches[0]?.clientX ?? null
+  // Handle mobile scroll sync
+  const handleMobileScroll = useCallback(() => {
+    if (cardsPerSlide !== 1 || !scrollContainerRef.current) return
+
+    const container = scrollContainerRef.current
+    const scrollLeft = container.scrollLeft
+    const containerWidth = container.offsetWidth
+    const centerX = scrollLeft + containerWidth / 2
+
+    let closestIndex = 0
+    let minDistance = Infinity
+
+    Array.from(container.children).forEach((child, index) => {
+      const card = child as HTMLElement
+      const cardCenter = card.offsetLeft + card.offsetWidth / 2
+      const distance = Math.abs(centerX - cardCenter)
+
+      if (distance < minDistance) {
+        minDistance = distance
+        closestIndex = index
+      }
+
+      // Dynamic scaling for focus effect
+      const relativeDistance = Math.min(1, distance / (containerWidth / 2))
+      const scale = 1.05 - (relativeDistance * 0.1) // From 1.05 down to 0.95
+      const opacity = 1 - (relativeDistance * 0.4) // From 1 down to 0.6
+
+      gsap.to(card, {
+        scale,
+        opacity,
+        duration: 0.2,
+        ease: 'power2.out',
+        overwrite: 'auto'
+      })
+    })
+
+    if (closestIndex !== activeSlideIndex) {
+      setActiveSlideIndex(closestIndex)
+    }
+  }, [activeSlideIndex, cardsPerSlide])
+
+  // Manual scroll detection to pause auto-slide
+  const handleTouchStart = () => {
     setIsAutoSlidePaused(true)
   }
 
-  const handleTouchEnd = (event: React.TouchEvent<HTMLDivElement>) => {
-    const startX = touchStartXRef.current
-    const endX = event.changedTouches[0]?.clientX
-    touchStartXRef.current = null
-
-    if (startX === null || endX === undefined || !hasMultipleSlides) {
-      pauseAutoSlideTemporarily()
-      return
-    }
-    const distance = endX - startX
-    if (Math.abs(distance) < 45) {
-      pauseAutoSlideTemporarily()
-      return
-    }
-
-    if (distance < 0) goToNextSlide()
-    else goToPreviousSlide()
+  const handleTouchEnd = () => {
+    pauseAutoSlideTemporarily()
   }
+
+  // Sync auto-slide with mobile scroll
+  useEffect(() => {
+    if (cardsPerSlide === 1 && scrollContainerRef.current && !isAutoSlidePaused) {
+      const container = scrollContainerRef.current
+      const targetCard = container.children[safeActiveSlideIndex] as HTMLElement
+      if (targetCard) {
+        container.scrollTo({
+          left: targetCard.offsetLeft - (container.offsetWidth - targetCard.offsetWidth) / 2,
+          behavior: 'smooth'
+        })
+      }
+    }
+  }, [safeActiveSlideIndex, cardsPerSlide, isAutoSlidePaused])
 
   useGSAP(() => {
     if (!headerRef.current || values.length === 0) return
@@ -218,8 +258,9 @@ export default function ValuesSection() {
     )
   }, { scope: sectionRef, dependencies: [values.length] })
 
+  // Entrance animation for desktop
   useGSAP(() => {
-    if (!cardsRef.current || activeValues.length === 0) return
+    if (!cardsRef.current || cardsPerSlide === 1 || activeValues.length === 0) return
     const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches
     const cards = cardsRef.current.querySelectorAll('.value-card')
 
@@ -243,58 +284,90 @@ export default function ValuesSection() {
     <section
       id="values"
       ref={sectionRef}
-      className="relative z-10 flex min-h-screen items-center overflow-hidden bg-cream py-16 md:py-[120px]"
+      className="relative z-10 flex min-h-screen items-center overflow-hidden bg-cream py-14 md:py-[100px]"
     >
       <div className="pointer-events-none absolute -right-28 top-20 h-72 w-72 rounded-full border border-charcoal/[0.06]" />
       <div className="pointer-events-none absolute -right-10 top-40 h-44 w-44 rounded-full border border-brass/10" />
 
-      <div className="relative mx-auto w-full max-w-[1280px] px-6 md:px-10">
-        <div ref={headerRef} className="mb-10 text-center md:mb-14">
-          <span className="reveal-item section-label section-label-dark text-brass">
+      <div className="relative mx-auto w-full max-w-[1280px] px-0 md:px-10">
+        <div ref={headerRef} className="mb-8 px-6 text-center md:mb-12 md:px-0">
+          <span className="reveal-item section-label section-label-dark text-brass text-[12px]">
             OUR VALUES
           </span>
-          <h2 className="reveal-item mt-4 font-display text-[36px] font-medium leading-[1] tracking-[-0.025em] text-charcoal md:text-[64px] lg:text-[72px]">
+          <h2 className="reveal-item mt-3 font-display text-[28px] font-medium leading-[1.15] tracking-[-0.025em] text-charcoal md:text-[44px]">
             The Principles That Drive Us
           </h2>
-          <p className="reveal-item mx-auto mt-5 max-w-2xl font-body text-sm leading-6 text-charcoal/60 md:text-base">
+          <p className="reveal-item mx-auto mt-4 max-w-2xl font-body text-[15px] leading-6 text-charcoal/60 md:text-[16px]">
             The standards behind every product, partnership, and decision we make.
           </p>
         </div>
 
-        <div
-          className="relative touch-pan-y"
-          onTouchStart={handleTouchStart}
-          onTouchEnd={handleTouchEnd}
-          onMouseEnter={() => setIsAutoSlidePaused(true)}
-          onMouseLeave={() => setIsAutoSlidePaused(false)}
-          onFocusCapture={() => setIsAutoSlidePaused(true)}
-          onBlurCapture={() => setIsAutoSlidePaused(false)}
-        >
-          {hasMultipleSlides && cardsPerSlide === 1 && nextValue && (
-            <div
-              aria-hidden="true"
-              className="pointer-events-none absolute bottom-4 right-0 top-4 z-0 w-5 border border-charcoal/10 border-t-4 border-t-brass/50 bg-white/70 sm:hidden"
-            />
-          )}
-
+        {/* Mobile Highlight Carousel (< 640px) */}
+        {cardsPerSlide === 1 ? (
+          <div
+            ref={scrollContainerRef}
+            onScroll={handleMobileScroll}
+            onTouchStart={handleTouchStart}
+            onTouchEnd={handleTouchEnd}
+            onMouseEnter={() => setIsAutoSlidePaused(true)}
+            onMouseLeave={() => setIsAutoSlidePaused(false)}
+            className="no-scrollbar flex w-full snap-x snap-mandatory items-center overflow-x-auto pb-10 pt-4"
+            style={{ paddingLeft: '15%', paddingRight: '15%' }}
+          >
+            {values.map((value, index) => {
+              const Icon = iconMap[value.icon] || Shield
+              return (
+                <article
+                  key={`${value.title}-${index}`}
+                  className="value-card relative mr-4 flex min-h-[340px] w-[70vw] flex-shrink-0 snap-center flex-col overflow-hidden rounded-lg border border-charcoal/10 border-t-4 border-t-brass bg-white p-7 shadow-[0_18px_55px_rgba(6,2,115,0.06)] transition-all duration-500 last:mr-0"
+                >
+                  <span className="pointer-events-none absolute -right-2 -top-7 font-display text-[108px] font-bold leading-none text-charcoal/[0.035]">
+                    {formatNumber(index + 1)}
+                  </span>
+                  <div className="relative flex items-start justify-between gap-4">
+                    <div className="flex h-14 w-14 items-center justify-center border border-brass/20 bg-brass/[0.06] text-brass">
+                      <Icon size={28} strokeWidth={1.6} />
+                    </div>
+                    <span className="font-body text-[10px] font-bold tracking-[0.24em] text-charcoal/35">
+                      {formatNumber(index + 1)}
+                    </span>
+                  </div>
+                  <div className="relative mt-auto pt-10">
+                    <div className="mb-4 h-px w-12 bg-brass" />
+                    <h3 className="font-display text-[22px] font-medium leading-[1.2] tracking-[-0.015em] text-charcoal md:text-[26px]">
+                      {value.title}
+                    </h3>
+                    <p className="mt-3 font-body text-[14px] leading-[1.65] text-charcoal/68 md:text-[15px]">
+                      {value.description}
+                    </p>
+                  </div>
+                </article>
+              )
+            })}
+          </div>
+        ) : (
+          /* Desktop/Tablet Grid Layout (>= 640px) */
           <div
             ref={cardsRef}
-            className={`relative z-10 grid gap-5 sm:gap-6 lg:gap-8 ${gridLayoutClass}`}
-            aria-live="polite"
+            onMouseEnter={() => setIsAutoSlidePaused(true)}
+            onMouseLeave={() => setIsAutoSlidePaused(false)}
+            className={`relative z-10 grid gap-6 lg:gap-8 ${
+              cardsPerSlide === 2
+                ? 'mx-auto max-w-[860px] grid-cols-2'
+                : 'grid-cols-3'
+            }`}
           >
             {activeValues.map((value, slidePosition) => {
               const Icon = iconMap[value.icon] || Shield
               const absoluteIndex = safeActiveSlideIndex * cardsPerSlide + slidePosition
-
               return (
                 <article
                   key={`${value.title}-${absoluteIndex}`}
-                  className="value-card group relative flex min-h-[310px] flex-col overflow-hidden border border-charcoal/10 border-t-4 border-t-brass bg-white p-7 shadow-[0_18px_55px_rgba(6,2,115,0.06)] transition-all duration-500 hover:-translate-y-1 hover:border-charcoal/25 hover:border-t-brass hover:shadow-[0_24px_65px_rgba(6,2,115,0.11)] motion-reduce:transform-none motion-reduce:transition-none md:min-h-[360px] md:p-9 lg:p-10"
+                  className="value-card group relative flex min-h-[360px] flex-col overflow-hidden rounded-lg border border-charcoal/10 border-t-4 border-t-brass bg-white p-9 shadow-[0_18px_55px_rgba(6,2,115,0.06)] transition-all duration-500 hover:-translate-y-1 hover:border-charcoal/25 hover:shadow-[0_24px_65px_rgba(6,2,115,0.11)] lg:p-10"
                 >
-                  <span className="pointer-events-none absolute -right-2 -top-7 font-display text-[108px] font-bold leading-none text-charcoal/[0.035] md:text-[132px]">
+                  <span className="pointer-events-none absolute -right-2 -top-7 font-display text-[132px] font-bold leading-none text-charcoal/[0.035]">
                     {formatNumber(absoluteIndex + 1)}
                   </span>
-
                   <div className="relative flex items-start justify-between gap-4">
                     <div className="flex h-14 w-14 items-center justify-center border border-brass/20 bg-brass/[0.06] text-brass transition-colors duration-300 group-hover:bg-brass group-hover:text-white">
                       <Icon size={28} strokeWidth={1.6} />
@@ -303,13 +376,12 @@ export default function ValuesSection() {
                       {formatNumber(absoluteIndex + 1)}
                     </span>
                   </div>
-
-                  <div className="relative mt-auto pt-12">
-                    <div className="mb-5 h-px w-12 bg-brass transition-all duration-500 group-hover:w-20" />
-                    <h3 className="font-display text-[24px] font-medium leading-[1.15] tracking-[-0.015em] text-charcoal md:text-[28px]">
+                  <div className="relative mt-auto pt-10">
+                    <div className="mb-4 h-px w-12 bg-brass transition-all duration-500 group-hover:w-20" />
+                    <h3 className="font-display text-[26px] font-medium leading-[1.2] tracking-[-0.015em] text-charcoal">
                       {value.title}
                     </h3>
-                    <p className="mt-4 font-body text-[15px] leading-[1.75] text-charcoal/68 md:text-base">
+                    <p className="mt-3 font-body text-[15px] leading-[1.65] text-charcoal/68">
                       {value.description}
                     </p>
                   </div>
@@ -317,19 +389,17 @@ export default function ValuesSection() {
               )
             })}
           </div>
-        </div>
+        )}
 
         {hasMultipleSlides && (
-          <div className="mt-8 flex flex-col items-center justify-between gap-5 border-t border-charcoal/10 pt-6 sm:flex-row">
+          <div className="mt-8 flex flex-col items-center justify-between gap-5 border-t border-charcoal/10 px-6 pt-6 sm:flex-row sm:px-0">
             <div className="flex items-center gap-2" aria-label="Values pages">
-              {slides.map((_, index) => (
+              {(cardsPerSlide === 1 ? values : slides).map((_, index) => (
                 <button
                   key={index}
                   type="button"
                   onClick={() => goToSlide(index)}
-                  aria-label={`Show values page ${index + 1}`}
-                  aria-current={safeActiveSlideIndex === index ? 'true' : undefined}
-                  className={`h-2.5 rounded-full transition-all duration-300 motion-reduce:transition-none ${
+                  className={`h-2.5 rounded-full transition-all duration-300 ${
                     safeActiveSlideIndex === index
                       ? 'w-9 bg-brass'
                       : 'w-2.5 bg-charcoal/20 hover:bg-charcoal/40'
@@ -340,13 +410,12 @@ export default function ValuesSection() {
 
             <div className="flex items-center gap-4">
               <span className="min-w-[68px] text-center font-body text-[10px] font-bold tracking-[0.22em] text-charcoal/45">
-                {formatNumber(safeActiveSlideIndex + 1)} / {formatNumber(totalSlides)}
+                {formatNumber(safeActiveSlideIndex + 1)} / {formatNumber(cardsPerSlide === 1 ? values.length : totalSlides)}
               </span>
               <button
                 type="button"
                 onClick={goToPreviousSlide}
                 className="flex h-11 w-11 items-center justify-center border border-charcoal/15 text-charcoal transition-colors hover:border-charcoal hover:bg-charcoal hover:text-white"
-                aria-label="Previous values page"
               >
                 <ChevronLeft size={18} />
               </button>
@@ -354,7 +423,6 @@ export default function ValuesSection() {
                 type="button"
                 onClick={goToNextSlide}
                 className="flex h-11 w-11 items-center justify-center border border-charcoal bg-charcoal text-white transition-colors hover:border-brass hover:bg-brass"
-                aria-label="Next values page"
               >
                 <ChevronRight size={18} />
               </button>

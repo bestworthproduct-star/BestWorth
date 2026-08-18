@@ -292,15 +292,15 @@ export default function ProductsSection() {
     <section
       id="products"
       ref={sectionRef}
-      className="relative z-10 min-h-screen bg-warm-stone py-16 md:py-[120px]"
+      className="relative z-10 min-h-screen bg-warm-stone py-14 md:py-[100px]"
     >
       <div className="mx-auto max-w-[1280px] px-6 md:px-10">
         <div ref={headerRef}>
-          <span className="reveal-item section-label section-label-light">PRODUCT RANGE</span>
-          <h2 className="reveal-item mt-4 font-display text-[36px] font-medium leading-[1] tracking-[-0.025em] text-charcoal md:text-[72px]">
+          <span className="reveal-item section-label section-label-light text-[12px]">PRODUCT RANGE</span>
+          <h2 className="reveal-item mt-3 font-display text-[28px] font-medium leading-[1.15] tracking-[-0.025em] text-charcoal md:text-[44px]">
             Engineered for Every Build
           </h2>
-          <p className="reveal-item mt-4 max-w-[650px] font-body text-base leading-relaxed text-charcoal/70 md:text-xl">
+          <p className="reveal-item mt-3 max-w-[650px] font-body text-[15px] leading-relaxed text-charcoal/70 md:text-[17px]">
             Search and explore our comprehensive catalog of dependable fastening and building solutions.
           </p>
 
@@ -314,7 +314,7 @@ export default function ProductsSection() {
                   id="product-category"
                   value={activeFilter}
                   onChange={(event) => selectCategory(event.target.value)}
-                  className="w-full border border-charcoal/15 bg-white px-4 py-3.5 font-body text-sm font-semibold text-charcoal outline-none focus:border-brass"
+                  className="w-full border border-charcoal/15 bg-white px-4 py-3.5 font-body text-sm font-semibold text-charcoal outline-none focus:border-brass rounded-lg"
                 >
                   {filters.map((filter) => (
                     <option key={filter.value} value={filter.value}>{filter.label}</option>
@@ -336,16 +336,16 @@ export default function ProductsSection() {
                   className="flex min-w-0 flex-1 snap-x gap-2 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
                 >
                   {filters.map((filter) => (
-                    <button
-                      key={filter.value}
-                      type="button"
-                      onClick={() => selectCategory(filter.value)}
-                      className={`shrink-0 snap-start border px-5 py-3 font-body text-[11px] font-semibold uppercase tracking-[0.08em] transition-colors ${
-                        activeFilter === filter.value
+                <button
+                  key={filter.value}
+                  type="button"
+                  onClick={() => selectCategory(filter.value)}
+                  className={`shrink-0 snap-start border px-5 py-3 font-body text-[11px] font-semibold uppercase tracking-[0.08em] transition-colors rounded-full ${
+                    activeFilter === filter.value
                           ? 'border-brass bg-brass text-white'
                           : 'border-charcoal/15 bg-white text-charcoal hover:border-charcoal'
-                      }`}
-                    >
+                  }`}
+                >
                       {filter.label}
                     </button>
                   ))}
@@ -368,7 +368,7 @@ export default function ProductsSection() {
                 value={searchInput}
                 onChange={(event) => handleSearchChange(event.target.value)}
                 placeholder="Search products, materials, or categories..."
-                className="w-full border border-charcoal/15 bg-white py-3.5 pl-12 pr-11 font-body text-sm text-charcoal outline-none transition-colors placeholder:text-charcoal/35 focus:border-brass"
+                className="w-full border border-charcoal/15 bg-white py-3.5 pl-12 pr-11 font-body text-sm text-charcoal outline-none transition-colors placeholder:text-charcoal/35 focus:border-brass rounded-lg"
                 aria-label="Search all products"
               />
               {searchInput && (
@@ -402,7 +402,7 @@ export default function ProductsSection() {
           <button
             type="button"
             onClick={() => setSelectedProduct(featuredProduct)}
-            className="group mt-7 grid w-full overflow-hidden border border-charcoal/10 bg-charcoal text-left shadow-[0_18px_50px_rgba(6,2,115,0.12)] md:h-[280px] md:grid-cols-[0.82fr_1.18fr]"
+            className="group mt-7 grid w-full overflow-hidden border border-charcoal/10 bg-charcoal text-left shadow-[0_18px_50px_rgba(6,2,115,0.12)] md:h-[280px] md:grid-cols-[0.82fr_1.18fr] rounded-lg"
           >
             <div className="relative h-[190px] overflow-hidden sm:h-[220px] md:h-full md:min-h-0">
               <img
@@ -419,10 +419,10 @@ export default function ProductsSection() {
               <span className="font-body text-[10px] font-bold uppercase tracking-[0.22em] text-brass">
                 {getCategoryName(featuredProduct.category)}
               </span>
-              <h3 className="mt-3 font-display text-2xl font-medium tracking-[-0.025em] md:text-3xl">
+              <h3 className="mt-2 font-display text-2xl font-medium tracking-[-0.025em] md:text-[28px]">
                 {featuredProduct.name}
               </h3>
-              <p className="mt-4 line-clamp-3 max-w-xl font-body text-sm leading-6 text-white/70 md:text-[15px]">
+              <p className="mt-3 line-clamp-3 max-w-xl font-body text-sm leading-6 text-white/70 md:text-[15px]">
                 {featuredProduct.description}
               </p>
               <span className="mt-5 inline-flex items-center gap-2 font-body text-[9px] font-bold uppercase tracking-[0.2em] text-white">
@@ -442,7 +442,7 @@ export default function ProductsSection() {
                 key={product._id}
                 type="button"
                 onClick={() => setSelectedProduct(product)}
-                className="product-card group grid min-h-[150px] grid-cols-[118px_minmax(0,1fr)] overflow-hidden border border-charcoal/10 bg-white text-left shadow-[0_12px_35px_rgba(6,2,115,0.045)] transition-all duration-500 hover:-translate-y-1 hover:border-charcoal/25 hover:shadow-[0_20px_45px_rgba(6,2,115,0.09)] motion-reduce:transform-none motion-reduce:transition-none sm:block sm:h-full"
+                className="product-card group grid min-h-[150px] grid-cols-[118px_minmax(0,1fr)] overflow-hidden border border-charcoal/10 bg-white text-left shadow-[0_12px_35px_rgba(6,2,115,0.045)] transition-all duration-500 hover:-translate-y-1 hover:border-charcoal/25 hover:shadow-[0_20px_45px_rgba(6,2,115,0.09)] motion-reduce:transform-none motion-reduce:transition-none sm:block sm:h-full rounded-lg"
               >
                 <div className="relative h-full min-h-[150px] overflow-hidden bg-charcoal/[0.03] sm:aspect-[4/3] sm:h-auto sm:min-h-0">
                   {product.featured && (
@@ -461,10 +461,10 @@ export default function ProductsSection() {
                   <span className="font-body text-[9px] font-bold uppercase tracking-[0.13em] text-brass sm:text-[10px]">
                     {getCategoryName(product.category)}
                   </span>
-                  <h3 className="mt-1.5 font-display text-base font-medium leading-[1.2] tracking-[-0.01em] text-charcoal sm:text-xl">
+                  <h3 className="mt-1 font-display text-base font-medium leading-[1.2] tracking-[-0.01em] text-charcoal sm:text-[19px]">
                     {product.name}
                   </h3>
-                  <p className="mt-2 line-clamp-3 font-body text-xs leading-[1.6] text-charcoal/65 sm:text-sm">
+                  <p className="mt-1.5 line-clamp-3 font-body text-xs leading-[1.6] text-charcoal/65 sm:text-[14px]">
                     {product.description}
                   </p>
                   <span className="mt-3 inline-flex items-center gap-1.5 font-body text-[8px] font-bold uppercase tracking-[0.16em] text-charcoal/45 transition-colors group-hover:text-brass sm:text-[9px]">
@@ -547,7 +547,7 @@ export default function ProductsSection() {
             onClick={() => setSelectedProduct(null)}
             aria-label="Close product details"
           />
-          <div className="relative max-h-[92dvh] w-full max-w-5xl overflow-hidden rounded-t-2xl border border-white/10 bg-white shadow-[0_35px_100px_rgba(0,0,0,0.45)] sm:rounded-none md:max-h-[88vh]">
+          <div className="relative max-h-[92dvh] w-full max-w-5xl overflow-hidden rounded-t-2xl border border-white/10 bg-white shadow-[0_35px_100px_rgba(0,0,0,0.45)] sm:rounded-2xl md:max-h-[88vh]">
             <button
               type="button"
               onClick={() => setSelectedProduct(null)}

@@ -4,7 +4,7 @@ import { useGSAP } from '@gsap/react'
 import { useSocket } from '../hooks/useSocket'
 import { apiUrl } from '@/lib/api'
 import { resolveMediaUrl } from '@/lib/media'
-import { ArrowRight, ShieldCheck, Factory, Award } from 'lucide-react'
+import { ArrowRight, ShieldCheck, Factory } from 'lucide-react'
 
 interface AboutData {
   title: string

@@ -26,11 +26,11 @@ interface FooterData {
 }
 
 const footerLinks = [
-  { label: 'Home', target: '#hero' },
-  { label: 'About', target: '#about' },
-  { label: 'Products', target: '#products' },
-  { label: 'Management', target: '#management' },
-  { label: 'Contact', target: '#contact' },
+  { label: 'OVERVIEW', target: '#hero' },
+  { label: 'WHO WE ARE', target: '#about' },
+  { label: 'WHAT WE DO', target: '#products' },
+  { label: 'LEADERSHIP', target: '#management' },
+  { label: 'GET IN TOUCH', target: '#contact' },
 ]
 
 const normalizePlatform = (value: string) => value.trim().toLowerCase()

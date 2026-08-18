@@ -7,11 +7,11 @@ import { apiUrl } from '@/lib/api'
 import { resolveMediaUrl } from '@/lib/media'
 
 const navLinks = [
-  { label: 'HOME', target: '#hero', icon: <Menu size={20} /> },
-  { label: 'ABOUT', target: '#about', icon: <Menu size={20} /> },
-  { label: 'PRODUCTS', target: '#products', icon: <Menu size={20} /> },
-  { label: 'MANAGEMENT', target: '#management', icon: <Menu size={20} /> },
-  { label: 'CONTACT', target: '#contact', icon: <Menu size={20} /> },
+  { label: 'OVERVIEW', target: '#hero', icon: <Menu size={20} /> },
+  { label: 'WHO WE ARE', target: '#about', icon: <Menu size={20} /> },
+  { label: 'WHAT WE DO', target: '#products', icon: <Menu size={20} /> },
+  { label: 'LEADERSHIP', target: '#management', icon: <Menu size={20} /> },
+  { label: 'GET IN TOUCH', target: '#contact', icon: <Menu size={20} /> },
 ]
 
 const FALLBACK_NAV_LOGO = '/assets/Open Sidebar Logo.jpg'
@@ -61,15 +61,25 @@ export default function Navigation({ scrollTo }: { scrollTo: (target: string) =>
 
   useGSAP(() => {
     if (mobileOpen && mobileMenuRef.current) {
+      // Animate Sidebar sliding in
       gsap.fromTo(
         mobileMenuRef.current,
-        { opacity: 0 },
-        { opacity: 1, duration: 0.3, ease: 'power2.out' }
+        { x: '-100%' },
+        { x: '0%', duration: 0.4, ease: 'power3.out' }
       )
+
+      // Stagger the links for a premium feel
       gsap.fromTo(
         '.mobile-nav-link',
-        { opacity: 0, y: 20 },
-        { opacity: 1, y: 0, duration: 0.4, stagger: 0.05, ease: 'power2.out', delay: 0.1 }
+        { opacity: 0, x: -20 },
+        {
+          opacity: 1,
+          x: 0,
+          duration: 0.4,
+          stagger: 0.06,
+          ease: 'power2.out',
+          delay: 0.2
+        }
       )
     }
   }, { dependencies: [mobileOpen] })
@@ -87,8 +97,9 @@ export default function Navigation({ scrollTo }: { scrollTo: (target: string) =>
     <>
       {/* Desktop Top Bar Navigation */}
       <nav
-        className="hidden md:flex fixed top-0 left-0 right-0 h-24 items-center justify-between px-12 z-50 transition-all duration-500"
+        className="hidden md:flex fixed top-0 left-0 right-0 items-center justify-between px-12 z-50 transition-all duration-500"
         style={{
+          height: scrolled ? '80px' : '112px',
           backgroundColor: scrolled ? 'rgb(6, 2, 115)' : 'transparent',
           backdropFilter: scrolled ? 'blur(12px)' : 'none',
           borderBottom: scrolled ? '1px solid rgba(214,69,69,0.3)' : 'none'
@@ -103,7 +114,8 @@ export default function Navigation({ scrollTo }: { scrollTo: (target: string) =>
             <img 
               src={brandingLogo}
               alt="BESTWORTH" 
-              className="h-12 w-auto object-contain"
+              className="transition-all duration-500 w-auto object-contain"
+              style={{ height: scrolled ? '42px' : '54px' }}
             />
           </button>
         </div>
@@ -127,7 +139,7 @@ export default function Navigation({ scrollTo }: { scrollTo: (target: string) =>
           ))}
           <button
             onClick={goToAdminLogin}
-            className="border border-white/20 px-4 py-2 font-body text-[11px] uppercase tracking-[0.18em] text-white/80 transition-all duration-300 hover:border-[#D64545] hover:text-[#D64545]"
+            className="border border-white/20 px-4 py-2 font-body text-[11px] uppercase tracking-[0.18em] text-white/80 transition-all duration-300 hover:border-[#D64545] hover:text-[#D64545] rounded-lg"
           >
             Admin Login
           </button>
@@ -154,21 +166,51 @@ export default function Navigation({ scrollTo }: { scrollTo: (target: string) =>
         </button>
       </nav>
 
-      {/* Mobile Menu Overlay */}
+      {/* Mobile Menu Overlay Sidebar */}
       {mobileOpen && (
-        <div
-          ref={mobileMenuRef}
-          className="md:hidden fixed inset-0 bg-charcoal z-40 flex flex-col items-center justify-center gap-8"
-        >
-          {navLinks.map((link) => (
-            <button
-              key={link.target}
-              onClick={() => handleNavClick(link.target)}
-              className="mobile-nav-link font-display font-medium text-[28px] text-white/90 hover:text-[#060273] transition-colors duration-300"
-            >
-              {link.label}
-            </button>
-          ))}
+        <div className="md:hidden fixed inset-0 z-[100] top-14">
+          {/* Backdrop (Dark Layer outside sidebar) */}
+          <div
+            className="absolute inset-0 bg-charcoal/40 backdrop-blur-[2px]"
+            onClick={() => setMobileOpen(false)}
+          />
+
+          {/* Sidebar Drawer */}
+          <div
+            ref={mobileMenuRef}
+            className="absolute left-0 top-0 h-full w-[55%] max-w-[240px] bg-white shadow-xl flex flex-col border-r border-charcoal/5"
+          >
+            {/* Sidebar Navigation Links List */}
+            <nav className="flex-1 overflow-y-auto pt-10">
+              {navLinks.map((link) => (
+                <button
+                  key={link.target}
+                  onClick={() => handleNavClick(link.target)}
+                  className="mobile-nav-link w-full text-left px-6 py-4 border-b border-charcoal/[0.04] transition-all"
+                >
+                  <span
+                    className={`font-display font-bold text-[14px] tracking-tight ${
+                      activeSection === link.target.slice(1)
+                        ? 'text-brass'
+                        : 'text-charcoal/70'
+                    }`}
+                  >
+                    {link.label}
+                  </span>
+                </button>
+              ))}
+            </nav>
+
+            {/* Sidebar Footer */}
+            <div className="p-4 border-t border-charcoal/5 bg-warm-stone/10">
+              <button
+                onClick={goToAdminLogin}
+                className="w-full py-3 bg-charcoal text-white font-body font-bold text-[9px] uppercase tracking-[0.15em] rounded-md"
+              >
+                Admin Login
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </>

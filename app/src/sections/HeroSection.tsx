@@ -257,7 +257,7 @@ export default function HeroSection({ scrollTo }: HeroSectionProps) {
     <section
       id="hero"
       ref={heroRef}
-      className="relative min-h-screen flex items-center overflow-hidden"
+      className="sticky top-0 h-screen w-full flex items-center overflow-hidden z-[1]"
     >
       {/* Video Background */}
       <div className="absolute inset-0 w-full h-full z-[1]">
@@ -311,7 +311,7 @@ export default function HeroSection({ scrollTo }: HeroSectionProps) {
 
         <h1
           ref={headlineRef}
-          className="font-display font-bold text-[42px] md:text-[90px] text-white leading-[0.95] tracking-[-0.03em] mt-4 overflow-hidden"
+          className="font-display font-bold text-[32px] md:text-[60px] text-white leading-[1.1] tracking-[-0.02em] mt-4 overflow-hidden max-w-[800px]"
         >
           {headlineWords.map((word, i) => (
             <span key={i} className="inline-block overflow-hidden mr-[0.25em]">

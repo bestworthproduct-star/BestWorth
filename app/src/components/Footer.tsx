@@ -1,13 +1,19 @@
 import { useRef, useEffect, useState } from 'react'
 import gsap from 'gsap'
 import { useGSAP } from '@gsap/react'
-import { Facebook, Linkedin, Instagram, Twitter, Phone, Mail, Globe, Play, Send } from 'lucide-react'
+import { Facebook, Linkedin, Instagram, Twitter, Phone, Mail, Globe, Play, Send, ArrowRight, MapPin } from 'lucide-react'
 import { useSocket } from '../hooks/useSocket'
 import { apiUrl } from '@/lib/api'
+import { resolveMediaUrl } from '@/lib/media'
 import { Link } from 'react-router-dom'
 
 interface FooterProps {
   scrollTo: (target: string) => void
+}
+
+interface Category {
+  id: string
+  name: string
 }
 
 interface FooterData {
@@ -139,6 +145,13 @@ const buildSocialHref = (platform: string, value: string) => {
 
 export default function Footer({ scrollTo }: FooterProps) {
   const [footerData, setFooterData] = useState<FooterData | null>(null)
+  const [categories, setCategories] = useState<Category[]>([])
+  const [contactInfo, setContactInfo] = useState<any>(null)
+  const [branding, setBranding] = useState<any>(null)
+  const [heroContent, setHeroContent] = useState<any>(null)
+  const [newsletterEmail, setNewsletterEmail] = useState('')
+  const [isSubscribed, setIsNewsletterSubscribed] = useState(false)
+  const [openMobileColumn, setOpenMobileColumn] = useState<string | null>(null)
   const footerRef = useRef<HTMLElement>(null)
 
   useEffect(() => {
@@ -146,11 +159,42 @@ export default function Footer({ scrollTo }: FooterProps) {
       .then(res => res.json())
       .then(data => setFooterData(data))
       .catch(err => console.error(err))
+
+    fetch(apiUrl('/api/content/categories'))
+      .then(res => res.json())
+      .then(data => setCategories(Array.isArray(data) ? data : []))
+      .catch(() => {})
+
+    fetch(apiUrl('/api/content/contact'))
+      .then(res => res.json())
+      .then(data => setContactInfo(data))
+      .catch(() => {})
+
+    fetch(apiUrl('/api/content/branding'))
+      .then(res => res.json())
+      .then(data => setBranding(data))
+      .catch(() => {})
+
+    fetch(apiUrl('/api/content/hero'))
+      .then(res => res.json())
+      .then(data => setHeroContent(data))
+      .catch(() => {})
   }, [])
 
   useSocket('content_change', (payload: any) => {
     if (payload.key === 'footer') setFooterData(payload.data)
+    if (payload.key === 'categories') setCategories(Array.isArray(payload.data) ? payload.data : [])
+    if (payload.key === 'contact') setContactInfo(payload.data)
+    if (payload.key === 'branding') setBranding(payload.data)
+    if (payload.key === 'hero') setHeroContent(payload.data)
   })
+
+  const estYear = heroContent?.establishmentDate?.match(/\d{4}/)?.[0] || '1987'
+
+  const toggleMobileColumn = (column: string) => {
+    if (window.innerWidth >= 1024) return
+    setOpenMobileColumn(openMobileColumn === column ? null : column)
+  }
 
   useGSAP(() => {
     if (!footerRef.current) return
@@ -162,97 +206,181 @@ export default function Footer({ scrollTo }: FooterProps) {
         y: 0,
         duration: 0.7,
         ease: 'power3.out',
-        stagger: 0.1,
+        stagger: 0.08,
         scrollTrigger: {
           trigger: footerRef.current,
-          start: 'top 90%',
+          start: 'top 95%',
           toggleActions: 'play none none none',
         },
       }
     )
   }, { scope: footerRef })
 
+  const handleNewsletterSubmit = (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!newsletterEmail) return
+    // Backend logic for newsletter will be implemented later
+    setIsNewsletterSubscribed(true)
+    setTimeout(() => {
+      setIsNewsletterSubscribed(false)
+      setNewsletterEmail('')
+    }, 4000)
+  }
+
+  const columnLabelClass = 'font-display font-bold text-[11px] uppercase tracking-[0.25em] text-white/40 mb-6 flex items-center justify-between lg:block w-full text-left'
+
   return (
-    <footer ref={footerRef} className="bg-dark-surface relative z-10">
-      <div className="max-w-[1280px] mx-auto px-6 md:px-10 py-16">
-        {/* Top Row */}
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 footer-animate">
-          <span className="font-display font-bold text-2xl tracking-[-0.02em] text-white">
-            BESTWORTH
-          </span>
-          <div className="flex gap-5">
-            {footerData?.socials.facebook && (
-              <a href={footerData.socials.facebook} target="_blank" rel="noopener noreferrer" className="text-white/70 hover:text-[#D64545] transition-colors duration-300">
-                <Facebook size={24} />
-              </a>
+    <footer ref={footerRef} className="bg-dark-surface relative z-10 border-t border-white/5">
+      <div className="max-w-[1280px] mx-auto px-6 md:px-10 py-20">
+
+        {/* Main Footer Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-10 lg:gap-8">
+
+          {/* Col 1: Brand Identity */}
+          <div className="footer-animate">
+            {branding?.logoUrl && (
+              <img
+                src={resolveMediaUrl(branding.logoUrl)}
+                alt="Bestworth Logo"
+                className="h-10 w-auto object-contain opacity-80 mb-6"
+              />
             )}
-            {footerData?.socials.linkedin && (
-              <a href={footerData.socials.linkedin} target="_blank" rel="noopener noreferrer" className="text-white/70 hover:text-[#D64545] transition-colors duration-300">
-                <Linkedin size={24} />
-              </a>
+            <span className="font-display font-bold text-2xl tracking-[-0.03em] text-white block mb-4">
+              BESTWORTH
+            </span>
+            <p className="font-body text-sm text-white/50 leading-relaxed max-w-[240px] mb-6">
+              Engineering high-performance fastening solutions since {estYear}.
+            </p>
+            {footerData?.registrationNumber && (
+              <p className="font-body text-[11px] font-bold text-white/30 uppercase tracking-widest">
+                Reg: {footerData.registrationNumber}
+              </p>
             )}
-            {footerData?.socials.instagram && (
-              <a href={footerData.socials.instagram} target="_blank" rel="noopener noreferrer" className="text-white/70 hover:text-[#D64545] transition-colors duration-300">
-                <Instagram size={24} />
-              </a>
-            )}
-            {footerData?.socials.twitter && (
-              <a href={footerData.socials.twitter} target="_blank" rel="noopener noreferrer" className="text-white/70 hover:text-[#D64545] transition-colors duration-300">
-                <Twitter size={24} />
-              </a>
-            )}
-            {footerData?.socials.extra?.filter((item) => item.label && item.url).map((item, index) => (
-              <a
-                key={`${item.label}-${index}`}
-                href={buildSocialHref(item.label, item.url)}
-                target={normalizePlatform(item.label) === 'phone' || normalizePlatform(item.label) === 'telephone' || normalizePlatform(item.label) === 'call' || normalizePlatform(item.label) === 'email' || normalizePlatform(item.label) === 'mail' ? undefined : '_blank'}
-                rel={normalizePlatform(item.label) === 'phone' || normalizePlatform(item.label) === 'telephone' || normalizePlatform(item.label) === 'call' || normalizePlatform(item.label) === 'email' || normalizePlatform(item.label) === 'mail' ? undefined : 'noopener noreferrer'}
-                aria-label={item.label}
-                title={item.label}
-                className="text-white/70 hover:text-[#D64545] transition-colors duration-300"
-              >
-                <BrandIcon platform={item.label} />
-              </a>
-            ))}
+            <div className="flex gap-4 mt-8">
+              {footerData?.socials.facebook && (
+                <a href={footerData.socials.facebook} target="_blank" rel="noopener noreferrer" className="text-white/40 hover:text-brass transition-colors">
+                  <Facebook size={18} />
+                </a>
+              )}
+              {footerData?.socials.linkedin && (
+                <a href={footerData.socials.linkedin} target="_blank" rel="noopener noreferrer" className="text-white/40 hover:text-brass transition-colors">
+                  <Linkedin size={18} />
+                </a>
+              )}
+              {footerData?.socials.extra?.slice(0, 3).map((item, idx) => (
+                <a key={idx} href={buildSocialHref(item.label, item.url)} target="_blank" rel="noopener noreferrer" className="text-white/40 hover:text-brass transition-colors">
+                  <BrandIcon platform={item.label} />
+                </a>
+              ))}
+            </div>
           </div>
+
+          {/* Col 2: Product Solutions (Dynamic Accordion on Mobile) */}
+          <div className="footer-animate lg:border-l lg:border-white/5 lg:pl-8">
+            <button
+              onClick={() => toggleMobileColumn('products')}
+              className={columnLabelClass}
+            >
+              <span>Product Range</span>
+              <span className="lg:hidden text-brass">{openMobileColumn === 'products' ? '−' : '+'}</span>
+            </button>
+            <div className={`overflow-hidden transition-all duration-300 lg:max-h-none ${openMobileColumn === 'products' ? 'max-h-[500px] mt-2' : 'max-h-0 lg:mt-0'}`}>
+              <ul className="space-y-3 pb-4 lg:pb-0">
+                {categories.map((cat) => (
+                  <li key={cat.id}>
+                    <button
+                      onClick={() => scrollTo('#products')}
+                      className="font-body text-sm text-white/60 hover:text-white transition-colors uppercase tracking-wide"
+                    >
+                      {cat.name}
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </div>
+
+          {/* Col 3: Company Navigation (Dynamic Accordion on Mobile) */}
+          <div className="footer-animate lg:border-l lg:border-white/5 lg:pl-8">
+            <button
+              onClick={() => toggleMobileColumn('org')}
+              className={columnLabelClass}
+            >
+              <span>Organization</span>
+              <span className="lg:hidden text-brass">{openMobileColumn === 'org' ? '−' : '+'}</span>
+            </button>
+            <div className={`overflow-hidden transition-all duration-300 lg:max-h-none ${openMobileColumn === 'org' ? 'max-h-[500px] mt-2' : 'max-h-0 lg:mt-0'}`}>
+              <ul className="space-y-3 pb-4 lg:pb-0">
+                {footerLinks.map((link) => (
+                  <li key={link.target}>
+                    <button
+                      onClick={() => scrollTo(link.target)}
+                      className="font-body text-sm text-white/60 hover:text-white transition-colors"
+                    >
+                      {link.label}
+                    </button>
+                  </li>
+                ))}
+                <li>
+                  <Link to="/privacy-policy" className="font-body text-sm text-white/60 hover:text-white transition-colors">PRIVACY POLICY</Link>
+                </li>
+              </ul>
+            </div>
+          </div>
+
+          {/* Col 4: Newsletter & Engagement */}
+          <div className="footer-animate lg:border-l lg:border-white/5 lg:pl-8">
+            <h4 className={columnLabelClass}>Stay Informed</h4>
+            <p className="font-body text-sm text-white/50 mb-6 leading-relaxed">
+              Sign up for technical updates and industrial news.
+            </p>
+
+            {isSubscribed ? (
+              <div className="p-4 bg-green-500/10 border border-green-500/20 rounded-lg animate-in fade-in zoom-in duration-300">
+                <p className="text-[11px] font-bold text-green-500 uppercase tracking-widest text-center">Subscription Initialized</p>
+              </div>
+            ) : (
+              <form onSubmit={handleNewsletterSubmit} className="relative">
+                <input
+                  type="email"
+                  placeholder="Business Email"
+                  value={newsletterEmail}
+                  onChange={(e) => setNewsletterEmail(e.target.value)}
+                  className="w-full bg-white/5 border-0 border-b border-white/10 py-3 pl-0 pr-12 text-sm text-white focus:outline-none focus:border-brass transition-colors placeholder:text-white/20"
+                />
+                <button
+                  type="submit"
+                  className="absolute right-0 top-1/2 -translate-y-1/2 p-2 text-white/40 hover:text-brass transition-colors"
+                >
+                  <ArrowRight size={18} />
+                </button>
+              </form>
+            )}
+
+            <div className="mt-8 pt-6 border-t border-white/5">
+              <div className="flex items-start gap-3">
+                <MapPin size={14} className="text-brass shrink-0 mt-1" />
+                <p className="text-[11px] leading-relaxed text-white/40">{contactInfo?.address || 'Corporate Presence'}</p>
+              </div>
+            </div>
+          </div>
+
         </div>
 
-        {/* Divider */}
-        <div className="my-10 h-px bg-white/10 footer-animate" />
-
-        {/* Bottom Row */}
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 footer-animate">
-          <div className="flex flex-wrap gap-x-8 gap-y-2">
-            {footerLinks.map((link) => (
-              <button
-                key={link.target}
-                onClick={() => scrollTo(link.target)}
-                className="font-body text-sm text-white/70 hover:text-white transition-colors duration-300"
-              >
-                {link.label}
-              </button>
-            ))}
-            <Link
-              to="/privacy-policy"
-              className="font-body text-sm text-white/70 hover:text-white transition-colors duration-300"
-            >
-              Privacy Policy
-            </Link>
-            <Link
-              to="/cookie-policy"
-              className="font-body text-sm text-white/70 hover:text-white transition-colors duration-300"
-            >
-              Cookie Policy
+        {/* Final Bottom Bar */}
+        <div className="mt-16 pt-8 border-t border-white/5 flex flex-col md:flex-row justify-between items-center gap-4 footer-animate">
+          <p className="font-body text-[10px] font-bold uppercase tracking-[0.2em] text-white/25">
+            {footerData?.copyright || '© 2024 Bestworth Products Limited.'}
+          </p>
+          <div className="flex items-center gap-6">
+            <span className="font-body text-[9px] font-bold uppercase tracking-widest text-white/20">
+              Engineering Excellence Site
+            </span>
+            <div className="h-4 w-px bg-white/5" />
+            <Link to="/cookie-policy" className="text-[10px] font-bold text-white/20 hover:text-white transition-colors uppercase tracking-widest">
+              Cookies
             </Link>
           </div>
-          {footerData?.registrationNumber && (
-            <span className="font-body text-[13px] text-white/50">
-              {footerData.registrationNumber}
-            </span>
-          )}
-          <span className="font-body text-[13px] text-white/50">
-            {footerData?.copyright || '© 2024 Bestworth Products Limited. All rights reserved.'}
-          </span>
         </div>
       </div>
     </footer>

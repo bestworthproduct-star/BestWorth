@@ -4,7 +4,7 @@ import { useGSAP } from '@gsap/react'
 import { useSocket } from '../hooks/useSocket'
 import { apiUrl } from '@/lib/api'
 import { Link } from 'react-router-dom'
-import { Mail, Phone, MapPin, Send, Clock, ArrowRight, Info, X } from 'lucide-react'
+import { Mail, Phone, MapPin, Send, Clock, ArrowRight, X } from 'lucide-react'
 
 interface ContactData {
   address: string

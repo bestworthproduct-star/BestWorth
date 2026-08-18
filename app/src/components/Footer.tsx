@@ -1,7 +1,7 @@
 import { useRef, useEffect, useState } from 'react'
 import gsap from 'gsap'
 import { useGSAP } from '@gsap/react'
-import { Facebook, Linkedin, Instagram, Twitter, Phone, Mail, Globe, Play, Send, ArrowRight, MapPin } from 'lucide-react'
+import { Facebook, Linkedin, Phone, Mail, Globe, Play, Send, ArrowRight, MapPin } from 'lucide-react'
 import { useSocket } from '../hooks/useSocket'
 import { apiUrl } from '@/lib/api'
 import { resolveMediaUrl } from '@/lib/media'

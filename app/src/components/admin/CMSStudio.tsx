@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import { Save, Monitor, Smartphone, RefreshCw, Trash2, ChevronUp, ChevronDown, Eye, Video } from 'lucide-react'
+import { Save, Monitor, Smartphone, RefreshCw, Trash2, ChevronUp, ChevronDown, Eye, Video, Maximize2, X } from 'lucide-react'
 import { resolveMediaUrl } from '@/lib/media'
 
 interface CMSStudioProps {
@@ -15,8 +15,10 @@ export default function CMSStudio({ cmsContent, onUpdateContent, onUpload, uploa
   const [localData, setLocalData] = useState<any>(cmsContent)
   const [isSaving, setIsSaving] = useState(false)
   const [previewScale, setPreviewScale] = useState(0.4)
+  const [isFocusMode, setIsFocusMode] = useState(false)
   const containerRef = useRef<HTMLDivElement>(null)
   const iframeRef = useRef<HTMLIFrameElement>(null)
+  const modalIframeRef = useRef<HTMLIFrameElement>(null)
 
   useEffect(() => {
     setLocalData(cmsContent)
@@ -29,7 +31,6 @@ export default function CMSStudio({ cmsContent, onUpdateContent, onUpload, uploa
       const containerWidth = containerRef.current.offsetWidth
       const targetWidth = viewMode === 'desktop' ? 1280 : 375
 
-      // Calculate scale to fit the target width into 45% of the container (max 240px for mobile)
       const availableWidth = viewMode === 'desktop' ? (containerWidth - 48) : Math.min(containerWidth * 0.45, 240)
       const scale = availableWidth / targetWidth
       setPreviewScale(Math.min(scale, 1))
@@ -40,23 +41,26 @@ export default function CMSStudio({ cmsContent, onUpdateContent, onUpload, uploa
     return () => window.removeEventListener('resize', updateScale)
   }, [viewMode])
 
-  const syncIframe = () => {
+  const syncIframes = () => {
+    const payload = {
+      type: 'CMS_UPDATE',
+      section: activeSection,
+      data: localData
+    }
+
     if (iframeRef.current?.contentWindow) {
-      iframeRef.current.contentWindow.postMessage({
-        type: 'CMS_UPDATE',
-        section: activeSection,
-        data: localData
-      }, '*')
+      iframeRef.current.contentWindow.postMessage(payload, '*')
+    }
+    if (modalIframeRef.current?.contentWindow) {
+      modalIframeRef.current.contentWindow.postMessage(payload, '*')
     }
   }
 
-  // Sync data to iframe when data or section changes
   useEffect(() => {
-    syncIframe()
-    // Secondary sync for load stability
-    const timer = setTimeout(syncIframe, 500)
+    syncIframes()
+    const timer = setTimeout(syncIframes, 500)
     return () => clearTimeout(timer)
-  }, [localData, activeSection])
+  }, [localData, activeSection, isFocusMode])
 
   const handleLocalChange = (key: string, field: string, value: any) => {
     setLocalData((prev: any) => ({
@@ -381,43 +385,108 @@ export default function CMSStudio({ cmsContent, onUpdateContent, onUpload, uploa
 
         {/* Preview (40%) */}
         <div className="w-[40%] bg-warm-stone/30 flex flex-col relative p-12 overflow-y-auto no-scrollbar" ref={containerRef}>
-           <div className="w-full max-w-[800px] mx-auto flex flex-col items-center gap-8">
+           <div className="w-full max-w-[800px] mx-auto flex flex-col items-center gap-6">
               <div className="w-full flex items-center justify-between">
                  <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-charcoal/30 flex items-center gap-2"><Eye size={12}/> Viewport Sync</span>
                  <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-charcoal/30">{viewMode} mode active</span>
               </div>
 
-              {/* THE IFRAME FIX: Absolute viewport isolation */}
-              <div
-                className={`bg-white shadow-2xl transition-all duration-500 overflow-hidden relative border border-charcoal/10 corporative-preview`}
-                style={{
-                  width: viewMode === 'desktop' ? '1280px' : '375px',
-                  height: viewMode === 'desktop' ? '800px' : '600px',
-                  transform: `scale(${previewScale})`,
-                  transformOrigin: 'top center',
-                  borderRadius: viewMode === 'desktop' ? '8px' : '24px'
-                }}
-              >
-                <iframe
-                  ref={iframeRef}
-                  src={`/admin/preview?section=${activeSection}`}
-                  className="w-full h-full border-none"
-                  title="Mobile Sandbox"
-                  onLoad={syncIframe}
-                />
+              {/* THE IFRAME: Scaled View */}
+              <div className="relative">
+                <div
+                  className={`bg-white shadow-2xl transition-all duration-500 overflow-hidden relative border border-charcoal/10 corporative-preview`}
+                  style={{
+                    width: viewMode === 'desktop' ? '1280px' : '375px',
+                    height: viewMode === 'desktop' ? '800px' : '600px',
+                    transform: `scale(${previewScale})`,
+                    transformOrigin: 'top center',
+                    borderRadius: viewMode === 'desktop' ? '8px' : '24px'
+                  }}
+                >
+                  <iframe
+                    ref={iframeRef}
+                    src={`/admin/preview?section=${activeSection}`}
+                    className="w-full h-full border-none"
+                    title="Mobile Sandbox"
+                    onLoad={syncIframes}
+                  />
+                </div>
+
+                {/* FOCUS MODE TRIGGER: Sitting immediately below the actual scaled box */}
+                <div
+                  className="absolute left-1/2 -translate-x-1/2 flex justify-center"
+                  style={{
+                    top: `${(viewMode === 'desktop' ? 800 : 600) * previewScale + 12}px`,
+                    width: '100%'
+                  }}
+                >
+                  <button
+                    onClick={() => setIsFocusMode(true)}
+                    className="p-2.5 bg-white border border-charcoal/10 rounded-full text-charcoal/40 hover:text-charcoal hover:border-charcoal/30 transition-all shadow-sm group"
+                    title="Focus Mode"
+                  >
+                    <Maximize2 size={16} className="group-hover:scale-110 transition-transform" />
+                  </button>
+                </div>
               </div>
 
-              <div className="w-full p-4 bg-charcoal rounded-lg flex items-center justify-between border border-white/5 shadow-xl">
+              <div className="w-full p-4 bg-charcoal rounded-lg flex items-center justify-between border border-white/5 shadow-xl mt-16">
                  <p className="text-[11px] text-white/40 font-medium">This is an isolated section preview of your live identity.</p>
-                 <button className="text-white/60 hover:text-white transition-all"><ExternalLink size={14}/></button>
+                 <button className="text-white/60 hover:text-white transition-all"><ExternalLinkIcon size={14}/></button>
               </div>
            </div>
         </div>
       </div>
+
+      {/* FOCUS MODE MODAL */}
+      {isFocusMode && (
+        <div className="fixed inset-0 z-[1000] flex items-center justify-center p-8 lg:p-12">
+          <div className="absolute inset-0 bg-charcoal/90 backdrop-blur-md" onClick={() => setIsFocusMode(false)} />
+
+          <div className="relative flex flex-col items-center gap-4 w-full h-full justify-center">
+            {/* FLOATING CONTROLS: Positioned in the natural flow ABOVE the box */}
+            <div className="flex items-center gap-3 shrink-0">
+               <button
+                 onClick={() => setViewMode(viewMode === 'desktop' ? 'mobile' : 'desktop')}
+                 className="p-2.5 bg-white border border-charcoal/10 rounded-full text-charcoal/60 shadow-xl hover:text-charcoal hover:scale-105 transition-all group"
+                 title={viewMode === 'desktop' ? 'Switch to Mobile' : 'Switch to Desktop'}
+               >
+                  {viewMode === 'desktop' ? <Smartphone size={18} /> : <Monitor size={18} />}
+               </button>
+               <button
+                 onClick={() => setIsFocusMode(false)}
+                 className="p-2.5 bg-white border border-charcoal/10 rounded-full text-charcoal/60 shadow-xl hover:text-charcoal hover:scale-105 transition-all group"
+                 title="Close Focus Mode"
+               >
+                  <X size={18} />
+               </button>
+            </div>
+
+            <div
+              className="bg-white shadow-2xl rounded-xl overflow-hidden animate-in fade-in zoom-in duration-300 flex flex-col shrink-0"
+              style={{
+                width: viewMode === 'desktop' ? '90vw' : '400px',
+                maxWidth: viewMode === 'desktop' ? '1280px' : '400px',
+                height: '80vh'
+              }}
+            >
+              <div className="flex-1 bg-white relative">
+                 <iframe
+                    ref={modalIframeRef}
+                    src={`/admin/preview?section=${activeSection}`}
+                    className="w-full h-full border-none"
+                    title="Focus View"
+                    onLoad={syncIframes}
+                 />
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
-function ExternalLink({ size }: { size: number }) {
+function ExternalLinkIcon({ size }: { size: number }) {
   return (
     <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-external-link"><path d="M15 3h6v6"/><path d="M10 14 21 3"/><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/></svg>
   )

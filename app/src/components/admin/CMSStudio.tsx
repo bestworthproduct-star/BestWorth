@@ -40,23 +40,23 @@ export default function CMSStudio({ cmsContent, onUpdateContent, onUpload, uploa
     return () => window.removeEventListener('resize', updateScale)
   }, [viewMode])
 
-  // Sync data to iframe
-  useEffect(() => {
-    const syncIframe = () => {
-      if (iframeRef.current?.contentWindow) {
-        iframeRef.current.contentWindow.postMessage({
-          type: 'CMS_UPDATE',
-          section: activeSection,
-          data: localData
-        }, '*')
-      }
+  const syncIframe = () => {
+    if (iframeRef.current?.contentWindow) {
+      iframeRef.current.contentWindow.postMessage({
+        type: 'CMS_UPDATE',
+        section: activeSection,
+        data: localData
+      }, '*')
     }
+  }
 
-    // Sync on mount and updates
+  // Sync data to iframe when data or section changes
+  useEffect(() => {
     syncIframe()
-    const timer = setTimeout(syncIframe, 500) // Secondary sync for load stability
+    // Secondary sync for load stability
+    const timer = setTimeout(syncIframe, 500)
     return () => clearTimeout(timer)
-  }, [localData, activeSection, viewMode])
+  }, [localData, activeSection])
 
   const handleLocalChange = (key: string, field: string, value: any) => {
     setLocalData((prev: any) => ({
@@ -403,6 +403,7 @@ export default function CMSStudio({ cmsContent, onUpdateContent, onUpload, uploa
                   src={`/admin/preview?section=${activeSection}`}
                   className="w-full h-full border-none"
                   title="Mobile Sandbox"
+                  onLoad={syncIframe}
                 />
               </div>
 

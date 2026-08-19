@@ -134,7 +134,7 @@ mongoose.connection.on('error', (error) => {
 });
 
 if (isProduction && fs.existsSync(frontendDist)) {
-  app.get('*', (req, res) => {
+  app.get('(.*)', (req, res) => {
     res.sendFile(path.join(frontendDist, 'index.html'));
   });
 }

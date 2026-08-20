@@ -31,7 +31,7 @@ function formatTime(value: number) {
   return `${minutes}:${String(seconds).padStart(2, '0')}`
 }
 
-export default function HomepageVideoPlayer({ post }: { post: NewsMediaPost }) {
+export default function HomepageVideoPlayer({ post, onEnded }: { post: NewsMediaPost; onEnded?: () => void }) {
   const frameRef = useRef<HTMLDivElement>(null)
   const videoRef = useRef<HTMLVideoElement>(null)
   const iframeRef = useRef<HTMLIFrameElement>(null)
@@ -42,6 +42,26 @@ export default function HomepageVideoPlayer({ post }: { post: NewsMediaPost }) {
   const [currentTime, setCurrentTime] = useState(0)
   const [duration, setDuration] = useState(0)
   const embed = useMemo(() => getEmbed(post.videoUrl), [post.videoUrl])
+
+  useEffect(() => {
+    if (!embed) return
+    const handleMessage = (event: MessageEvent) => {
+      if (event.source !== iframeRef.current?.contentWindow) return
+      let data = event.data
+      if (typeof data === 'string') {
+        try { data = JSON.parse(data) } catch { return }
+      }
+      const youtubeEnded = data?.event === 'onStateChange' && Number(data?.info) === 0
+      const youtubeInfoEnded = Number(data?.info?.playerState) === 0
+      const vimeoEnded = data?.event === 'ended'
+      if (youtubeEnded || youtubeInfoEnded || vimeoEnded) {
+        setPlaying(false)
+        onEnded?.()
+      }
+    }
+    window.addEventListener('message', handleMessage)
+    return () => window.removeEventListener('message', handleMessage)
+  }, [embed, onEnded])
 
   useEffect(() => {
     const frame = frameRef.current
@@ -122,9 +142,9 @@ export default function HomepageVideoPlayer({ post }: { post: NewsMediaPost }) {
   return (
     <div ref={frameRef} className="group relative aspect-video overflow-hidden bg-[#07192C] text-white">
       {embed ? (
-        <iframe ref={iframeRef} src={embed.url} title={post.title} className="absolute inset-0 h-full w-full" allow="autoplay; encrypted-media; picture-in-picture" allowFullScreen onLoad={() => { if (readyToPlay && inView) sendEmbedCommand('play') }}/>
+        <iframe ref={iframeRef} src={embed.url} title={post.title} className="absolute inset-0 h-full w-full" allow="autoplay; encrypted-media; picture-in-picture" allowFullScreen onLoad={() => { if (embed.provider === 'youtube') { iframeRef.current?.contentWindow?.postMessage(JSON.stringify({ event: 'listening', id: 'bestworth-homepage-video' }), '*'); iframeRef.current?.contentWindow?.postMessage(JSON.stringify({ event: 'command', func: 'addEventListener', args: ['onStateChange'] }), '*') } else { iframeRef.current?.contentWindow?.postMessage({ method: 'addEventListener', value: 'ended' }, '*') } if (readyToPlay && inView) sendEmbedCommand('play') }}/>
       ) : (
-        <video ref={videoRef} playsInline preload="auto" poster={post.coverImage ? resolveMediaUrl(post.coverImage) : undefined} muted className="absolute inset-0 h-full w-full object-contain" onPlay={() => setPlaying(true)} onPause={() => setPlaying(false)} onTimeUpdate={(event) => setCurrentTime(event.currentTarget.currentTime)} onLoadedMetadata={(event) => { const video = event.currentTarget; setDuration(video.duration); if (!post.coverImage && video.duration > 0 && video.currentTime === 0) video.currentTime = Math.min(0.1, video.duration / 2) }} onEnded={() => setPlaying(false)}>
+        <video ref={videoRef} playsInline preload="auto" poster={post.coverImage ? resolveMediaUrl(post.coverImage) : undefined} muted className="absolute inset-0 h-full w-full object-contain" onPlay={() => setPlaying(true)} onPause={() => setPlaying(false)} onTimeUpdate={(event) => setCurrentTime(event.currentTarget.currentTime)} onLoadedMetadata={(event) => { const video = event.currentTarget; setDuration(video.duration); if (!post.coverImage && video.duration > 0 && video.currentTime === 0) video.currentTime = Math.min(0.1, video.duration / 2) }} onEnded={() => { setPlaying(false); onEnded?.() }}>
           <source src={resolveMediaUrl(post.videoUrl)}/>
         </video>
       )}

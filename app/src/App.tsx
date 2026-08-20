@@ -22,6 +22,7 @@ import CMSPreview from './pages/CMSPreview'
 import FirstLoginPassword from './pages/FirstLoginPassword'
 import NewsMediaPage from './pages/NewsMediaPage'
 import NewsMediaDetailPage from './pages/NewsMediaDetailPage'
+import NewsletterUnsubscribePage from './pages/NewsletterUnsubscribePage'
 import { apiUrl } from './lib/api'
 import { resolveMediaUrl } from './lib/media'
 import { useSocket } from './hooks/useSocket'
@@ -160,6 +161,7 @@ function App() {
       <Route path="/cookie-policy" element={<LegalPolicy policyKey="cookie_policy" title="Cookie Policy" />} />
       <Route path="/news-media" element={<NewsMediaPage />} />
       <Route path="/news-media/:slug" element={<NewsMediaDetailPage />} />
+      <Route path="/newsletter/unsubscribe" element={<NewsletterUnsubscribePage />} />
       <Route path="/" element={
         <div className="relative">
           <GrainCanvas />

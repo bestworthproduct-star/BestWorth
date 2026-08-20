@@ -17,6 +17,7 @@ interface Category {
 }
 
 interface CatalogManagerProps {
+  canManage: boolean
   products: Product[]
   categories: Category[]
   onAddProduct: () => void
@@ -27,6 +28,7 @@ interface CatalogManagerProps {
 }
 
 export default function CatalogManager({
+  canManage,
   products,
   categories,
   onAddProduct,
@@ -71,8 +73,8 @@ export default function CatalogManager({
             {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
           </select>
 
-          <button onClick={() => setShowCategoryModal(true)} className="px-4 py-2 border border-charcoal/10 rounded-md text-[11px] font-bold uppercase tracking-wider hover:bg-warm-stone transition-all">Manage Categories</button>
-          <button onClick={onAddProduct} className="px-4 py-2 bg-charcoal text-white rounded-md text-[11px] font-bold uppercase tracking-wider hover:bg-black transition-all">New Product</button>
+          {canManage && <><button onClick={() => setShowCategoryModal(true)} className="px-4 py-2 border border-charcoal/10 rounded-md text-[11px] font-bold uppercase tracking-wider hover:bg-warm-stone transition-all">Manage Categories</button>
+          <button onClick={onAddProduct} className="px-4 py-2 bg-charcoal text-white rounded-md text-[11px] font-bold uppercase tracking-wider hover:bg-black transition-all">New Product</button></>}
         </div>
       </div>
 
@@ -104,10 +106,10 @@ export default function CatalogManager({
                   {p.featured && <span className="text-[9px] font-bold uppercase text-brass border border-brass/20 px-2 py-0.5 rounded">Featured</span>}
                 </td>
                 <td className="px-6 py-4 text-right">
-                  <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                  {canManage && <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                     <button onClick={() => onEditProduct(p)} className="p-2 hover:text-blue-600"><Edit3 size={14}/></button>
                     <button onClick={() => onDeleteProduct(p._id)} className="p-2 hover:text-red-600"><Trash2 size={14}/></button>
-                  </div>
+                  </div>}
                 </td>
               </tr>
             ))}
@@ -115,7 +117,7 @@ export default function CatalogManager({
         </table>
       </div>
 
-      {showCategoryModal && (
+      {canManage && showCategoryModal && (
         <div className="fixed inset-0 z-[10000] flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-charcoal/20 backdrop-blur-sm" onClick={() => setShowCategoryModal(false)} />
           <div className="relative w-full max-w-lg bg-white p-8 rounded-md shadow-2xl border border-charcoal/10">

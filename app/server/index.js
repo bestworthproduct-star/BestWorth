@@ -113,10 +113,13 @@ app.use('/api/inquiries', requireDb, require('./routes/inquiries'));
 app.use('/api/content', requireDb, require('./routes/content'));
 app.use('/api/upload', requireDb, require('./routes/upload'));
 app.use('/api/media', requireDb, require('./routes/media'));
+app.use('/api/workers', requireDb, require('./routes/workers'));
+app.use('/api/news-media', requireDb, require('./routes/news-media'));
+app.use('/api/newsletter', requireDb, require('./routes/newsletter'));
 
 // Health check
 app.get('/api/admin/check', requireDb, require('./middleware/auth'), (req, res) => {
-  res.json({ authorized: true });
+  res.json({ authorized: true, user: req.user });
 });
 
 mongoose.connection.on('connected', () => {

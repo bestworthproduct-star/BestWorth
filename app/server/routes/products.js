@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const Product = require('../models/Product');
 const auth = require('../middleware/auth');
+const { requirePermission } = require('../middleware/authorize');
 const {
   hydrateMediaFieldsForResponse,
   normalizeMediaFieldsForStorage
@@ -18,7 +19,7 @@ router.get('/', async (req, res) => {
 });
 
 // Admin: Add product
-router.post('/', auth, async (req, res) => {
+router.post('/', auth, requirePermission('catalog', 'manage'), async (req, res) => {
   const product = new Product(normalizeMediaFieldsForStorage(req.body));
   try {
     const newProduct = await product.save();
@@ -31,7 +32,7 @@ router.post('/', auth, async (req, res) => {
 });
 
 // Admin: Update product
-router.put('/:id', auth, async (req, res) => {
+router.put('/:id', auth, requirePermission('catalog', 'manage'), async (req, res) => {
   try {
     const updatedProduct = await Product.findByIdAndUpdate(
       req.params.id,
@@ -47,7 +48,7 @@ router.put('/:id', auth, async (req, res) => {
 });
 
 // Admin: Delete product
-router.delete('/:id', auth, async (req, res) => {
+router.delete('/:id', auth, requirePermission('catalog', 'manage'), async (req, res) => {
   try {
     await Product.findByIdAndDelete(req.params.id);
     req.app.get('io').emit('product_change', { action: 'delete', id: req.params.id });

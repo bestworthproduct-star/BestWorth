@@ -7,6 +7,7 @@ interface AccountSettingsProps {
   onUpdateSettings: (settings: any) => void
   saving: boolean
   passwordChangeLocked: boolean
+  isAdmin: boolean
 }
 
 export default function AccountSettings({
@@ -14,7 +15,8 @@ export default function AccountSettings({
   onSave,
   onUpdateSettings,
   saving,
-  passwordChangeLocked
+  passwordChangeLocked,
+  isAdmin
 }: AccountSettingsProps) {
   const [showPasswords, setShowPasswords] = useState({
     current: false,
@@ -31,7 +33,7 @@ export default function AccountSettings({
           </div>
           <div>
             <h3 className="text-[12px] font-semibold text-charcoal uppercase tracking-wider">Access Configuration</h3>
-            <p className="text-[11px] text-charcoal/40 font-medium mt-0.5">Manage enterprise credentials and alert routing.</p>
+            <p className="text-[11px] text-charcoal/40 font-medium mt-0.5">Manage your sign-in credentials{isAdmin ? ' and alert routing' : ''}.</p>
           </div>
         </div>
 
@@ -51,7 +53,7 @@ export default function AccountSettings({
               <input type="text" value={settings.username} onChange={(e) => onUpdateSettings({...settings, username: e.target.value})} required className="w-full md:w-1/2 px-3 py-2 bg-warm-stone/20 border border-charcoal/10 rounded-md text-[13px] outline-none font-semibold focus:border-charcoal transition-all" />
             </div>
 
-            <div className="space-y-1.5">
+            {isAdmin && <div className="space-y-1.5">
               <label className="text-[11px] font-semibold text-charcoal/40 uppercase tracking-wide ml-1">Alert Emails</label>
               <textarea
                 value={settings.notificationEmails}
@@ -61,7 +63,7 @@ export default function AccountSettings({
                 className="w-full px-3 py-2 bg-warm-stone/20 border border-charcoal/10 rounded-md text-[13px] outline-none focus:border-charcoal transition-all resize-none"
               />
               <p className="text-[10px] text-charcoal/30 ml-1">Provide a comma-separated list of recipients for enterprise notifications.</p>
-            </div>
+            </div>}
           </div>
 
           <div className="h-px bg-charcoal/5 my-2" />

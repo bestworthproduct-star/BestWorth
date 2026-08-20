@@ -3,6 +3,7 @@ const mongoose = require('mongoose');
 const router = express.Router();
 const TeamMember = require('../models/TeamMember');
 const auth = require('../middleware/auth');
+const { requirePermission } = require('../middleware/authorize');
 const {
   hydrateMediaFieldsForResponse,
   normalizeMediaFieldsForStorage,
@@ -77,7 +78,7 @@ router.get('/', async (req, res) => {
 });
 
 // Admin: Add team member
-router.post('/', auth, async (req, res) => {
+router.post('/', auth, requirePermission('leadership', 'manage'), async (req, res) => {
   try {
     const payload = sanitizeTeamPayload(req);
     const validationError = validateTeamPayload(payload);
@@ -102,7 +103,7 @@ router.post('/', auth, async (req, res) => {
 });
 
 // Admin: Update team member
-router.put('/:id', auth, async (req, res) => {
+router.put('/:id', auth, requirePermission('leadership', 'manage'), async (req, res) => {
   try {
     if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
       return res.status(400).json({ message: 'Invalid team member ID' });
@@ -139,7 +140,7 @@ router.put('/:id', auth, async (req, res) => {
 });
 
 // Admin: Delete team member
-router.delete('/:id', auth, async (req, res) => {
+router.delete('/:id', auth, requirePermission('leadership', 'manage'), async (req, res) => {
   try {
     if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
       return res.status(400).json({ message: 'Invalid team member ID' });

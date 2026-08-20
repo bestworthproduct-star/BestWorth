@@ -4,6 +4,8 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
 const auth = require('../middleware/auth');
+const { getRole, serializeUser } = require('../utils/permissions');
+const { recordAccessAudit } = require('../utils/access-audit');
 
 const MAX_LOGIN_ATTEMPTS = 5;
 const MAX_LOGIN_REQUESTS = 10;
@@ -16,7 +18,11 @@ function isAdminPasswordChangeAllowed() {
 }
 
 function normalizeUsername(username) {
-  return typeof username === 'string' ? username.trim() : '';
+  return typeof username === 'string' ? username.trim().toLowerCase() : '';
+}
+
+function exactCaseInsensitive(value) {
+  return new RegExp(`^${value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i');
 }
 
 function normalizeNotificationEmails(value) {
@@ -110,7 +116,7 @@ router.post('/login', enforceLoginRateLimit, async (req, res) => {
       });
     }
 
-    const user = await User.findOne({ username });
+    const user = await User.findOne({ username: exactCaseInsensitive(username) });
     if (!user) {
       attemptRecord.attempts += 1;
       return res.status(400).json({ message: 'Invalid username or password' });
@@ -122,7 +128,13 @@ router.post('/login', enforceLoginRateLimit, async (req, res) => {
       return res.status(400).json({ message: 'Invalid username or password' });
     }
 
+    if (user.active === false) {
+      return res.status(403).json({ message: 'This account has been disabled.', code: 'ACCOUNT_DISABLED' });
+    }
+
     loginAttemptStore.delete(loginKey);
+    user.lastLoginAt = new Date();
+    await user.save();
 
     const token = jwt.sign(
       { id: user._id },
@@ -132,11 +144,9 @@ router.post('/login', enforceLoginRateLimit, async (req, res) => {
 
     res.json({
       token,
-      user: {
-        id: String(user._id),
-        username: user.username
-      }
+      user: serializeUser(user)
     });
+    void recordAccessAudit(req, 'auth.login', { actor: user._id });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
@@ -144,18 +154,14 @@ router.post('/login', enforceLoginRateLimit, async (req, res) => {
 
 router.get('/me', auth, async (req, res) => {
   try {
-    const user = await User.findById(req.user.id).select('username notificationEmails createdAt updatedAt');
+    const user = await User.findById(req.user.id);
     if (!user) {
       return res.status(404).json({ message: 'Admin account not found' });
     }
-
     res.json({
-      id: String(user._id),
-      username: user.username,
+      ...serializeUser(user),
       notificationEmails: user.notificationEmails || [],
-      passwordChangeLocked: !isAdminPasswordChangeAllowed(),
-      createdAt: user.createdAt,
-      updatedAt: user.updatedAt
+      passwordChangeLocked: getRole(user) === 'admin' && !isAdminPasswordChangeAllowed()
     });
   } catch (err) {
     res.status(500).json({ message: err.message });
@@ -174,8 +180,16 @@ router.post('/settings', auth, async (req, res) => {
     if (!user) {
       return res.status(404).json({ message: 'Admin account not found' });
     }
+    if (user.mustChangePassword) {
+      return res.status(403).json({
+        message: 'Change your temporary password before updating account settings.',
+        code: 'PASSWORD_CHANGE_REQUIRED'
+      });
+    }
 
-    if (isAdminPasswordChangeAllowed()) {
+    const passwordChangesAllowed = getRole(user) === 'worker' || isAdminPasswordChangeAllowed();
+
+    if (passwordChangesAllowed) {
       const validCurrentPassword = await bcrypt.compare(currentPassword || '', user.password);
       if (!validCurrentPassword) {
         return res.status(400).json({ message: 'Current password is incorrect' });
@@ -186,11 +200,12 @@ router.post('/settings', auth, async (req, res) => {
       return res.status(400).json({ message: 'Username is required' });
     }
 
-    if (notificationEmails.some((email) => !isValidEmail(email))) {
+    if (getRole(user) === 'admin' && notificationEmails.some((email) => !isValidEmail(email))) {
       return res.status(400).json({ message: 'Enter only valid company email addresses' });
     }
 
-    if (nextUsername !== user.username) {
+    const usernameChanged = nextUsername !== user.username;
+    if (usernameChanged) {
       const existingUser = await User.findOne({ username: nextUsername, _id: { $ne: user._id } });
       if (existingUser) {
         return res.status(400).json({ message: 'That username is already in use' });
@@ -199,7 +214,7 @@ router.post('/settings', auth, async (req, res) => {
 
     let passwordChanged = false;
     if (newPassword || confirmNewPassword) {
-      if (!isAdminPasswordChangeAllowed()) {
+      if (!passwordChangesAllowed) {
         return res.status(403).json({ message: 'Password changes are temporarily disabled during preview.' });
       }
 
@@ -211,8 +226,8 @@ router.post('/settings', auth, async (req, res) => {
         return res.status(400).json({ message: 'New passwords do not match' });
       }
 
-      if (newPassword.length < 6) {
-        return res.status(400).json({ message: 'New password must be at least 6 characters' });
+      if (newPassword.length < 8) {
+        return res.status(400).json({ message: 'New password must be at least 8 characters' });
       }
 
       if (await hasUsedPassword(user, newPassword)) {
@@ -220,13 +235,16 @@ router.post('/settings', auth, async (req, res) => {
       }
 
       const hashedPassword = await bcrypt.hash(newPassword, 10);
-      user.passwordHistory = [...(user.passwordHistory || []), user.password];
+      user.passwordHistory = [...(user.passwordHistory || []), user.password].slice(-5);
       user.password = hashedPassword;
       passwordChanged = true;
     }
 
     user.username = nextUsername;
-    user.notificationEmails = notificationEmails;
+    if (getRole(user) === 'admin') {
+      user.notificationEmails = notificationEmails;
+    }
+    user.mustChangePassword = false;
     await user.save();
 
     const token = jwt.sign(
@@ -237,16 +255,53 @@ router.post('/settings', auth, async (req, res) => {
 
     res.json({
       message: passwordChanged
-        ? 'Admin username and password updated successfully'
-        : 'Admin username updated successfully',
+        ? 'Username and password updated successfully'
+        : 'Account settings updated successfully',
       token,
       user: {
-        id: String(user._id),
-        username: user.username,
+        ...serializeUser(user),
         notificationEmails: user.notificationEmails || [],
-        passwordChangeLocked: !isAdminPasswordChangeAllowed()
+        passwordChangeLocked: getRole(user) === 'admin' && !isAdminPasswordChangeAllowed()
       }
     });
+    if (passwordChanged) void recordAccessAudit(req, 'auth.password_changed', { targetUser: user._id });
+    if (usernameChanged) void recordAccessAudit(req, 'auth.username_changed', { targetUser: user._id });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+router.post('/change-password', auth, async (req, res) => {
+  const currentPassword = req.body?.currentPassword || '';
+  const newPassword = req.body?.newPassword || '';
+  const confirmNewPassword = req.body?.confirmNewPassword || '';
+
+  try {
+    const user = await User.findById(req.user.id);
+    if (!user) return res.status(404).json({ message: 'Account not found' });
+    if (getRole(user) === 'admin' && !isAdminPasswordChangeAllowed()) {
+      return res.status(403).json({ message: 'Password changes are temporarily disabled during preview.' });
+    }
+    if (!(await bcrypt.compare(currentPassword, user.password))) {
+      return res.status(400).json({ message: 'Temporary password is incorrect' });
+    }
+    if (newPassword.length < 8) {
+      return res.status(400).json({ message: 'New password must be at least 8 characters' });
+    }
+    if (newPassword !== confirmNewPassword) {
+      return res.status(400).json({ message: 'New passwords do not match' });
+    }
+    if (await hasUsedPassword(user, newPassword)) {
+      return res.status(400).json({ message: 'You cannot reuse a current or past password' });
+    }
+
+    user.passwordHistory = [...(user.passwordHistory || []), user.password].slice(-5);
+    user.password = await bcrypt.hash(newPassword, 10);
+    user.mustChangePassword = false;
+    await user.save();
+    void recordAccessAudit(req, 'auth.temporary_password_changed', { targetUser: user._id });
+
+    res.json({ message: 'Password changed successfully', user: serializeUser(user) });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }

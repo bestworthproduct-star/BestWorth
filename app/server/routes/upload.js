@@ -2,16 +2,20 @@ const express = require('express');
 const router = express.Router();
 const multer = require('multer');
 const path = require('path');
+const mongoose = require('mongoose');
 const auth = require('../middleware/auth');
+const { requireSessionReady } = require('../middleware/authorize');
+const { getRole, hasPermission } = require('../utils/permissions');
 const { getRequestOrigin } = require('../utils/public-url');
 const MediaAsset = require('../models/MediaAsset');
 
-const MAX_FILE_SIZE = 10 * 1024 * 1024;
+const MAX_IMAGE_FILE_SIZE = 10 * 1024 * 1024;
+const MAX_VIDEO_FILE_SIZE = 50 * 1024 * 1024;
 
 const upload = multer({ 
   storage: multer.memoryStorage(),
   limits: {
-    fileSize: MAX_FILE_SIZE
+    fileSize: MAX_VIDEO_FILE_SIZE
   },
   fileFilter: (req, file, cb) => {
     const extension = path.extname(file.originalname).toLowerCase();
@@ -31,10 +35,10 @@ const upload = multer({
 // @route   POST api/upload
 // @desc    Upload a file
 // @access  Private
-router.post('/', auth, (req, res) => {
+router.post('/', auth, requireSessionReady, (req, res) => {
   upload.single('file')(req, res, async (error) => {
     if (error instanceof multer.MulterError && error.code === 'LIMIT_FILE_SIZE') {
-      return res.status(400).json({ message: 'File size must be 10MB or less' });
+      return res.status(400).json({ message: 'Video files must be 50MB or less' });
     }
 
     if (error) {
@@ -45,10 +49,59 @@ router.post('/', auth, (req, res) => {
       return res.status(400).json({ message: 'No file uploaded' });
     }
 
+    const isVideo = req.file.mimetype.startsWith('video/');
+    if (!isVideo && req.file.size > MAX_IMAGE_FILE_SIZE) {
+      return res.status(400).json({ message: 'Image files must be 10MB or less' });
+    }
+
+    const scope = String(req.body?.scope || '').trim();
+    const moduleName = scope === 'product'
+      ? 'catalog'
+      : scope === 'team'
+        ? 'leadership'
+        : scope === 'media'
+          ? 'media'
+        : scope === 'cms'
+          ? 'cms'
+          : null;
+
+    if (getRole(req.user) === 'worker' && (!moduleName || !hasPermission(req.user, moduleName, 'manage'))) {
+      return res.status(403).json({ message: 'You do not have permission to upload media here.', code: 'ACCESS_DENIED' });
+    }
+
     try {
       const extension = path.extname(req.file.originalname);
       const baseName = path.basename(req.file.originalname, extension).replace(/[^a-z0-9-_]+/gi, '-').replace(/-+/g, '-');
       const filename = `${baseName || 'file'}-${Date.now()}${extension}`;
+
+      if (isVideo) {
+        const bucket = new mongoose.mongo.GridFSBucket(mongoose.connection.db, { bucketName: 'mediaVideos' });
+        const videoUpload = bucket.openUploadStream(filename, {
+          contentType: req.file.mimetype,
+          metadata: {
+            originalName: req.file.originalname,
+            mimetype: req.file.mimetype,
+            size: req.file.size,
+            uploadedBy: req.user.id
+          }
+        });
+
+        await new Promise((resolve, reject) => {
+          videoUpload.once('finish', resolve);
+          videoUpload.once('error', reject);
+          videoUpload.end(req.file.buffer);
+        });
+
+        const fileUrl = `/api/media/video/${videoUpload.id}`;
+        return res.json({
+          url: fileUrl,
+          absoluteUrl: `${getRequestOrigin(req)}${fileUrl}`,
+          filename,
+          mimetype: req.file.mimetype,
+          size: req.file.size,
+          id: videoUpload.id
+        });
+      }
 
       const asset = await MediaAsset.create({
         filename,

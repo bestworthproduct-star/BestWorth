@@ -11,6 +11,7 @@ const navLinks = [
   { label: 'WHO WE ARE', target: '#about', icon: <Menu size={20} /> },
   { label: 'WHAT WE DO', target: '#products', icon: <Menu size={20} /> },
   { label: 'LEADERSHIP', target: '#management', icon: <Menu size={20} /> },
+  { label: 'NEWS & MEDIA', target: '#news-media', icon: <Menu size={20} /> },
   { label: 'GET IN TOUCH', target: '#contact', icon: <Menu size={20} /> },
 ]
 
@@ -43,7 +44,7 @@ export default function Navigation({ scrollTo }: { scrollTo: (target: string) =>
     const handleScroll = () => {
       setScrolled(window.scrollY > 100)
 
-      const sections = ['hero', 'about', 'products', 'management', 'contact']
+      const sections = ['hero', 'about', 'products', 'management', 'news-media', 'contact']
       for (let i = sections.length - 1; i >= 0; i--) {
         const el = document.getElementById(sections[i])
         if (el) {
@@ -121,12 +122,12 @@ export default function Navigation({ scrollTo }: { scrollTo: (target: string) =>
         </div>
 
         {/* Floating Nav Links Center/Right */}
-        <div className="flex items-center gap-10">
+        <div className="flex items-center gap-4 xl:gap-8">
           {navLinks.map((link) => (
             <button
               key={link.target}
               onClick={() => handleNavClick(link.target)}
-              className="font-body font-medium text-[13px] uppercase tracking-[0.15em] transition-all duration-300 relative group"
+              className="font-body font-medium text-[10px] uppercase tracking-[0.12em] transition-all duration-300 relative group xl:text-[12px] xl:tracking-[0.15em]"
               style={{
                 color: activeSection === link.target.slice(1) ? '#D64545' : 'rgba(255,255,255,0.78)',
               }}

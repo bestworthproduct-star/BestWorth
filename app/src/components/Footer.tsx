@@ -36,6 +36,7 @@ const footerLinks = [
   { label: 'WHO WE ARE', target: '#about' },
   { label: 'WHAT WE DO', target: '#products' },
   { label: 'LEADERSHIP', target: '#management' },
+  { label: 'NEWS & MEDIA', target: '#news-media' },
   { label: 'GET IN TOUCH', target: '#contact' },
 ]
 
@@ -151,6 +152,9 @@ export default function Footer({ scrollTo }: FooterProps) {
   const [heroContent, setHeroContent] = useState<any>(null)
   const [newsletterEmail, setNewsletterEmail] = useState('')
   const [isSubscribed, setIsNewsletterSubscribed] = useState(false)
+  const [newsletterPolicyAcknowledged, setNewsletterPolicyAcknowledged] = useState(false)
+  const [newsletterSubmitting, setNewsletterSubmitting] = useState(false)
+  const [newsletterError, setNewsletterError] = useState('')
   const [openMobileColumn, setOpenMobileColumn] = useState<string | null>(null)
   const footerRef = useRef<HTMLElement>(null)
 
@@ -216,15 +220,27 @@ export default function Footer({ scrollTo }: FooterProps) {
     )
   }, { scope: footerRef })
 
-  const handleNewsletterSubmit = (e: React.FormEvent) => {
+  const handleNewsletterSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!newsletterEmail) return
-    // Backend logic for newsletter will be implemented later
-    setIsNewsletterSubscribed(true)
-    setTimeout(() => {
-      setIsNewsletterSubscribed(false)
+    setNewsletterSubmitting(true)
+    setNewsletterError('')
+    try {
+      const response = await fetch(apiUrl('/api/newsletter/subscribe'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: newsletterEmail, policyAcknowledged: newsletterPolicyAcknowledged, website: '' })
+      })
+      const result = await response.json()
+      if (!response.ok) throw new Error(result.message || 'Subscription failed')
+      setIsNewsletterSubscribed(true)
       setNewsletterEmail('')
-    }, 4000)
+      setNewsletterPolicyAcknowledged(false)
+    } catch (error) {
+      setNewsletterError(error instanceof Error ? error.message : 'Subscription failed')
+    } finally {
+      setNewsletterSubmitting(false)
+    }
   }
 
   const columnLabelClass = 'font-display font-bold text-[11px] uppercase tracking-[0.25em] text-white/40 mb-6 flex items-center justify-between lg:block w-full text-left'
@@ -337,12 +353,14 @@ export default function Footer({ scrollTo }: FooterProps) {
 
             {isSubscribed ? (
               <div className="p-4 bg-green-500/10 border border-green-500/20 rounded-lg animate-in fade-in zoom-in duration-300">
-                <p className="text-[11px] font-bold text-green-500 uppercase tracking-widest text-center">Subscription Initialized</p>
+                <p className="text-[11px] font-bold text-green-500 uppercase tracking-widest text-center">Subscription Confirmed</p>
               </div>
             ) : (
-              <form onSubmit={handleNewsletterSubmit} className="relative">
+              <form onSubmit={handleNewsletterSubmit}>
+                <div className="relative">
                 <input
                   type="email"
+                  required
                   placeholder="Business Email"
                   value={newsletterEmail}
                   onChange={(e) => setNewsletterEmail(e.target.value)}
@@ -350,10 +368,14 @@ export default function Footer({ scrollTo }: FooterProps) {
                 />
                 <button
                   type="submit"
+                  disabled={newsletterSubmitting}
                   className="absolute right-0 top-1/2 -translate-y-1/2 p-2 text-white/40 hover:text-brass transition-colors"
                 >
                   <ArrowRight size={18} />
                 </button>
+                </div>
+                <label className="mt-3 flex items-start gap-2 text-[9px] leading-4 text-white/35"><input type="checkbox" required checked={newsletterPolicyAcknowledged} onChange={(event) => setNewsletterPolicyAcknowledged(event.target.checked)} className="mt-0.5 accent-brass"/><span>I agree to the <Link to="/privacy-policy" className="text-white/60 underline">Privacy Policy</Link>.</span></label>
+                {newsletterError && <p className="mt-2 text-[10px] text-red-300">{newsletterError}</p>}
               </form>
             )}
 

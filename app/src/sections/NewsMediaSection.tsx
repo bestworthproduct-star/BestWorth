@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { ArrowRight, CheckCircle2, ChevronLeft, ChevronRight, Mail } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { apiUrl } from '@/lib/api'
@@ -19,6 +19,8 @@ export default function NewsMediaSection() {
   const [submitting, setSubmitting] = useState(false)
   const [message, setMessage] = useState('')
   const [error, setError] = useState('')
+  const [sectionInView, setSectionInView] = useState(false)
+  const sectionRef = useRef<HTMLElement>(null)
 
   const loadPosts = useCallback(async () => {
     try {
@@ -69,8 +71,22 @@ export default function NewsMediaSection() {
   const showPrevious = () => setActiveIndex((current) => (current - 1 + posts.length) % posts.length)
   const showNext = () => setActiveIndex((current) => (current + 1) % posts.length)
 
+  useEffect(() => {
+    const section = sectionRef.current
+    if (!section) return
+    const observer = new IntersectionObserver(([entry]) => setSectionInView(entry.isIntersecting && entry.intersectionRatio >= 0.35), { threshold: [0, 0.35, 1] })
+    observer.observe(section)
+    return () => observer.disconnect()
+  }, [])
+
+  useEffect(() => {
+    if (!hasMultiplePosts || !sectionInView || activePost?.type === 'video') return
+    const timer = window.setTimeout(() => setActiveIndex((current) => (current + 1) % posts.length), 15000)
+    return () => window.clearTimeout(timer)
+  }, [activeIndex, activePost?.type, hasMultiplePosts, posts.length, sectionInView])
+
   return (
-    <section id="news-media" className="relative z-10 overflow-hidden bg-[#F5F8FC] px-5 py-20 sm:px-8 lg:px-12 lg:py-28">
+    <section id="news-media" ref={sectionRef} className="relative z-10 overflow-hidden bg-[#F5F8FC] px-5 py-20 sm:px-8 lg:px-12 lg:py-28">
       <div className="mx-auto max-w-[1280px]">
         <div className="grid items-start gap-10 lg:grid-cols-[minmax(0,60fr)_minmax(0,35fr)] lg:gap-[5%]">
           <div className="flex flex-col border-t border-[#102B4C]/15 pt-7 lg:order-2">
@@ -105,7 +121,7 @@ export default function NewsMediaSection() {
               <div className="aspect-video animate-pulse bg-[#E4EAF1]"/>
             ) : activePost ? (
               <div className="relative">
-                {activePost.type === 'video' ? <HomepageVideoPlayer key={activePost._id} post={activePost}/> : <Link key={activePost._id} to={`/news-media/${activePost.slug}`} className="group relative block aspect-video overflow-hidden bg-[#102B4C]">
+                {activePost.type === 'video' ? <HomepageVideoPlayer key={activePost._id} post={activePost} onEnded={hasMultiplePosts ? showNext : undefined}/> : <Link key={activePost._id} to={`/news-media/${activePost.slug}`} className="group relative block aspect-video overflow-hidden bg-[#102B4C]">
                   <img src={resolveMediaUrl(activePost.coverImage)} alt="" className="absolute inset-0 h-full w-full object-cover transition duration-700 group-hover:scale-[1.025]"/>
                   <div className="absolute inset-0 bg-gradient-to-t from-[#061A31]/95 via-[#061A31]/25 to-transparent"/>
                   <div className="absolute inset-x-0 bottom-0 p-6 text-white sm:p-9">

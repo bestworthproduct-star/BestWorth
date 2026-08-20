@@ -192,9 +192,10 @@ async function verifySmtpTransporter() {
 }
 
 async function buildEmailBranding(cmsData = {}) {
-  const brandColor = '#C5A059';
-  const charcoal = '#1A1A1A';
-  const lightBg = '#F8F8F5';
+  const brandColor = '#060273';
+  const charcoal = '#102B4C';
+  const accentColor = '#D64545';
+  const lightBg = '#F3F6FA';
   const appUrl = buildAppUrl();
   const requestLike = makePseudoRequest(appUrl);
 
@@ -228,6 +229,7 @@ async function buildEmailBranding(cmsData = {}) {
   return {
     brandColor,
     charcoal,
+    accentColor,
     lightBg,
     address,
     website,
@@ -240,10 +242,18 @@ async function buildEmailBranding(cmsData = {}) {
   };
 }
 
-const EmailLayout = (content, previewText, brandingData) => {
+const escapeHtml = (value = '') => String(value)
+  .replace(/&/g, '&amp;')
+  .replace(/</g, '&lt;')
+  .replace(/>/g, '&gt;')
+  .replace(/"/g, '&quot;')
+  .replace(/'/g, '&#039;');
+
+const EmailLayout = (content, previewText, brandingData, options = {}) => {
   const {
     brandColor,
     charcoal,
+    accentColor,
     lightBg,
     address,
     website,
@@ -261,56 +271,33 @@ const EmailLayout = (content, previewText, brandingData) => {
       <meta name="viewport" content="width=device-width, initial-scale=1.0">
       <link rel="shortcut icon" href="${faviconUrl}" type="image/x-icon">
       <title>Bestworth Products Limited</title>
-      <style>
-        body { margin: 0; padding: 0; background-color: ${lightBg}; font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; -webkit-font-smoothing: antialiased; }
-        .container { max-width: 600px; margin: 0 auto; background-color: #ffffff; }
-        .header { padding: 40px; text-align: center; background-color: ${charcoal}; border-bottom: 4px solid ${brandColor}; }
-        .content { padding: 50px 40px; color: ${charcoal}; line-height: 1.6; }
-        .footer { padding: 40px; background-color: ${charcoal}; color: #ffffff; text-align: center; font-size: 11px; letter-spacing: 1px; }
-        .footer a { color: ${brandColor}; text-decoration: none; font-weight: bold; }
-        .button { display: inline-block; padding: 14px 30px; background-color: ${brandColor}; color: #ffffff; text-decoration: none; font-weight: bold; text-transform: uppercase; letter-spacing: 2px; font-size: 10px; margin-top: 20px; }
-        .divider { height: 1px; background-color: #eeeeee; margin: 30px 0; }
-        .label { font-size: 10px; font-weight: bold; color: ${brandColor}; text-transform: uppercase; letter-spacing: 2px; display: block; margin-bottom: 8px; }
-      </style>
     </head>
-    <body>
+    <body style="margin:0;padding:0;background:${lightBg};font-family:Arial,Helvetica,sans-serif;color:${charcoal};">
       <div style="display:none; font-size:1px; line-height:1px; max-height:0px; max-width:0px; opacity:0; overflow:hidden;">
-        ${previewText}
+        ${escapeHtml(previewText)}
       </div>
-      <div class="container">
-        <div class="header">
-          <div style="margin-bottom: 20px;">
-            <img src="${logoSrc}" alt="Bestworth Products Limited" style="height: 40px; width: auto; filter: brightness(0) invert(1);">
-          </div>
-          <div style="display: flex; align-items: center; justify-content: center; gap: 10px; margin-top: 4px;">
-            <span style="display: inline-block; width: 26px; height: 1px; background-color: rgba(197,160,89,0.45);"></span>
-            <img src="${faviconUrl}" style="height: 12px; width: 12px; display: inline-block;" alt="">
-            <div style="color: ${brandColor}; font-size: 9px; letter-spacing: 3.2px; font-weight: 700; text-transform: uppercase; display: inline-block;">
-              Built To Last
-            </div>
-            <span style="display: inline-block; width: 26px; height: 1px; background-color: rgba(197,160,89,0.45);"></span>
-          </div>
-        </div>
-        <div class="content">
-          ${content}
-        </div>
-        <div class="footer">
-          <div style="font-size: 14px; margin-bottom: 20px; letter-spacing: 2px;">BESTWORTH PRODUCTS LIMITED</div>
-          <p style="opacity: 0.6; line-height: 1.8;">
-            ${address}
-          </p>
-          <div class="divider" style="background-color: rgba(255,255,255,0.1);"></div>
-          <p style="opacity: 0.8;">
-            <a href="${website}">WEBSITE</a> &nbsp;•&nbsp;
-            <a href="${linkedin}">LINKEDIN</a>${
-              contactLink ? ` &nbsp;•&nbsp; <a href="${contactLink.href}">${contactLink.label}</a>` : ''
-            }
-          </p>
-          <p style="margin-top: 30px; opacity: 0.4; font-size: 9px;">
-            &copy; ${new Date().getFullYear()} Bestworth Products Limited. All Rights Reserved.
-          </p>
-        </div>
-      </div>
+      <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background:${lightBg};padding:24px 10px;">
+        <tr><td align="center">
+          <table role="presentation" width="620" cellspacing="0" cellpadding="0" border="0" style="width:100%;max-width:620px;background:#ffffff;border:1px solid #dfe7f0;border-radius:10px;overflow:hidden;">
+            <tr><td style="height:4px;background:${accentColor};font-size:0;line-height:0;">&nbsp;</td></tr>
+            <tr><td style="padding:26px 34px;background:${charcoal};">
+              <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0"><tr>
+                <td><img src="${logoSrc}" alt="Bestworth Products Limited" style="display:block;height:36px;max-width:210px;width:auto;"></td>
+                <td align="right" style="color:#b9c7d8;font-size:9px;letter-spacing:2px;text-transform:uppercase;">Built to last</td>
+              </tr></table>
+            </td></tr>
+            <tr><td style="padding:38px 34px;color:${charcoal};font-size:15px;line-height:1.7;">${content}</td></tr>
+            <tr><td style="padding:26px 34px;background:#edf2f7;border-top:1px solid #dfe7f0;color:#60758b;font-size:11px;line-height:1.7;">
+              ${options.footerExtra ? `<div style="margin-bottom:18px;padding-bottom:18px;border-bottom:1px solid #d8e1ea;">${options.footerExtra}</div>` : ''}
+              <strong style="color:${charcoal};font-size:12px;">BESTWORTH PRODUCTS LIMITED</strong><br>
+              ${escapeHtml(address)}<br>
+              <a href="${website}" style="color:${brandColor};text-decoration:none;">Website</a>&nbsp;&nbsp;·&nbsp;&nbsp;
+              <a href="${linkedin}" style="color:${brandColor};text-decoration:none;">LinkedIn</a>${contactLink ? `&nbsp;&nbsp;·&nbsp;&nbsp;<a href="${contactLink.href}" style="color:${brandColor};text-decoration:none;">${contactLink.label}</a>` : ''}
+              <div style="margin-top:12px;color:#8494a5;">&copy; ${new Date().getFullYear()} Bestworth Products Limited. All rights reserved.</div>
+            </td></tr>
+          </table>
+        </td></tr>
+      </table>
     </body>
     </html>
   `;
@@ -334,7 +321,9 @@ async function sendWithResend(mailOptions) {
       to: Array.isArray(mailOptions.to) ? mailOptions.to : [mailOptions.to],
       reply_to: mailOptions.replyTo,
       subject: mailOptions.subject,
+      text: mailOptions.text,
       html: mailOptions.html,
+      headers: mailOptions.headers,
       attachments: Array.isArray(mailOptions.attachments)
         ? mailOptions.attachments.map((attachment) => ({
             filename: attachment.filename,
@@ -378,7 +367,8 @@ async function sendWithSendGrid(mailOptions) {
     body: JSON.stringify({
       personalizations: [
         {
-          to: (Array.isArray(mailOptions.to) ? mailOptions.to : [mailOptions.to]).map((email) => ({ email }))
+          to: (Array.isArray(mailOptions.to) ? mailOptions.to : [mailOptions.to]).map((email) => ({ email })),
+          headers: mailOptions.headers
         }
       ],
       from: {
@@ -387,10 +377,8 @@ async function sendWithSendGrid(mailOptions) {
       reply_to: mailOptions.replyTo ? { email: mailOptions.replyTo } : undefined,
       subject: mailOptions.subject,
       content: [
-        {
-          type: 'text/html',
-          value: mailOptions.html
-        }
+        ...(mailOptions.text ? [{ type: 'text/plain', value: mailOptions.text }] : []),
+        { type: 'text/html', value: mailOptions.html }
       ],
       attachments: Array.isArray(mailOptions.attachments)
         ? mailOptions.attachments.map((attachment) => ({
@@ -487,24 +475,24 @@ const sendInquiryNotification = async (inquiry, cmsData = {}) => {
   const appUrl = buildAppUrl();
   const brandingData = await buildEmailBranding(cmsData);
   const content = `
-    <span class="label">System Notification</span>
-    <h1 style="font-size: 24px; margin: 0 0 30px 0; font-weight: 500; letter-spacing: -0.5px;">New Business Inquiry</h1>
+    <span style="display:block;margin-bottom:9px;color:#D64545;font-size:10px;font-weight:700;letter-spacing:1.6px;text-transform:uppercase;">System notification</span>
+    <h1 style="font-size:24px;line-height:1.3;margin:0 0 28px;font-weight:600;letter-spacing:-0.4px;color:#102B4C;">New business inquiry</h1>
     <div style="margin-bottom: 25px;">
-      <span class="label">From</span>
-      <div style="font-size: 16px; font-weight: bold;">${inquiry.name}</div>
-      <div style="font-size: 14px; opacity: 0.7;">${inquiry.email}</div>
+      <span style="display:block;color:#60758b;font-size:10px;font-weight:700;letter-spacing:1.2px;text-transform:uppercase;">From</span>
+      <div style="font-size:16px;font-weight:600;">${escapeHtml(inquiry.name)}</div>
+      <div style="font-size:14px;color:#60758b;">${escapeHtml(inquiry.email)}</div>
     </div>
     <div style="margin-bottom: 25px;">
-      <span class="label">Company</span>
-      <div style="font-size: 16px;">${inquiry.company || 'Not Specified'}</div>
+      <span style="display:block;color:#60758b;font-size:10px;font-weight:700;letter-spacing:1.2px;text-transform:uppercase;">Company</span>
+      <div style="font-size:16px;">${escapeHtml(inquiry.company || 'Not specified')}</div>
     </div>
-    <div class="divider"></div>
-    <span class="label">Message Context</span>
-    <div style="background-color: #F8F8F5; padding: 25px; border-left: 2px solid #C5A059; font-style: italic; color: #444;">
-      "${inquiry.message}"
+    <div style="height:1px;background:#e3e9f0;margin:28px 0;"></div>
+    <span style="display:block;margin-bottom:9px;color:#60758b;font-size:10px;font-weight:700;letter-spacing:1.2px;text-transform:uppercase;">Message</span>
+    <div style="background:#F3F6FA;padding:20px;border-left:3px solid #060273;color:#425a70;">
+      ${escapeHtml(inquiry.message)}
     </div>
     <div style="margin-top: 40px;">
-      <a href="${appUrl}/admin" class="button">Access Admin Portal</a>
+      <a href="${appUrl}/admin" style="display:inline-block;padding:12px 20px;border-radius:5px;background:#060273;color:#fff;text-decoration:none;font-size:11px;font-weight:700;">Open admin portal</a>
     </div>
   `;
 
@@ -547,17 +535,17 @@ const sendInquiryConfirmation = async (inquiry, cmsData = {}) => {
 
   const brandingData = await buildEmailBranding(cmsData);
   const content = `
-    <span class="label">Inquiry Received</span>
-    <h1 style="font-size: 24px; margin: 0 0 30px 0; font-weight: 500; letter-spacing: -0.5px;">Thank You for Contacting Bestworth</h1>
+    <span style="display:block;margin-bottom:9px;color:#D64545;font-size:10px;font-weight:700;letter-spacing:1.6px;text-transform:uppercase;">Inquiry received</span>
+    <h1 style="font-size:24px;line-height:1.3;margin:0 0 28px;font-weight:600;color:#102B4C;">Thank you for contacting Bestworth</h1>
     <div style="font-size: 16px; color: #333; line-height: 1.8;">
-      <div style="margin-bottom: 15px;">Dear ${inquiry.name},</div>
+      <div style="margin-bottom:15px;">Dear ${escapeHtml(inquiry.name)},</div>
       <div style="margin-bottom: 15px;">We have received your inquiry and our team will review it shortly.</div>
       <div style="margin-bottom: 15px;">A member of our team will get back to you using this email address as soon as possible.</div>
     </div>
-    <div class="divider"></div>
-    <span class="label">Your Message</span>
-    <div style="background-color: #F8F8F5; padding: 25px; border-left: 2px solid #C5A059; font-style: italic; color: #444;">
-      "${inquiry.message}"
+    <div style="height:1px;background:#e3e9f0;margin:28px 0;"></div>
+    <span style="display:block;margin-bottom:9px;color:#60758b;font-size:10px;font-weight:700;letter-spacing:1.2px;text-transform:uppercase;">Your message</span>
+    <div style="background:#F3F6FA;padding:20px;border-left:3px solid #060273;color:#425a70;">
+      ${escapeHtml(inquiry.message)}
     </div>
   `;
 
@@ -600,14 +588,14 @@ const sendAdminReply = async (to, subject, message, cmsData = {}) => {
   });
 
   const brandingData = await buildEmailBranding(cmsData);
-  const formattedMessage = message.replace(/<br>/g, '</div><div style="margin-bottom: 15px;">');
+  const formattedMessage = escapeHtml(message).replace(/\r?\n/g, '<br>');
   const content = `
-    <span class="label">Official Correspondence</span>
-    <h1 style="font-size: 24px; margin: 0 0 35px 0; font-weight: 500; letter-spacing: -0.5px;">Corporate Response</h1>
+    <span style="display:block;margin-bottom:9px;color:#D64545;font-size:10px;font-weight:700;letter-spacing:1.6px;text-transform:uppercase;">Official correspondence</span>
+    <h1 style="font-size:24px;line-height:1.3;margin:0 0 28px;font-weight:600;color:#102B4C;">Response from Bestworth</h1>
     <div style="font-size: 16px; color: #333; line-height: 1.8;">
       <div style="margin-bottom: 15px;">${formattedMessage}</div>
     </div>
-    <div class="divider"></div>
+    <div style="height:1px;background:#e3e9f0;margin:28px 0;"></div>
     <div style="font-size: 14px; color: #777;">
       If you have further technical requirements or wish to schedule a physical inspection of our inventory, please reply directly to this email.
     </div>
@@ -644,5 +632,10 @@ const sendAdminReply = async (to, subject, message, cmsData = {}) => {
 module.exports = {
   sendInquiryNotification,
   sendInquiryConfirmation,
-  sendAdminReply
+  sendAdminReply,
+  sendMail,
+  buildEmailBranding,
+  EmailLayout,
+  escapeHtml,
+  buildAppUrl
 };

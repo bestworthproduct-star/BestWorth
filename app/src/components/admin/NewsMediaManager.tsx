@@ -5,6 +5,7 @@ import { resolveMediaUrl } from '@/lib/media'
 import { useSocket } from '@/hooks/useSocket'
 import type { NewsMediaPost, NewsMediaResponse, NewsMediaStatus, NewsMediaType } from '@/types/news-media'
 import MediaVideoPreview from '@/components/MediaVideoPreview'
+import NewsletterCampaignPanel from '@/components/admin/NewsletterCampaignPanel'
 
 type Filter = 'all' | NewsMediaType | NewsMediaStatus
 type PostForm = Omit<NewsMediaPost, '_id' | 'createdAt' | 'updatedAt'>
@@ -183,6 +184,8 @@ export default function NewsMediaManager({ canManage, isAdmin }: Props) {
           <div className="flex flex-wrap gap-2">{isAdmin && <button onClick={() => setShowSubscribers((current) => !current)} className="inline-flex items-center gap-2 rounded-lg border border-[#102B4C]/10 px-4 py-2.5 text-[10px] font-semibold text-[#102B4C]"><Mail size={13}/> Subscribers · {subscriberTotal}</button>}{canManage && <button onClick={openCreate} className="inline-flex items-center gap-2 rounded-lg bg-[#102B4C] px-4 py-2.5 text-[10px] font-semibold text-white transition hover:bg-[#060273]"><Plus size={13}/> New content</button>}</div>
         </div>
       </div>
+
+      {isAdmin && <NewsletterCampaignPanel />}
 
       {error && !modalOpen && <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-[11px] text-red-700">{error}</div>}
       {showSubscribers && isAdmin && <div className="rounded-lg border border-[#102B4C]/10 bg-white p-5"><div className="flex items-center justify-between"><div><h3 className="text-[12px] font-semibold text-[#102B4C]">Newsletter subscribers</h3><p className="mt-1 text-[10px] text-[#102B4C]/40">Owner-only contact data · {subscriberTotal} active</p></div><button onClick={() => setShowSubscribers(false)} className="p-2 text-[#102B4C]/35"><X size={15}/></button></div><div className={`mt-4 divide-y divide-[#102B4C]/7 rounded-lg border border-[#102B4C]/8 ${subscribers.length > 6 ? 'max-h-[330px] overflow-y-auto [scrollbar-width:thin]' : ''}`}>{subscribers.length ? subscribers.map((subscriber) => <div key={subscriber._id} className="flex items-center justify-between gap-4 px-4 py-3"><span className="truncate text-[11px] text-[#102B4C]/70">{subscriber.email}</span><time className="shrink-0 text-[9px] text-[#102B4C]/35">{new Date(subscriber.consentAt).toLocaleDateString()}</time></div>) : <p className="p-8 text-center text-[11px] text-[#102B4C]/40">No active subscribers yet.</p>}</div></div>}

@@ -1,7 +1,9 @@
 import { useState, useEffect } from 'react'
-import { LayoutDashboard, Package, Users, MessageSquare, FileEdit, Settings, LogOut, Menu, X, ChevronRight, ArrowLeft, type LucideIcon } from 'lucide-react'
+import { LayoutDashboard, Package, Users, MessageSquare, FileEdit, Newspaper, Settings, LogOut, Menu, X, ChevronRight, ArrowLeft, ShieldCheck, type LucideIcon } from 'lucide-react'
 import { resolveMediaUrl } from '@/lib/media'
 import { apiUrl } from '@/lib/api'
+import { canAccess } from '@/lib/permissions'
+import type { AuthUser, PermissionModule } from '@/types/auth'
 
 interface AdminLayoutProps {
   children: React.ReactNode
@@ -9,27 +11,37 @@ interface AdminLayoutProps {
   setActiveTab: (tab: any) => void
   handleLogout: () => void
   stats: { products: number; inquiries: number; team: number }
+  user: AuthUser
 }
 
 interface NavItem {
-  id: 'dashboard' | 'products' | 'team' | 'inquiries' | 'cms' | 'settings'
+  id: 'dashboard' | 'products' | 'team' | 'inquiries' | 'media' | 'cms' | 'workers' | 'settings'
   label: string
   icon: LucideIcon
+  permission?: PermissionModule
+  adminOnly?: boolean
 }
 
 export const navItems: readonly NavItem[] = [
-  { id: 'dashboard', label: 'Overview', icon: LayoutDashboard },
-  { id: 'products', label: 'Catalog', icon: Package },
-  { id: 'team', label: 'Leadership', icon: Users },
-  { id: 'inquiries', label: 'Inquiries', icon: MessageSquare },
-  { id: 'cms', label: 'Site CMS', icon: FileEdit },
+  { id: 'dashboard', label: 'Overview', icon: LayoutDashboard, permission: 'overview' },
+  { id: 'products', label: 'Catalog', icon: Package, permission: 'catalog' },
+  { id: 'team', label: 'Leadership', icon: Users, permission: 'leadership' },
+  { id: 'inquiries', label: 'Inquiries', icon: MessageSquare, permission: 'inquiries' },
+  { id: 'media', label: 'News & Media', icon: Newspaper, permission: 'media' },
+  { id: 'cms', label: 'Site CMS', icon: FileEdit, permission: 'cms' },
+  { id: 'workers', label: 'Worker Access', icon: ShieldCheck, adminOnly: true },
   { id: 'settings', label: 'Settings', icon: Settings }
 ] as const
 
-export default function AdminLayout({ children, activeTab, setActiveTab, handleLogout }: AdminLayoutProps) {
+export default function AdminLayout({ children, activeTab, setActiveTab, handleLogout, user }: AdminLayoutProps) {
   const [mobileNavOpen, setMobileNavOpen] = useState(false)
   const [branding, setBranding] = useState<any>(null)
   const isCMS = activeTab === 'cms'
+  const visibleNavItems = navItems.filter((item) => {
+    if (item.adminOnly) return user.role === 'admin'
+    if (item.permission) return canAccess(user, item.permission)
+    return true
+  })
 
   useEffect(() => {
     fetch(apiUrl('/api/content/branding'))
@@ -67,7 +79,7 @@ export default function AdminLayout({ children, activeTab, setActiveTab, handleL
               )}
             </div>
             <nav className="flex-1 p-4 space-y-1">
-              {navItems.map((item) => (
+              {visibleNavItems.map((item) => (
                 <button
                   key={item.id}
                   onClick={() => { setActiveTab(item.id); setMobileNavOpen(false); }}
@@ -98,7 +110,7 @@ export default function AdminLayout({ children, activeTab, setActiveTab, handleL
               )}
             </div>
             <nav className="flex-1 p-4 space-y-1">
-              {navItems.map((item) => (
+              {visibleNavItems.map((item) => (
                 <button
                   key={item.id}
                   onClick={() => setActiveTab(item.id)}
@@ -113,6 +125,10 @@ export default function AdminLayout({ children, activeTab, setActiveTab, handleL
               ))}
             </nav>
             <div className="p-6 border-t border-charcoal/5">
+              <div className="mb-4 min-w-0">
+                <p className="truncate text-[11px] font-semibold text-charcoal/70">{user.fullName || user.username}</p>
+                <p className="mt-0.5 text-[9px] font-medium uppercase tracking-widest text-charcoal/30">{user.role === 'admin' ? 'Owner' : 'Worker'}</p>
+              </div>
               <button onClick={handleLogout} className="text-[12px] font-medium text-charcoal/40 hover:text-red-600 flex items-center gap-2 transition-colors"><LogOut size={14}/> Sign Out</button>
             </div>
           </aside>
@@ -139,7 +155,7 @@ export default function AdminLayout({ children, activeTab, setActiveTab, handleL
             {!isCMS && (
               <header className="mb-10">
                 <h1 className="text-2xl font-semibold text-charcoal tracking-tight">
-                  {navItems.find(i => i.id === activeTab)?.label}
+                  {visibleNavItems.find(i => i.id === activeTab)?.label}
                 </h1>
                 <p className="text-[13px] text-charcoal/40 mt-1">Manage your platform resources and configuration.</p>
               </header>

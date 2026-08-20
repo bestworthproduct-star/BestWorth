@@ -112,7 +112,7 @@ export default function Login() {
 
       if (response.ok) {
         localStorage.setItem('adminToken', data.token)
-        navigate('/admin')
+        navigate(data.user?.mustChangePassword ? '/admin/change-password' : '/admin')
       } else {
         setError(data.message || 'Login failed')
       }
@@ -212,10 +212,10 @@ export default function Login() {
                 Sign In
               </p>
               <h2 className="mt-3 text-center font-display text-3xl tracking-tight text-[#102B4C] sm:text-4xl lg:text-left lg:text-6xl">
-                Admin login
+                Secure portal login
               </h2>
               <p className="mt-3 text-center text-[14px] leading-6 text-[#102B4C]/70 lg:text-left lg:max-w-[620px] lg:text-[18px] lg:leading-8">
-                Continue to the Bestworth administration dashboard.
+                Continue to your authorized Bestworth workspace.
               </p>
 
               {error && (

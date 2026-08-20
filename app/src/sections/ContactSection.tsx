@@ -13,6 +13,8 @@ interface ContactData {
   mapUrl: string
 }
 
+const cleanMapUrl = (value: string) => value.trim().split('"')[0].trim()
+
 type InquiryType = 'Product Catalog' | 'Technical Specs' | 'Partnership' | 'Other'
 
 export default function ContactSection() {
@@ -23,6 +25,7 @@ export default function ContactSection() {
   const leftRef = useRef<HTMLDivElement>(null)
   const rightRef = useRef<HTMLDivElement>(null)
   const modalRef = useRef<HTMLDivElement>(null)
+  const mapUrl = contactData?.mapUrl ? cleanMapUrl(contactData.mapUrl) : ''
 
   useEffect(() => {
     fetch(apiUrl('/api/content/contact'))
@@ -300,7 +303,7 @@ export default function ContactSection() {
 
                   <div className="relative aspect-[16/10] overflow-hidden rounded-xl border border-charcoal/10 group shadow-lg">
                     <iframe
-                      src={contactData.mapUrl}
+                      src={mapUrl}
                       width="100%"
                       height="100%"
                       style={{ border: 0, filter: 'grayscale(100%) contrast(1.2) brightness(0.95)' }}
@@ -311,7 +314,7 @@ export default function ContactSection() {
                     />
                     <div className="absolute inset-0 pointer-events-none border-[8px] border-white/10" />
                     <button
-                      onClick={() => window.open(contactData.mapUrl, '_blank')}
+                      onClick={() => window.open(mapUrl, '_blank')}
                       className="absolute bottom-4 right-4 bg-white/90 backdrop-blur-sm text-charcoal px-4 py-2 rounded-lg text-[10px] font-bold uppercase tracking-widest shadow-lg hover:bg-white transition-colors"
                     >
                       Maximize Map
@@ -386,7 +389,7 @@ export default function ContactSection() {
 
                   <div className="relative aspect-[4/3] rounded-2xl overflow-hidden border border-charcoal/10 shadow-inner">
                     <iframe
-                      src={contactData.mapUrl}
+                      src={mapUrl}
                       width="100%"
                       height="100%"
                       style={{ border: 0, filter: 'grayscale(100%) contrast(1.2) brightness(0.95)' }}
@@ -396,7 +399,7 @@ export default function ContactSection() {
                       title="Bestworth Location"
                     />
                     <button
-                      onClick={() => window.open(contactData.mapUrl, '_blank')}
+                      onClick={() => window.open(mapUrl, '_blank')}
                       className="absolute top-4 right-4 bg-white/90 backdrop-blur-sm text-charcoal px-3 py-1.5 rounded-lg text-[9px] font-bold uppercase tracking-widest shadow-md"
                     >
                       Open in Maps

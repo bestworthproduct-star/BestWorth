@@ -12,6 +12,11 @@ import LeadershipStudio from '@/components/admin/LeadershipStudio'
 import CommunicationCenter from '@/components/admin/CommunicationCenter'
 import CMSStudio from '@/components/admin/CMSStudio'
 import AccountSettings from '@/components/admin/AccountSettings'
+import WorkerAccessManager from '@/components/admin/WorkerAccessManager'
+import ReadOnlyNotice from '@/components/admin/ReadOnlyNotice'
+import NewsMediaManager from '@/components/admin/NewsMediaManager'
+import { canAccess } from '@/lib/permissions'
+import type { AuthUser } from '@/types/auth'
 
 // --- Interfaces ---
 interface Product {
@@ -51,7 +56,8 @@ interface Inquiry {
 export default function AdminDashboard() {
   // Navigation & Base State
   const [authorized, setAuthorized] = useState(false)
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'products' | 'team' | 'inquiries' | 'cms' | 'settings'>('dashboard')
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'products' | 'team' | 'inquiries' | 'media' | 'cms' | 'workers' | 'settings'>('dashboard')
+  const [currentUser, setCurrentUser] = useState<AuthUser | null>(null)
   const [loading, setLoading] = useState(true)
   const navigate = useNavigate()
 
@@ -83,38 +89,35 @@ export default function AdminDashboard() {
     navigate('/service-unavailable?area=admin')
   }, [navigate])
 
-  const fetchDashboardData = useCallback(async (token: string) => {
+  const fetchDashboardData = useCallback(async (token: string, user: AuthUser) => {
     try {
-      const [pRes, iRes, tRes, cRes] = await Promise.all([
+      const [pRes, tRes, cRes] = await Promise.all([
         fetch(apiUrl('/api/products'), { headers: { 'Authorization': `Bearer ${token}` } }),
-        fetch(apiUrl('/api/inquiries'), { headers: { 'Authorization': `Bearer ${token}` } }),
         fetch(apiUrl('/api/team'), { headers: { 'Authorization': `Bearer ${token}` } }),
         fetch(apiUrl('/api/content'), { headers: { 'Authorization': `Bearer ${token}` } })
       ])
 
-      if ([pRes, iRes, tRes, cRes].some(r => r.status === 503)) return redirectToServiceUnavailable()
-      if ([pRes, iRes, tRes, cRes].some(r => r.status === 401 || r.status === 403)) {
-        localStorage.removeItem('adminToken')
-        return navigate('/login')
-      }
+      if ([pRes, tRes, cRes].some(r => r.status === 503)) return redirectToServiceUnavailable()
 
       const products = await pRes.json()
-      const inquiries = await iRes.json()
       const team = await tRes.json()
       const content = await cRes.json()
-
-      const profileRes = await fetch(apiUrl('/api/auth/me'), { headers: { 'Authorization': `Bearer ${token}` } })
-      const profile = profileRes.ok ? await profileRes.json() : null
+      let inquiries: Inquiry[] = []
+      if (canAccess(user, 'inquiries')) {
+        const inquiryResponse = await fetch(apiUrl('/api/inquiries'), { headers: { 'Authorization': `Bearer ${token}` } })
+        if (inquiryResponse.status === 503) return redirectToServiceUnavailable()
+        if (inquiryResponse.ok) inquiries = await inquiryResponse.json()
+      }
 
       setData({ products, inquiries, team })
       setCmsContent(content)
-      if (profile?.username) {
+      if (user.username) {
         setAccountSettings(prev => ({
           ...prev,
-          username: profile.username,
-          notificationEmails: Array.isArray(profile.notificationEmails) ? profile.notificationEmails.join(', ') : ''
+          username: user.username,
+          notificationEmails: Array.isArray(user.notificationEmails) ? user.notificationEmails.join(', ') : ''
         }))
-        setPasswordChangeLocked(Boolean(profile.passwordChangeLocked))
+        setPasswordChangeLocked(Boolean(user.passwordChangeLocked))
       }
       setStats({
         products: products.length,
@@ -126,7 +129,7 @@ export default function AdminDashboard() {
       console.error(err)
       redirectToServiceUnavailable()
     }
-  }, [navigate, redirectToServiceUnavailable])
+  }, [redirectToServiceUnavailable])
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -137,8 +140,23 @@ export default function AdminDashboard() {
         const response = await fetch(apiUrl('/api/admin/check'), { headers: { 'Authorization': `Bearer ${token}` } })
         if (response.status === 503) return redirectToServiceUnavailable()
         if (response.ok) {
+          const result = await response.json()
+          const profileResponse = await fetch(apiUrl('/api/auth/me'), { headers: { 'Authorization': `Bearer ${token}` } })
+          const user = profileResponse.ok ? await profileResponse.json() as AuthUser : result.user as AuthUser
+          if (user.mustChangePassword) return navigate('/admin/change-password', { replace: true })
+          setCurrentUser(user)
+          if (!canAccess(user, 'overview')) {
+            const firstAvailable = ([
+              ['products', 'catalog'],
+              ['team', 'leadership'],
+              ['inquiries', 'inquiries'],
+              ['media', 'media'],
+              ['cms', 'cms']
+            ] as const).find(([, moduleName]) => canAccess(user, moduleName))
+            setActiveTab(firstAvailable?.[0] || 'settings')
+          }
           setAuthorized(true)
-          fetchDashboardData(token)
+          fetchDashboardData(token, user)
         } else {
           localStorage.removeItem('adminToken')
           navigate('/login')
@@ -153,8 +171,8 @@ export default function AdminDashboard() {
   // Real-time Sync
   const onDataChange = useCallback(() => {
     const token = localStorage.getItem('adminToken')
-    if (token) fetchDashboardData(token)
-  }, [fetchDashboardData])
+    if (token && currentUser) fetchDashboardData(token, currentUser)
+  }, [fetchDashboardData, currentUser])
 
   useSocket('product_change', onDataChange)
   useSocket('team_change', onDataChange)
@@ -177,18 +195,23 @@ export default function AdminDashboard() {
     setUploadProgress(0)
     const formData = new FormData()
     formData.append('file', file)
+    formData.append('scope', target === 'product' ? 'product' : target === 'team' ? 'team' : 'cms')
 
     try {
-      const xhr = new XMLHttpRequest()
-      xhr.open('POST', apiUrl('/api/upload'))
-      xhr.setRequestHeader('Authorization', `Bearer ${token}`)
-      xhr.upload.onprogress = (e) => { if (e.lengthComputable) setUploadProgress(Math.round((e.loaded / e.total) * 100)) }
-      xhr.onload = () => {
-        const res = JSON.parse(xhr.responseText)
-        if (xhr.status >= 200 && xhr.status < 300) callback(res.url)
-        else alert(res.message || 'Upload failed')
-      }
-      xhr.send(formData)
+      await new Promise<void>((resolve) => {
+        const xhr = new XMLHttpRequest()
+        xhr.open('POST', apiUrl('/api/upload'))
+        xhr.setRequestHeader('Authorization', `Bearer ${token}`)
+        xhr.upload.onprogress = (e) => { if (e.lengthComputable) setUploadProgress(Math.round((e.loaded / e.total) * 100)) }
+        xhr.onload = () => {
+          const res = JSON.parse(xhr.responseText || '{}')
+          if (xhr.status >= 200 && xhr.status < 300) callback(res.url)
+          else alert(res.message || 'Upload failed')
+          resolve()
+        }
+        xhr.onerror = () => { alert('Upload failed'); resolve() }
+        xhr.send(formData)
+      })
     } finally {
       setUploading(null)
       setUploadProgress(null)
@@ -203,7 +226,7 @@ export default function AdminDashboard() {
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
         body: JSON.stringify(data)
       })
-      if (res.ok) fetchDashboardData(token!)
+      if (res.ok && currentUser) fetchDashboardData(token!, currentUser)
     } catch (err) { console.error(err) }
   }
 
@@ -222,7 +245,7 @@ export default function AdminDashboard() {
       if (res.ok) {
         setProductModal({ show: false, editId: null })
         setProductForm({ name: '', category: 'nails', description: '', image: '', featured: false })
-        fetchDashboardData(token!)
+        if (currentUser) fetchDashboardData(token!, currentUser)
       }
     } catch (err) { console.error(err) }
   }
@@ -242,7 +265,7 @@ export default function AdminDashboard() {
       if (res.ok) {
         setTeamModal({ show: false, editId: null })
         setTeamForm({ name: '', role: '', image: '', bio: '', order: 0 })
-        fetchDashboardData(token!)
+        if (currentUser) fetchDashboardData(token!, currentUser)
       }
     } catch (err) { console.error(err) }
   }
@@ -254,7 +277,7 @@ export default function AdminDashboard() {
       headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
       body: JSON.stringify({ status })
     })
-    fetchDashboardData(token!)
+    if (currentUser) fetchDashboardData(token!, currentUser)
   }
 
   const handleSendReply = async (i: Inquiry, subject: string, message: string) => {
@@ -265,11 +288,17 @@ export default function AdminDashboard() {
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
         body: JSON.stringify({ to: i.email, subject, message: message.replace(/\n/g, '<br>'), inquiryId: i._id })
       })
-      if (res.ok) fetchDashboardData(token!)
+      if (res.ok && currentUser) fetchDashboardData(token!, currentUser)
     } catch (err) { console.error(err) }
   }
 
-  if (!authorized) return null
+  if (!authorized || !currentUser) return null
+
+  const canManageCatalog = canAccess(currentUser, 'catalog', 'manage')
+  const canManageLeadership = canAccess(currentUser, 'leadership', 'manage')
+  const canManageInquiries = canAccess(currentUser, 'inquiries', 'manage')
+  const canManageMedia = canAccess(currentUser, 'media', 'manage')
+  const canManageCms = canAccess(currentUser, 'cms', 'manage')
 
   const renderContent = () => {
     if (loading) return (
@@ -282,7 +311,8 @@ export default function AdminDashboard() {
     switch (activeTab) {
       case 'dashboard': return <Overview stats={stats} />
       case 'products': return (
-        <CatalogManager
+        <><ReadOnlyGate enabled={!canManageCatalog} /><CatalogManager
+          canManage={canManageCatalog}
           products={data.products}
           categories={cmsContent.categories || []}
           onAddProduct={() => {
@@ -297,7 +327,7 @@ export default function AdminDashboard() {
             if (!window.confirm('Archive this specification?')) return
             const token = localStorage.getItem('adminToken')
             await fetch(apiUrl(`/api/products/${id}`), { method: 'DELETE', headers: { 'Authorization': `Bearer ${token}` } })
-            fetchDashboardData(token!)
+            if (currentUser) fetchDashboardData(token!, currentUser)
           }}
           onSaveCategory={async (form, editId) => {
             const currentCategories = cmsContent.categories || []
@@ -323,10 +353,11 @@ export default function AdminDashboard() {
             const updatedCategories = (cmsContent.categories || []).filter((cat: any) => cat.id !== id)
             await handleUpdateContent('categories', updatedCategories)
           }}
-        />
+        /></>
       )
       case 'team': return (
-        <LeadershipStudio
+        <><ReadOnlyGate enabled={!canManageLeadership} /><LeadershipStudio
+          canManage={canManageLeadership}
           team={data.team}
           settings={cmsContent.leadership || { autoSlide: true, delaySeconds: 15 }}
           onAdd={() => {
@@ -341,13 +372,14 @@ export default function AdminDashboard() {
             if (!window.confirm('Remove from leadership board?')) return
             const token = localStorage.getItem('adminToken')
             await fetch(apiUrl(`/api/team/${id}`), { method: 'DELETE', headers: { 'Authorization': `Bearer ${token}` } })
-            fetchDashboardData(token!)
+            if (currentUser) fetchDashboardData(token!, currentUser)
           }}
           onUpdateSettings={(s) => handleUpdateContent('leadership', s)}
-        />
+        /></>
       )
       case 'inquiries': return (
-        <CommunicationCenter
+        <><ReadOnlyGate enabled={!canManageInquiries} /><CommunicationCenter
+          canManage={canManageInquiries}
           inquiries={data.inquiries}
           cmsContent={cmsContent}
           selectedIds={selectedInquiries}
@@ -358,7 +390,7 @@ export default function AdminDashboard() {
             if (!window.confirm('Purge transmission thread?')) return
             const token = localStorage.getItem('adminToken')
             await fetch(apiUrl(`/api/inquiries/${id}`), { method: 'DELETE', headers: { 'Authorization': `Bearer ${token}` } })
-            fetchDashboardData(token!)
+            if (currentUser) fetchDashboardData(token!, currentUser)
           }}
           onBulkDelete={async () => {
             if (!window.confirm(`Purge ${selectedInquiries.length} selected threads?`)) return
@@ -369,25 +401,28 @@ export default function AdminDashboard() {
               body: JSON.stringify({ ids: selectedInquiries })
             })
             setSelectedInquiries([])
-            fetchDashboardData(token!)
+            if (currentUser) fetchDashboardData(token!, currentUser)
           }}
           onReply={handleSendReply}
           onUpdateCMS={handleUpdateContent}
-        />
+        /></>
       )
       case 'cms': return (
-        <CMSStudio
+        <><ReadOnlyGate enabled={!canManageCms} /><div className={!canManageCms ? 'pointer-events-none opacity-75' : ''}><CMSStudio
           cmsContent={cmsContent}
           onUpdateContent={handleUpdateContent}
           onUpload={handleUpload}
           uploading={uploading}
-        />
+        /></div></>
       )
+      case 'media': return <><ReadOnlyGate enabled={!canManageMedia}/><NewsMediaManager canManage={canManageMedia} isAdmin={currentUser.role === 'admin'}/></>
+      case 'workers': return currentUser.role === 'admin' ? <WorkerAccessManager /> : null
       case 'settings': return (
         <AccountSettings
           settings={accountSettings}
           saving={savingAccountSettings}
           passwordChangeLocked={passwordChangeLocked}
+          isAdmin={currentUser.role === 'admin'}
           onUpdateSettings={setAccountSettings}
           onSave={async (e) => {
             e.preventDefault()
@@ -398,7 +433,21 @@ export default function AdminDashboard() {
               headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
               body: JSON.stringify(accountSettings)
             })
-            if (res.ok) alert('Administrative Access Updated')
+            const result = await res.json()
+            if (res.ok) {
+              if (result.token) localStorage.setItem('adminToken', result.token)
+              if (result.user) setCurrentUser(result.user)
+              setAccountSettings((previous) => ({
+                ...previous,
+                username: result.user?.username || previous.username,
+                currentPassword: '',
+                newPassword: '',
+                confirmNewPassword: ''
+              }))
+              alert(result.message || 'Account settings updated')
+            } else {
+              alert(result.message || 'Could not update account settings')
+            }
             setSavingAccountSettings(false)
           }}
         />
@@ -419,6 +468,7 @@ export default function AdminDashboard() {
       }}
       handleLogout={handleLogout}
       stats={stats}
+      user={currentUser}
     >
       {renderContent()}
 
@@ -558,4 +608,8 @@ export default function AdminDashboard() {
 
     </AdminLayout>
   )
+}
+
+function ReadOnlyGate({ enabled }: { enabled: boolean }) {
+  return enabled ? <ReadOnlyNotice /> : null
 }

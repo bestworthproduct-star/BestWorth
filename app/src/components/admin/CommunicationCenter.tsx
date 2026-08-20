@@ -17,6 +17,7 @@ interface Inquiry {
 }
 
 interface CommunicationCenterProps {
+  canManage: boolean
   inquiries: Inquiry[]
   cmsContent: any
   onUpdateStatus: (id: string, status: string) => void
@@ -30,6 +31,7 @@ interface CommunicationCenterProps {
 }
 
 export default function CommunicationCenter({
+  canManage,
   inquiries,
   cmsContent,
   onUpdateStatus,
@@ -105,12 +107,12 @@ export default function CommunicationCenter({
             <button key={f} onClick={() => setFilter(f)} className={`px-4 py-1.5 rounded-md text-[9px] font-bold uppercase tracking-widest transition-all ${filter === f ? 'bg-white text-brass shadow-sm' : 'text-charcoal/40 hover:text-charcoal'}`}>{f}</button>
           ))}
         </div>
-        {selectedIds.length > 0 && <button onClick={onBulkDelete} className="px-4 py-2 bg-red-600 text-white rounded-lg text-[10px] font-bold uppercase tracking-wider">Purge {selectedIds.length}</button>}
+        {canManage && selectedIds.length > 0 && <button onClick={onBulkDelete} className="px-4 py-2 bg-red-600 text-white rounded-lg text-[10px] font-bold uppercase tracking-wider">Purge {selectedIds.length}</button>}
       </div>
 
       <div className="bg-white border border-charcoal/10 rounded-md shadow-sm overflow-hidden">
         <div className="p-4 border-b border-charcoal/5 bg-warm-stone/20 flex items-center gap-4">
-          <input type="checkbox" className="w-3.5 h-3.5 rounded accent-brass" checked={inquiries.length > 0 && selectedIds.length === inquiries.length} onChange={(e) => onSelectAll(e.target.checked)} />
+          {canManage && <input type="checkbox" className="w-3.5 h-3.5 rounded accent-brass" checked={inquiries.length > 0 && selectedIds.length === inquiries.length} onChange={(e) => onSelectAll(e.target.checked)} />}
           <span className="text-[9px] font-bold uppercase tracking-widest text-charcoal/40">Select Threads</span>
         </div>
 
@@ -119,19 +121,19 @@ export default function CommunicationCenter({
             <div className="py-20 text-center text-charcoal/20 uppercase tracking-[0.2em] text-[10px] font-bold">Inbox Empty</div>
           ) : filtered.map((i) => (
             <div key={i._id} className={`p-5 flex gap-4 transition-colors hover:bg-warm-stone/5 ${i.status === 'new' ? 'bg-brass/[0.01] border-l-2 border-l-brass' : ''}`}>
-              <input type="checkbox" className="w-3.5 h-3.5 rounded accent-brass mt-1" checked={selectedIds.includes(i._id)} onChange={() => onSelectToggle(i._id)} />
+              {canManage && <input type="checkbox" className="w-3.5 h-3.5 rounded accent-brass mt-1" checked={selectedIds.includes(i._id)} onChange={() => onSelectToggle(i._id)} />}
               <div className="flex-1 min-w-0">
                 <div className="flex justify-between items-start mb-3">
                   <div>
                     <h4 className="font-semibold text-charcoal flex items-center gap-2">{i.name} {i.status === 'new' && <span className="bg-brass text-white px-1.5 py-0.5 rounded text-[8px] font-bold">NEW</span>}</h4>
                     <p className="text-[11px] text-charcoal/40 font-bold uppercase mt-0.5">{i.email} • {i.company || 'Private'}</p>
                   </div>
-                  <div className="flex gap-1">
+                  {canManage && <div className="flex gap-1">
                     <button onClick={() => handleOpenReply(i)} className="p-2 hover:text-brass" title="Respond"><Reply size={14}/></button>
                     {i.status === 'new' && <button onClick={() => onUpdateStatus(i._id, 'read')} className="p-2 hover:text-green-600" title="Acknowledge"><CheckCircle size={14}/></button>}
                     <button onClick={() => onUpdateStatus(i._id, 'archived')} className="p-2 hover:text-charcoal" title="Archive"><Archive size={14}/></button>
                     <button onClick={() => onDelete(i._id)} className="p-2 hover:text-red-600" title="Delete"><Trash2 size={14}/></button>
-                  </div>
+                  </div>}
                 </div>
                 <p className="text-charcoal/70 line-clamp-2">"{i.message}"</p>
                 <div className="mt-3 flex items-center gap-4 text-[10px] text-charcoal/30 font-bold uppercase tracking-widest">
@@ -144,7 +146,7 @@ export default function CommunicationCenter({
         </div>
       </div>
 
-      {replyModal.show && (
+      {canManage && replyModal.show && (
         <div className="fixed inset-0 z-[10000] flex items-center justify-center p-4 bg-charcoal/40 backdrop-blur-sm">
           <div className="relative w-full max-w-2xl bg-white p-8 rounded-md shadow-2xl border border-charcoal/10 max-h-[90vh] overflow-y-auto">
              <div className="flex justify-between items-center mb-6">

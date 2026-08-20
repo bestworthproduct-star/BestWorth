@@ -7,7 +7,8 @@
     "test": "echo \"Error: no test specified\" && exit 1",
     "migrate:atlas": "node migrate-local-to-atlas.js",
     "seed": "node seed.js",
-    "clear:team": "node clear-team.js"
+    "clear:team": "node clear-team.js",
+    "migrate:user-roles": "node migrate-user-roles.js"
   },
   "keywords": [],
   "author": "",

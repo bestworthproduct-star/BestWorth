@@ -20,6 +20,15 @@ function isMediaPath(pathname) {
   return pathname.startsWith('/uploads/') || pathname.startsWith('/assets/') || pathname.startsWith('/api/media/');
 }
 
+function isConfiguredPublicHost(hostname) {
+  if (!process.env.PUBLIC_APP_URL) return false;
+  try {
+    return new URL(process.env.PUBLIC_APP_URL).hostname === hostname;
+  } catch {
+    return false;
+  }
+}
+
 function normalizeMediaUrlForStorage(value) {
   if (typeof value !== 'string') {
     return value;
@@ -27,7 +36,7 @@ function normalizeMediaUrlForStorage(value) {
 
   try {
     const parsed = new URL(value);
-    if ((LOCAL_HOSTS.has(parsed.hostname) || LEGACY_PUBLIC_HOSTS.has(parsed.hostname)) && isMediaPath(parsed.pathname)) {
+    if ((LOCAL_HOSTS.has(parsed.hostname) || LEGACY_PUBLIC_HOSTS.has(parsed.hostname) || isConfiguredPublicHost(parsed.hostname)) && isMediaPath(parsed.pathname)) {
       return `${parsed.pathname}${parsed.search}${parsed.hash}`;
     }
   } catch {
@@ -48,7 +57,7 @@ function toAbsoluteUrl(req, value) {
 
   try {
     const parsed = new URL(value);
-    if ((LOCAL_HOSTS.has(parsed.hostname) || LEGACY_PUBLIC_HOSTS.has(parsed.hostname)) && isMediaPath(parsed.pathname)) {
+    if ((LOCAL_HOSTS.has(parsed.hostname) || LEGACY_PUBLIC_HOSTS.has(parsed.hostname) || isConfiguredPublicHost(parsed.hostname)) && isMediaPath(parsed.pathname)) {
       return `${getRequestOrigin(req)}${parsed.pathname}${parsed.search}${parsed.hash}`;
     }
   } catch {

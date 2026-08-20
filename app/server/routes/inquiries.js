@@ -4,12 +4,13 @@ const Inquiry = require('../models/Inquiry');
 const Content = require('../models/Content');
 const User = require('../models/User');
 const auth = require('../middleware/auth');
+const { requirePermission } = require('../middleware/authorize');
 const { sendInquiryNotification, sendInquiryConfirmation, sendAdminReply } = require('../utils/email');
 
 async function getCmsEmailData() {
   const [docs, adminUser] = await Promise.all([
     Content.find({ key: { $in: ['contact', 'footer', 'branding'] } }),
-    User.findOne().select('notificationEmails').lean()
+    User.findOne({ $or: [{ role: 'admin' }, { role: { $exists: false } }] }).select('notificationEmails').lean()
   ]);
 
   const cmsData = docs.reduce((accumulator, document) => {
@@ -84,7 +85,7 @@ router.post('/', async (req, res) => {
 });
 
 // Admin: Reply to inquiry
-router.post('/reply', auth, async (req, res) => {
+router.post('/reply', auth, requirePermission('inquiries', 'manage'), async (req, res) => {
   const { to, subject, message, inquiryId, cmsData } = req.body;
   try {
     console.log('[inquiries] reply route hit', {
@@ -133,7 +134,7 @@ router.post('/reply', auth, async (req, res) => {
 });
 
 // Admin: Bulk delete inquiries
-router.delete('/bulk', auth, async (req, res) => {
+router.delete('/bulk', auth, requirePermission('inquiries', 'manage'), async (req, res) => {
   try {
     const { ids } = req.body;
     if (!ids || !Array.isArray(ids)) {
@@ -148,7 +149,7 @@ router.delete('/bulk', auth, async (req, res) => {
 });
 
 // Admin: Delete single inquiry
-router.delete('/:id', auth, async (req, res) => {
+router.delete('/:id', auth, requirePermission('inquiries', 'manage'), async (req, res) => {
   try {
     await Inquiry.findByIdAndDelete(req.params.id);
     req.app.get('io').emit('inquiry_change', { action: 'delete', id: req.params.id });
@@ -159,7 +160,7 @@ router.delete('/:id', auth, async (req, res) => {
 });
 
 // Admin: Get all inquiries
-router.get('/', auth, async (req, res) => {
+router.get('/', auth, requirePermission('inquiries', 'view'), async (req, res) => {
   try {
     const inquiries = await Inquiry.find().sort({ createdAt: -1 });
     res.json(inquiries);
@@ -169,7 +170,7 @@ router.get('/', auth, async (req, res) => {
 });
 
 // Admin: Update inquiry status
-router.patch('/:id', auth, async (req, res) => {
+router.patch('/:id', auth, requirePermission('inquiries', 'manage'), async (req, res) => {
   try {
     const inquiry = await Inquiry.findByIdAndUpdate(req.params.id, { status: req.body.status }, { new: true });
     req.app.get('io').emit('inquiry_change', { action: 'update', data: inquiry });

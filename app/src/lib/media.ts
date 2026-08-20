@@ -6,6 +6,8 @@ const replaceableMediaHosts = new Set([
   '127.0.0.1',
   'bestworthproduct.ng',
   'www.bestworthproduct.ng',
+  'bestworthproductsltd.ng',
+  'www.bestworthproductsltd.ng',
   'bestworth.onrender.com',
 ])
 

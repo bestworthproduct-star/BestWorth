@@ -12,12 +12,16 @@ import ValuesSection from './sections/ValuesSection'
 import ProductsSection from './sections/ProductsSection'
 import ManagementSection from './sections/ManagementSection'
 import ContactSection from './sections/ContactSection'
+import NewsMediaSection from './sections/NewsMediaSection'
 import Login from './pages/Login'
 import AdminDashboard from './pages/AdminDashboard'
 import NotFound from './pages/NotFound'
 import ServiceUnavailable from './pages/ServiceUnavailable'
 import LegalPolicy from './pages/LegalPolicy'
 import CMSPreview from './pages/CMSPreview'
+import FirstLoginPassword from './pages/FirstLoginPassword'
+import NewsMediaPage from './pages/NewsMediaPage'
+import NewsMediaDetailPage from './pages/NewsMediaDetailPage'
 import { apiUrl } from './lib/api'
 import { resolveMediaUrl } from './lib/media'
 import { useSocket } from './hooks/useSocket'
@@ -30,7 +34,7 @@ function App() {
   const lenisRef = useRef<Lenis | null>(null)
   const location = useLocation()
   const navigate = useNavigate()
-  const isAdminPath = location.pathname === '/admin' || location.pathname === '/login'
+  const isAdminPath = location.pathname.startsWith('/admin') || location.pathname === '/login'
   const isServiceUnavailablePath = location.pathname === '/service-unavailable'
 
   const applyFavicon = useCallback((faviconUrl?: string | null) => {
@@ -149,10 +153,13 @@ function App() {
     <Routes>
       <Route path="/login" element={<Login />} />
       <Route path="/admin" element={<AdminDashboard />} />
+      <Route path="/admin/change-password" element={<FirstLoginPassword />} />
       <Route path="/admin/preview" element={<CMSPreview />} />
       <Route path="/service-unavailable" element={<ServiceUnavailable />} />
       <Route path="/privacy-policy" element={<LegalPolicy policyKey="privacy_policy" title="Privacy Policy" />} />
       <Route path="/cookie-policy" element={<LegalPolicy policyKey="cookie_policy" title="Cookie Policy" />} />
+      <Route path="/news-media" element={<NewsMediaPage />} />
+      <Route path="/news-media/:slug" element={<NewsMediaDetailPage />} />
       <Route path="/" element={
         <div className="relative">
           <GrainCanvas />
@@ -163,6 +170,7 @@ function App() {
             <ValuesSection />
             <ProductsSection />
             <ManagementSection />
+            <NewsMediaSection />
             <ContactSection />
             <Footer scrollTo={scrollTo} />
           </main>

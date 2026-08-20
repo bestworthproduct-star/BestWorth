@@ -2,6 +2,8 @@ const express = require('express');
 const router = express.Router();
 const Content = require('../models/Content');
 const auth = require('../middleware/auth');
+const { requireSessionReady } = require('../middleware/authorize');
+const { hasPermission } = require('../utils/permissions');
 const {
   hydrateMediaFieldsForResponse,
   normalizeMediaFieldsForStorage
@@ -41,7 +43,20 @@ router.get('/', async (req, res) => {
 // @route   POST /api/content/:key
 // @desc    Update content by key
 // @access  Private (Admin)
-router.post('/:key', auth, async (req, res) => {
+router.post('/:key', auth, requireSessionReady, (req, res, next) => {
+  const moduleName = req.params.key === 'categories'
+    ? 'catalog'
+    : req.params.key === 'leadership'
+      ? 'leadership'
+      : req.params.key === 'email_templates'
+        ? 'inquiries'
+        : 'cms';
+
+  if (!hasPermission(req.user, moduleName, 'manage')) {
+    return res.status(403).json({ message: 'You do not have permission to update this content.', code: 'ACCESS_DENIED' });
+  }
+  next();
+}, async (req, res) => {
   try {
     let content = await Content.findOne({ key: req.params.key });
     

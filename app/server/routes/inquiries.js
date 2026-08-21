@@ -155,7 +155,7 @@ router.patch('/:id', auth, requirePermission('inquiries', 'manage'), async (req,
   try {
     objectId(req.params.id, 'Inquiry ID');
     if (!['new', 'read', 'archived'].includes(req.body?.status)) return res.status(400).json({ message: 'Invalid inquiry status.' });
-    const inquiry = await Inquiry.findByIdAndUpdate(req.params.id, { status: req.body.status }, { new: true, runValidators: true });
+    const inquiry = await Inquiry.findByIdAndUpdate(req.params.id, { status: req.body.status }, { returnDocument: 'after', runValidators: true });
     req.app.get('io').to('module:inquiries').emit('inquiry_change', { action: 'update', data: inquiry });
     res.json(inquiry);
   } catch (err) {

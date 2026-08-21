@@ -49,7 +49,7 @@ router.put('/:id', auth, requirePermission('catalog', 'manage'), async (req, res
     const updatedProduct = await Product.findByIdAndUpdate(
       req.params.id,
       productPayload(req.body),
-      { new: true, runValidators: true }
+      { returnDocument: 'after', runValidators: true }
     );
     if (!updatedProduct) return res.status(404).json({ message: 'Product not found.' });
     const payload = hydrateMediaFieldsForResponse(req, updatedProduct.toObject());

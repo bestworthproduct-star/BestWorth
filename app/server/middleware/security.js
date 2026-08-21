@@ -26,7 +26,8 @@ function sameOriginWrites(req, res, next) {
 }
 
 function inspectKeys(value, depth = 0) {
-  if (depth > 20 || value === null || typeof value !== 'object') return false;
+  if (value === null || typeof value !== 'object') return false;
+  if (depth > 20) return true;
   for (const key of Object.keys(value)) {
     if (key.startsWith('$') || key.includes('.') || DANGEROUS_KEYS.has(key)) return true;
     if (inspectKeys(value[key], depth + 1)) return true;

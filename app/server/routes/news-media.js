@@ -3,7 +3,7 @@ const NewsMediaPost = require('../models/NewsMediaPost');
 const auth = require('../middleware/auth');
 const { requirePermission } = require('../middleware/authorize');
 const { normalizeMediaFieldsForStorage, hydrateMediaFieldsForResponse } = require('../utils/public-url');
-const { objectId } = require('../utils/validation');
+const { objectId, escapeRegex } = require('../utils/validation');
 
 const router = express.Router();
 
@@ -92,7 +92,7 @@ router.get('/admin/list', auth, requirePermission('media', 'view'), async (req, 
     if (['news', 'video'].includes(req.query.type)) query.type = req.query.type;
     if (['draft', 'published'].includes(req.query.status)) query.status = req.query.status;
     if (String(req.query.search || '').trim()) {
-      const search = String(req.query.search).trim().slice(0, 100).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const search = escapeRegex(req.query.search, 100);
       query.$or = [
         { title: { $regex: search, $options: 'i' } },
         { excerpt: { $regex: search, $options: 'i' } },
@@ -168,7 +168,7 @@ router.get('/', async (req, res) => {
     if (['news', 'video'].includes(req.query.type)) query.type = req.query.type;
     if (req.query.featured === 'true') query.featured = true;
     if (String(req.query.search || '').trim()) {
-      const search = String(req.query.search).trim().slice(0, 100).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const search = escapeRegex(req.query.search, 100);
       query.$or = [{ title: { $regex: search, $options: 'i' } }, { excerpt: { $regex: search, $options: 'i' } }];
     }
     const [items, total] = await Promise.all([

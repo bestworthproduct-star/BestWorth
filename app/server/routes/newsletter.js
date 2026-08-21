@@ -9,7 +9,7 @@ const { requireAdmin } = require('../middleware/authorize');
 const { sendNewsArticle } = require('../utils/newsletter-email');
 const { buildEmailBranding } = require('../utils/email');
 const { rateLimit: distributedRateLimit, clientIp } = require('../utils/rate-limit');
-const { emailField, objectId, stringField } = require('../utils/validation');
+const { emailField, objectId, escapeRegex } = require('../utils/validation');
 const { createUnsubscribeToken, hashUnsubscribeToken, verifyUnsubscribeToken } = require('../utils/newsletter-token');
 
 const router = express.Router();
@@ -139,7 +139,7 @@ router.post('/unsubscribe/one-click', unsubscribeLimit, async (req, res) => {
 
 router.get('/admin/subscribers', auth, requireAdmin, async (req, res) => {
   try {
-    const search = String(req.query.search || '').trim().slice(0, 100).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const search = escapeRegex(req.query.search, 100);
     const query = { status: 'subscribed', ...(search ? { email: { $regex: search, $options: 'i' } } : {}) };
     const [subscribers, total] = await Promise.all([
       NewsletterSubscriber.find(query).select('email status consentAt createdAt').sort({ createdAt: -1 }).limit(200).lean(),

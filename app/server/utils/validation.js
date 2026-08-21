@@ -34,4 +34,9 @@ function safeHttpUrl(value, { name = 'URL', allowRelative = true, max = 2048 } =
   return parsed.toString();
 }
 
-module.exports = { stringField, emailField, objectId, safeHttpUrl };
+function escapeRegex(value, max = 100) {
+  if (typeof value !== 'string') return '';
+  return value.trim().slice(0, max).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+module.exports = { stringField, emailField, objectId, safeHttpUrl, escapeRegex };

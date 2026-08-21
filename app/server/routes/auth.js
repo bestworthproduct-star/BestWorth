@@ -7,7 +7,7 @@ const { getRole, serializeUser } = require('../utils/permissions');
 const { recordAccessAudit } = require('../utils/access-audit');
 const { signAuthToken, setSessionCookie, clearSessionCookie } = require('../utils/auth-token');
 const { rateLimit, consume, clientIp } = require('../utils/rate-limit');
-const { stringField } = require('../utils/validation');
+const { escapeRegex } = require('../utils/validation');
 
 const MAX_LOGIN_ATTEMPTS = 5;
 const MAX_LOGIN_REQUESTS = 10;
@@ -23,7 +23,7 @@ function normalizeUsername(username) {
 }
 
 function exactCaseInsensitive(value) {
-  return new RegExp(`^${value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i');
+  return new RegExp(`^${escapeRegex(value, 80)}$`, 'i');
 }
 
 function normalizeNotificationEmails(value) {

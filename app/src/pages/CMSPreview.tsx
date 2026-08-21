@@ -11,7 +11,8 @@ export default function CMSPreview() {
 
   useEffect(() => {
     const handleMessage = (event: MessageEvent) => {
-      if (event.data.type === 'CMS_UPDATE') {
+      if (event.origin !== window.location.origin || event.source !== window.parent) return
+      if (event.data && event.data.type === 'CMS_UPDATE' && typeof event.data.section === 'string') {
         setActiveSection(event.data.section)
         setData(event.data.data)
       }
@@ -40,10 +41,10 @@ export default function CMSPreview() {
         return (
           <div className="p-8 max-w-4xl mx-auto prose prose-sm">
             <h1 className="text-2xl font-bold mb-6">Privacy Policy Preview</h1>
-            <div dangerouslySetInnerHTML={{ __html: data.privacy_policy?.html || '<i>No HTML content provided.</i>' }} />
+            <iframe title="Privacy Policy Preview" sandbox="allow-popups allow-popups-to-escape-sandbox" referrerPolicy="no-referrer" srcDoc={data.privacy_policy?.html || '<p>No HTML content provided.</p>'} className="h-[520px] w-full border-0" />
             <div className="my-12 border-t border-charcoal/10" />
             <h1 className="text-2xl font-bold mb-6">Cookie Policy Preview</h1>
-            <div dangerouslySetInnerHTML={{ __html: data.cookie_policy?.html || '<i>No HTML content provided.</i>' }} />
+            <iframe title="Cookie Policy Preview" sandbox="allow-popups allow-popups-to-escape-sandbox" referrerPolicy="no-referrer" srcDoc={data.cookie_policy?.html || '<p>No HTML content provided.</p>'} className="h-[520px] w-full border-0" />
           </div>
         )
       default:

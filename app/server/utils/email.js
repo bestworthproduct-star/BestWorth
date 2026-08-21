@@ -1,4 +1,6 @@
 const nodemailer = require('nodemailer');
+const dns = require('dns').promises;
+const net = require('net');
 const { toAbsoluteUrl } = require('./public-url');
 
 function buildAppUrl() {
@@ -16,16 +18,27 @@ function normalizePlatformName(value = '') {
 function buildPhoneHref(value = '') {
   const trimmedValue = String(value).trim();
   if (!trimmedValue) return '';
-  if (/^tel:/i.test(trimmedValue)) return trimmedValue;
-  return `tel:${trimmedValue}`;
+  const number = trimmedValue.replace(/^tel:/i, '').replace(/[^\d+*#(),. -]/g, '').slice(0, 50);
+  return number ? `tel:${number}` : '';
 }
 
 function buildWhatsAppHref(value = '') {
   const trimmedValue = String(value).trim();
   if (!trimmedValue) return '';
-  if (/^https?:\/\//i.test(trimmedValue)) return trimmedValue;
+  if (/^https:\/\//i.test(trimmedValue)) {
+    try { return new URL(trimmedValue).toString(); } catch { return ''; }
+  }
   const digitsOnly = trimmedValue.replace(/[^\d+]/g, '');
   return `https://wa.me/${digitsOnly.replace(/^\+/, '')}`;
+}
+
+function safeHttpsHref(value, fallback = '') {
+  try {
+    const parsed = new URL(String(value || ''));
+    return parsed.protocol === 'https:' && !parsed.username && !parsed.password ? parsed.toString() : fallback;
+  } catch {
+    return fallback;
+  }
 }
 
 function makePseudoRequest(appUrl) {
@@ -133,17 +146,42 @@ async function fetchAssetAsAttachment(url, fallbackName, contentId) {
   }
 
   try {
-    const response = await fetch(url);
+    const parsed = new URL(url);
+    if (parsed.protocol !== 'https:' || parsed.username || parsed.password) throw new Error('Branding assets must use a public HTTPS URL');
+    const addresses = await dns.lookup(parsed.hostname, { all: true });
+    const isPrivate = (address) => {
+      if (net.isIPv4(address)) {
+        const [a, b] = address.split('.').map(Number);
+        return a === 10 || a === 127 || a === 0 || (a === 169 && b === 254) || (a === 172 && b >= 16 && b <= 31) || (a === 192 && b === 168);
+      }
+      const normalized = address.toLowerCase();
+      return normalized === '::1' || normalized === '::' || normalized.startsWith('fc') || normalized.startsWith('fd') || normalized.startsWith('fe80:') || normalized.startsWith('::ffff:127.') || normalized.startsWith('::ffff:10.') || normalized.startsWith('::ffff:192.168.');
+    };
+    if (!addresses.length || addresses.some(({ address }) => isPrivate(address))) throw new Error('Branding asset host is not public');
+
+    const response = await fetch(parsed, { redirect: 'error', signal: AbortSignal.timeout(8000) });
 
     if (!response.ok) {
       throw new Error(`Asset request failed with status ${response.status}`);
     }
-
-    const arrayBuffer = await response.arrayBuffer();
-    const contentType = response.headers.get('content-type') || 'application/octet-stream';
+    const contentType = (response.headers.get('content-type') || '').split(';')[0].toLowerCase();
+    if (!['image/jpeg', 'image/png', 'image/gif', 'image/webp'].includes(contentType)) throw new Error('Branding asset is not a supported image');
+    const declaredLength = Number(response.headers.get('content-length') || 0);
+    if (declaredLength > 2 * 1024 * 1024) throw new Error('Branding asset is too large');
+    const reader = response.body?.getReader();
+    if (!reader) throw new Error('Branding asset response is empty');
+    const chunks = [];
+    let totalBytes = 0;
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      totalBytes += value.byteLength;
+      if (totalBytes > 2 * 1024 * 1024) { await reader.cancel(); throw new Error('Branding asset is too large'); }
+      chunks.push(Buffer.from(value));
+    }
     const fileExtension = contentType.split('/')[1]?.split(';')[0] || 'bin';
     const filename = `${fallbackName}.${fileExtension.replace('svg+xml', 'svg')}`;
-    const contentBuffer = Buffer.from(arrayBuffer);
+    const contentBuffer = Buffer.concat(chunks, totalBytes);
 
     return {
       filename,
@@ -205,7 +243,7 @@ async function buildEmailBranding(cmsData = {}) {
 
   const address = contact.address || 'Plot 15, Industrial Estate, Phase II, Lagos, Nigeria';
   const website = buildPublicWebsiteUrl();
-  const linkedin = footerData.socials?.linkedin || 'https://linkedin.com/company/bestworth';
+  const linkedin = safeHttpsHref(footerData.socials?.linkedin, 'https://linkedin.com/company/bestworth');
   const footerExtraLinks = Array.isArray(footerData.socials?.extra) ? footerData.socials.extra : [];
   const whatsappEntry = footerExtraLinks.find((item) => normalizePlatformName(item?.label) === 'whatsapp');
   const phoneEntry = footerExtraLinks.find((item) => ['phone', 'telephone', 'call'].includes(normalizePlatformName(item?.label)));
@@ -269,7 +307,7 @@ const EmailLayout = (content, previewText, brandingData, options = {}) => {
     <head>
       <meta charset="utf-8">
       <meta name="viewport" content="width=device-width, initial-scale=1.0">
-      <link rel="shortcut icon" href="${faviconUrl}" type="image/x-icon">
+      <link rel="shortcut icon" href="${escapeHtml(faviconUrl)}" type="image/x-icon">
       <title>Bestworth Products Limited</title>
     </head>
     <body style="margin:0;padding:0;background:${lightBg};font-family:Arial,Helvetica,sans-serif;color:${charcoal};">
@@ -282,7 +320,7 @@ const EmailLayout = (content, previewText, brandingData, options = {}) => {
             <tr><td style="height:4px;background:${accentColor};font-size:0;line-height:0;">&nbsp;</td></tr>
             <tr><td style="padding:26px 34px;background:${charcoal};">
               <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0"><tr>
-                <td><img src="${logoSrc}" alt="Bestworth Products Limited" style="display:block;height:36px;max-width:210px;width:auto;"></td>
+                <td><img src="${escapeHtml(logoSrc)}" alt="Bestworth Products Limited" style="display:block;height:36px;max-width:210px;width:auto;"></td>
                 <td align="right" style="color:#b9c7d8;font-size:9px;letter-spacing:2px;text-transform:uppercase;">Built to last</td>
               </tr></table>
             </td></tr>
@@ -291,8 +329,8 @@ const EmailLayout = (content, previewText, brandingData, options = {}) => {
               ${options.footerExtra ? `<div style="margin-bottom:18px;padding-bottom:18px;border-bottom:1px solid #d8e1ea;">${options.footerExtra}</div>` : ''}
               <strong style="color:${charcoal};font-size:12px;">BESTWORTH PRODUCTS LIMITED</strong><br>
               ${escapeHtml(address)}<br>
-              <a href="${website}" style="color:${brandColor};text-decoration:none;">Website</a>&nbsp;&nbsp;·&nbsp;&nbsp;
-              <a href="${linkedin}" style="color:${brandColor};text-decoration:none;">LinkedIn</a>${contactLink ? `&nbsp;&nbsp;·&nbsp;&nbsp;<a href="${contactLink.href}" style="color:${brandColor};text-decoration:none;">${contactLink.label}</a>` : ''}
+              <a href="${escapeHtml(website)}" style="color:${brandColor};text-decoration:none;">Website</a>&nbsp;&nbsp;·&nbsp;&nbsp;
+              <a href="${escapeHtml(linkedin)}" style="color:${brandColor};text-decoration:none;">LinkedIn</a>${contactLink ? `&nbsp;&nbsp;·&nbsp;&nbsp;<a href="${escapeHtml(contactLink.href)}" style="color:${brandColor};text-decoration:none;">${escapeHtml(contactLink.label)}</a>` : ''}
               <div style="margin-top:12px;color:#8494a5;">&copy; ${new Date().getFullYear()} Bestworth Products Limited. All rights reserved.</div>
             </td></tr>
           </table>
@@ -451,7 +489,7 @@ async function sendMail(mailOptions, contextLabel) {
     replyTo: mailOptions.replyTo
   });
 
-  const info = await smtpTransporter.sendMail(mailOptions);
+  const info = await smtpTransporter.sendMail({ ...mailOptions, disableFileAccess: true, disableUrlAccess: true });
   console.log(`[email] ${contextLabel} sent`, {
     messageId: info.messageId,
     accepted: info.accepted,

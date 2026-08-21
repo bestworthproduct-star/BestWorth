@@ -111,7 +111,7 @@ export default function Login() {
       const data = await response.json()
 
       if (response.ok) {
-        localStorage.setItem('adminToken', data.token)
+        localStorage.removeItem('adminToken')
         navigate(data.user?.mustChangePassword ? '/admin/change-password' : '/admin')
       } else {
         setError(data.message || 'Login failed')

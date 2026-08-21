@@ -32,7 +32,7 @@ export default function WorkerAccessManager() {
   const [deleting, setDeleting] = useState(false)
   const [error, setError] = useState('')
 
-  const token = localStorage.getItem('adminToken')
+  const token = 'cookie-session'
   const selected = workers.find((worker) => worker.id === selectedId) || null
   const normalizedSearch = search.trim().toLowerCase()
   const filteredWorkers = workers.filter((worker) => {

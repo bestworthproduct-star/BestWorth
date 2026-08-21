@@ -39,11 +39,11 @@ function sanitizeTeamPayload(req) {
   const orderValue = Number(body.order);
 
   return {
-    name: typeof body.name === 'string' ? body.name.trim() : '',
-    role: typeof body.role === 'string' ? body.role.trim() : '',
-    bio: typeof body.bio === 'string' ? body.bio.trim() : '',
+    name: typeof body.name === 'string' ? body.name.trim().slice(0, 140) : '',
+    role: typeof body.role === 'string' ? body.role.trim().slice(0, 140) : '',
+    bio: typeof body.bio === 'string' ? body.bio.trim().slice(0, 5000) : '',
     image: normalizeTeamImage(req, body.image),
-    order: Number.isFinite(orderValue) ? orderValue : 0
+    order: Number.isFinite(orderValue) ? Math.min(Math.max(Math.trunc(orderValue), -10000), 10000) : 0
   };
 }
 

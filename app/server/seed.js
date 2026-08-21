@@ -18,8 +18,10 @@ const seed = async () => {
     // Admin
     const adminExists = await User.findOne({ username: 'admin' });
     if (!adminExists) {
-      const hashedPassword = await bcrypt.hash('admin123', 10);
-      await User.create({ username: 'admin', password: hashedPassword });
+      const initialPassword = String(process.env.ADMIN_INITIAL_PASSWORD || '');
+      if (initialPassword.length < 12) throw new Error('Set ADMIN_INITIAL_PASSWORD to at least 12 characters before creating the first admin.');
+      const hashedPassword = await bcrypt.hash(initialPassword, 10);
+      await User.create({ username: 'admin', password: hashedPassword, mustChangePassword: true });
       console.log('Admin user created');
     }
     

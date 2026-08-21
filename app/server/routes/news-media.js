@@ -3,6 +3,7 @@ const NewsMediaPost = require('../models/NewsMediaPost');
 const auth = require('../middleware/auth');
 const { requirePermission } = require('../middleware/authorize');
 const { normalizeMediaFieldsForStorage, hydrateMediaFieldsForResponse } = require('../utils/public-url');
+const { objectId } = require('../utils/validation');
 
 const router = express.Router();
 
@@ -46,9 +47,11 @@ function validatePayload(body) {
   if (body.type === 'video') {
     const value = String(body.videoUrl || '').trim();
     if (value.startsWith('/api/media/video/')) return null;
+    if (value.length > 2048) return 'Video URL is too long.';
     try {
       const videoUrl = new URL(value);
-      if (!['http:', 'https:'].includes(videoUrl.protocol)) throw new Error('invalid');
+      const protocols = process.env.NODE_ENV === 'production' ? ['https:'] : ['http:', 'https:'];
+      if (!protocols.includes(videoUrl.protocol) || videoUrl.username || videoUrl.password) throw new Error('invalid');
     } catch {
       return 'Enter a valid YouTube, Vimeo or hosted video URL.';
     }
@@ -69,8 +72,8 @@ function buildPayload(req, existing) {
     type: body.type,
     excerpt: String(body.excerpt || '').trim().slice(0, 500),
     body: String(body.body || '').trim().slice(0, 50000),
-    coverImage: String(body.coverImage || '').trim(),
-    videoUrl: body.type === 'video' ? String(body.videoUrl || '').trim() : '',
+    coverImage: String(body.coverImage || '').trim().slice(0, 2048),
+    videoUrl: body.type === 'video' ? String(body.videoUrl || '').trim().slice(0, 2048) : '',
     videoDuration: body.type === 'video' ? String(body.videoDuration || '').trim().slice(0, 20) : '',
     featured: body.featured === true,
     status,
@@ -89,7 +92,7 @@ router.get('/admin/list', auth, requirePermission('media', 'view'), async (req, 
     if (['news', 'video'].includes(req.query.type)) query.type = req.query.type;
     if (['draft', 'published'].includes(req.query.status)) query.status = req.query.status;
     if (String(req.query.search || '').trim()) {
-      const search = String(req.query.search).trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const search = String(req.query.search).trim().slice(0, 100).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
       query.$or = [
         { title: { $regex: search, $options: 'i' } },
         { excerpt: { $regex: search, $options: 'i' } },
@@ -103,7 +106,7 @@ router.get('/admin/list', auth, requirePermission('media', 'view'), async (req, 
     ]);
     res.json({ items: items.map((item) => serialize(req, item)), pagination: { page, limit, total, pages: Math.max(Math.ceil(total / limit), 1) } });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    res.status(500).json({ message: 'Media updates could not be loaded.' });
   }
 });
 
@@ -126,6 +129,7 @@ router.post('/admin', auth, requirePermission('media', 'manage'), async (req, re
 
 router.put('/admin/:id', auth, requirePermission('media', 'manage'), async (req, res) => {
   try {
+    objectId(req.params.id, 'Post ID');
     const existing = await NewsMediaPost.findById(req.params.id);
     if (!existing) return res.status(404).json({ message: 'News or media post not found.' });
     const validationError = validatePayload(req.body || {});
@@ -145,12 +149,13 @@ router.put('/admin/:id', auth, requirePermission('media', 'manage'), async (req,
 
 router.delete('/admin/:id', auth, requirePermission('media', 'manage'), async (req, res) => {
   try {
+    objectId(req.params.id, 'Post ID');
     const deleted = await NewsMediaPost.findByIdAndDelete(req.params.id);
     if (!deleted) return res.status(404).json({ message: 'News or media post not found.' });
     req.app.get('io')?.emit('news_media_change', { action: 'delete', id: req.params.id });
     res.json({ message: 'News or media post deleted.' });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    res.status(500).json({ message: 'Media update could not be deleted.' });
   }
 });
 
@@ -163,7 +168,7 @@ router.get('/', async (req, res) => {
     if (['news', 'video'].includes(req.query.type)) query.type = req.query.type;
     if (req.query.featured === 'true') query.featured = true;
     if (String(req.query.search || '').trim()) {
-      const search = String(req.query.search).trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const search = String(req.query.search).trim().slice(0, 100).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
       query.$or = [{ title: { $regex: search, $options: 'i' } }, { excerpt: { $regex: search, $options: 'i' } }];
     }
     const [items, total] = await Promise.all([
@@ -172,19 +177,20 @@ router.get('/', async (req, res) => {
     ]);
     res.json({ items: items.map((item) => serialize(req, item)), pagination: { page, limit, total, pages: Math.max(Math.ceil(total / limit), 1) } });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    res.status(500).json({ message: 'Media updates could not be loaded.' });
   }
 });
 
 router.get('/:slug', async (req, res) => {
   try {
+    if (typeof req.params.slug !== 'string' || !/^[a-z0-9-]{1,180}$/.test(req.params.slug)) return res.status(404).json({ message: 'News or media post not found.' });
     const post = await NewsMediaPost.findOne({ slug: req.params.slug, status: 'published', publishedAt: { $lte: new Date() } }).lean();
     if (!post) return res.status(404).json({ message: 'News or media post not found.' });
     const related = await NewsMediaPost.find({ _id: { $ne: post._id }, status: 'published', publishedAt: { $lte: new Date() } })
       .sort({ featured: -1, publishedAt: -1 }).limit(3).lean();
     res.json({ post: serialize(req, post), related: related.map((item) => serialize(req, item)) });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    res.status(500).json({ message: 'Media update could not be loaded.' });
   }
 });
 

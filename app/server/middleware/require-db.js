@@ -6,8 +6,7 @@ module.exports = (req, res, next) => {
   if (!databaseStatus.available) {
     return res.status(503).json({
       message: 'Database unavailable',
-      code: 'DB_UNAVAILABLE',
-      lastError: databaseStatus.lastError
+      code: 'DB_UNAVAILABLE'
     });
   }
 

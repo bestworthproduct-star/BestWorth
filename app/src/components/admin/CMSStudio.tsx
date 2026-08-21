@@ -60,10 +60,10 @@ export default function CMSStudio({ cmsContent, onUpdateContent, onUpload, uploa
     }
 
     if (iframeRef.current?.contentWindow) {
-      iframeRef.current.contentWindow.postMessage(payload, '*')
+      iframeRef.current.contentWindow.postMessage(payload, window.location.origin)
     }
     if (modalIframeRef.current?.contentWindow) {
-      modalIframeRef.current.contentWindow.postMessage(payload, '*')
+      modalIframeRef.current.contentWindow.postMessage(payload, window.location.origin)
     }
   }
 

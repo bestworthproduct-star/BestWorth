@@ -21,6 +21,7 @@ const userSchema = new mongoose.Schema({
   permissions: { type: permissionSchema, default: () => ({}) },
   active: { type: Boolean, default: true },
   mustChangePassword: { type: Boolean, default: false },
+  sessionVersion: { type: Number, default: 0, min: 0 },
   createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
   lastLoginAt: { type: Date }
 }, { timestamps: true });

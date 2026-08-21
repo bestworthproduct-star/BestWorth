@@ -7,7 +7,7 @@ export const useSocket = (event: string, callback: (data: any) => void) => {
 
   useEffect(() => {
     // Connect to backend socket server
-    socketRef.current = io(SOCKET_URL)
+    socketRef.current = io(SOCKET_URL, { withCredentials: true })
 
     socketRef.current.on('connect', () => {
       console.log('Connected to Real-time Sync Engine')

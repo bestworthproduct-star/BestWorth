@@ -11,6 +11,11 @@ const mongoose = require('mongoose');
 
 const http = require('http');
 const { Server } = require('socket.io');
+const User = require('./models/User');
+const { corsOrigin, sameOriginWrites, rejectOperatorInjection, securityHeaders } = require('./middleware/security');
+const { getRequestToken, verifyAuthToken } = require('./utils/auth-token');
+const { hasPermission, getRole, serializeUser } = require('./utils/permissions');
+const { rateLimit } = require('./utils/rate-limit');
 
 // Load env vars
 dotenv.config();
@@ -71,17 +76,32 @@ function stopFrontendDevServer() {
 }
 
 const io = new Server(server, {
+  maxHttpBufferSize: 10_000,
+  pingInterval: 25_000,
+  pingTimeout: 20_000,
   cors: {
-    origin: '*',
+    origin: corsOrigin,
+    credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH']
   }
 });
 
 // Middleware
-app.set('trust proxy', 1);
-app.use(cors());
-app.use(express.json());
-app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+app.set('trust proxy', Number(process.env.TRUST_PROXY_HOPS || 1));
+app.disable('x-powered-by');
+app.use(securityHeaders);
+app.use(cors({ origin: corsOrigin, credentials: true, methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'] }));
+app.use(express.json({ limit: '150kb', strict: true }));
+app.use(sameOriginWrites);
+app.use(rejectOperatorInjection);
+app.use('/uploads', express.static(path.join(__dirname, 'uploads'), {
+  fallthrough: false,
+  setHeaders: (res) => {
+    res.setHeader('X-Content-Type-Options', 'nosniff');
+    res.setHeader('Content-Disposition', 'inline');
+    res.setHeader('Cross-Origin-Resource-Policy', 'same-site');
+  }
+}));
 
 if (isProduction && fs.existsSync(frontendDist)) {
   app.use(express.static(frontendDist));
@@ -90,10 +110,38 @@ if (isProduction && fs.existsSync(frontendDist)) {
 // Make io accessible to routes
 app.set('io', io);
 
+const generalApiLimit = rateLimit({ scope: 'api-general', limit: 300, windowMs: 5 * 60 * 1000 });
+app.use('/api', (req, res, next) => {
+  if (req.path.startsWith('/media/') || req.path === '/system/health') return next();
+  return generalApiLimit(req, res, next);
+});
+
+io.use(async (socket, next) => {
+  const request = socket.request;
+  try {
+    const token = getRequestToken(request);
+    if (!token) return next();
+    const decoded = verifyAuthToken(token);
+    const user = await User.findById(decoded.id);
+    if (!user || user.active === false || Number(decoded.sv || 0) !== Number(user.sessionVersion || 0)) return next();
+    socket.data.user = serializeUser(user);
+    return next();
+  } catch {
+    return next();
+  }
+});
+
 io.on('connection', (socket) => {
-  console.log('Client connected to real-time sync:', socket.id);
+  const user = socket.data.user;
+  if (user) {
+    socket.join('staff');
+    if (getRole(user) === 'admin') socket.join('owners');
+    for (const moduleName of ['overview', 'catalog', 'leadership', 'inquiries', 'media', 'cms']) {
+      if (hasPermission(user, moduleName, 'view')) socket.join(`module:${moduleName}`);
+    }
+  }
   socket.on('disconnect', () => {
-    console.log('Client disconnected from real-time sync');
+    // Socket.IO cleans up room membership automatically.
   });
 });
 
@@ -104,7 +152,7 @@ app.get('/api/system/health', (req, res) => {
   const statusCode = databaseStatus.available ? 200 : 503;
   res.status(statusCode).json({
     ok: databaseStatus.available,
-    database: databaseStatus
+    database: { available: databaseStatus.available }
   });
 });
 app.use('/api/products', requireDb, require('./routes/products'));
@@ -120,6 +168,16 @@ app.use('/api/newsletter', requireDb, require('./routes/newsletter'));
 // Health check
 app.get('/api/admin/check', requireDb, require('./middleware/auth'), (req, res) => {
   res.json({ authorized: true, user: req.user });
+});
+
+app.use('/api', (req, res) => res.status(404).json({ message: 'API endpoint not found.' }));
+
+app.use((error, req, res, next) => {
+  console.error('[server] request failed:', error.message);
+  if (res.headersSent) return next(error);
+  if (error.type === 'entity.too.large') return res.status(413).json({ message: 'Request body is too large.' });
+  if (error.message === 'Origin not allowed') return res.status(403).json({ message: 'Request origin is not allowed.' });
+  return res.status(500).json({ message: 'The request could not be completed.' });
 });
 
 mongoose.connection.on('connected', () => {

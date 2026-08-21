@@ -1,17 +1,18 @@
 const express = require('express');
 const router = express.Router();
 const bcrypt = require('bcryptjs');
-const jwt = require('jsonwebtoken');
 const User = require('../models/User');
 const auth = require('../middleware/auth');
 const { getRole, serializeUser } = require('../utils/permissions');
 const { recordAccessAudit } = require('../utils/access-audit');
+const { signAuthToken, setSessionCookie, clearSessionCookie } = require('../utils/auth-token');
+const { rateLimit, consume, clientIp } = require('../utils/rate-limit');
+const { stringField } = require('../utils/validation');
 
 const MAX_LOGIN_ATTEMPTS = 5;
 const MAX_LOGIN_REQUESTS = 10;
 const LOGIN_WINDOW_MS = 15 * 60 * 1000;
-const loginAttemptStore = new Map();
-const loginRequestStore = new Map();
+const DUMMY_PASSWORD_HASH = '$2b$10$7EqJtq98hPqEX7fNZaFWoO5h1HIYFQmMtYaHjZQ5S5rZ6YzYF7x7u';
 
 function isAdminPasswordChangeAllowed() {
   return process.env.ALLOW_ADMIN_PASSWORD_CHANGE !== 'false';
@@ -32,7 +33,7 @@ function normalizeNotificationEmails(value) {
       ? value.split(/[,\n]/)
       : [];
 
-  return [...new Set(rawValues.map((entry) => String(entry).trim().toLowerCase()).filter(Boolean))];
+  return [...new Set(rawValues.filter((entry) => typeof entry === 'string').map((entry) => entry.trim().toLowerCase()).filter(Boolean))].slice(0, 20);
 }
 
 function isValidEmail(value) {
@@ -52,79 +53,28 @@ async function hasUsedPassword(user, plainPassword) {
   return false;
 }
 
-function getClientIp(req) {
-  return req.ip || req.socket?.remoteAddress || 'unknown';
-}
+const loginRequestLimit = rateLimit({ scope: 'auth-login-ip', limit: MAX_LOGIN_REQUESTS, windowMs: LOGIN_WINDOW_MS });
+const sensitiveAuthLimit = rateLimit({ scope: 'auth-sensitive', limit: 10, windowMs: LOGIN_WINDOW_MS, key: (req) => `${clientIp(req)}:${req.user?.id || 'anonymous'}` });
 
-function getClientLoginKey(req, username) {
-  return `${getClientIp(req)}:${username || 'unknown'}`;
-}
-
-function getAttemptRecord(key) {
-  const now = Date.now();
-  const existingRecord = loginAttemptStore.get(key);
-
-  if (!existingRecord || existingRecord.expiresAt <= now) {
-    const freshRecord = { attempts: 0, expiresAt: now + LOGIN_WINDOW_MS };
-    loginAttemptStore.set(key, freshRecord);
-    return freshRecord;
-  }
-
-  return existingRecord;
-}
-
-function enforceLoginRateLimit(req, res, next) {
-  const now = Date.now();
-  const clientIp = getClientIp(req);
-  const existingRecord = loginRequestStore.get(clientIp);
-  const record = !existingRecord || existingRecord.expiresAt <= now
-    ? { requests: 0, expiresAt: now + LOGIN_WINDOW_MS }
-    : existingRecord;
-
-  record.requests += 1;
-  loginRequestStore.set(clientIp, record);
-
-  const retryAfterSeconds = Math.max(Math.ceil((record.expiresAt - now) / 1000), 1);
-  res.setHeader('RateLimit-Limit', MAX_LOGIN_REQUESTS);
-  res.setHeader('RateLimit-Remaining', Math.max(MAX_LOGIN_REQUESTS - record.requests, 0));
-  res.setHeader('RateLimit-Reset', retryAfterSeconds);
-
-  if (record.requests > MAX_LOGIN_REQUESTS) {
-    res.setHeader('Retry-After', retryAfterSeconds);
-    return res.status(429).json({
-      message: 'Too many login requests. Please wait before trying again.',
-      retryAfterSeconds
-    });
-  }
-
-  return next();
-}
-
-router.post('/login', enforceLoginRateLimit, async (req, res) => {
+router.post('/login', loginRequestLimit, async (req, res) => {
   const username = normalizeUsername(req.body?.username);
-  const password = req.body?.password;
-  const loginKey = getClientLoginKey(req, username);
-  const attemptRecord = getAttemptRecord(loginKey);
+  const password = typeof req.body?.password === 'string' ? req.body.password : '';
 
   try {
-    if (attemptRecord.attempts >= MAX_LOGIN_ATTEMPTS) {
-      const retryAfterSeconds = Math.max(Math.ceil((attemptRecord.expiresAt - Date.now()) / 1000), 1);
-      res.setHeader('Retry-After', retryAfterSeconds);
-      return res.status(429).json({
-        message: 'Too many failed login attempts. Please wait before trying again.',
-        retryAfterSeconds
-      });
-    }
+    if (!username || username.length > 80 || !password || password.length > 200) return res.status(400).json({ message: 'Invalid username or password' });
 
     const user = await User.findOne({ username: exactCaseInsensitive(username) });
     if (!user) {
-      attemptRecord.attempts += 1;
+      await bcrypt.compare(password, DUMMY_PASSWORD_HASH);
+      const failed = await consume('auth-login-account', `${clientIp(req)}:${username}`, MAX_LOGIN_ATTEMPTS, LOGIN_WINDOW_MS);
+      if (!failed.allowed) return res.status(429).json({ message: 'Too many failed login attempts. Please wait before trying again.', retryAfterSeconds: failed.retryAfterSeconds });
       return res.status(400).json({ message: 'Invalid username or password' });
     }
 
     const validPass = await bcrypt.compare(password, user.password);
     if (!validPass) {
-      attemptRecord.attempts += 1;
+      const failed = await consume('auth-login-account', `${clientIp(req)}:${username}`, MAX_LOGIN_ATTEMPTS, LOGIN_WINDOW_MS);
+      if (!failed.allowed) return res.status(429).json({ message: 'Too many failed login attempts. Please wait before trying again.', retryAfterSeconds: failed.retryAfterSeconds });
       return res.status(400).json({ message: 'Invalid username or password' });
     }
 
@@ -132,23 +82,19 @@ router.post('/login', enforceLoginRateLimit, async (req, res) => {
       return res.status(403).json({ message: 'This account has been disabled.', code: 'ACCOUNT_DISABLED' });
     }
 
-    loginAttemptStore.delete(loginKey);
     user.lastLoginAt = new Date();
     await user.save();
 
-    const token = jwt.sign(
-      { id: user._id },
-      process.env.JWT_SECRET || 'fallback_secret',
-      { expiresIn: '8h' }
-    );
+    const token = signAuthToken(user);
+    setSessionCookie(res, token);
 
     res.json({
-      token,
       user: serializeUser(user)
     });
     void recordAccessAudit(req, 'auth.login', { actor: user._id });
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    console.error('[auth] login failed:', err.message);
+    res.status(500).json({ message: 'Sign-in could not be completed.' });
   }
 });
 
@@ -164,14 +110,15 @@ router.get('/me', auth, async (req, res) => {
       passwordChangeLocked: getRole(user) === 'admin' && !isAdminPasswordChangeAllowed()
     });
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    console.error('[auth] profile lookup failed:', err.message);
+    res.status(500).json({ message: 'Account details could not be loaded.' });
   }
 });
 
-router.post('/settings', auth, async (req, res) => {
-  const currentPassword = req.body?.currentPassword;
-  const newPassword = req.body?.newPassword;
-  const confirmNewPassword = req.body?.confirmNewPassword;
+router.post('/settings', auth, sensitiveAuthLimit, async (req, res) => {
+  const currentPassword = typeof req.body?.currentPassword === 'string' ? req.body.currentPassword : '';
+  const newPassword = typeof req.body?.newPassword === 'string' ? req.body.newPassword : '';
+  const confirmNewPassword = typeof req.body?.confirmNewPassword === 'string' ? req.body.confirmNewPassword : '';
   const nextUsername = normalizeUsername(req.body?.username);
   const notificationEmails = normalizeNotificationEmails(req.body?.notificationEmails);
 
@@ -189,14 +136,12 @@ router.post('/settings', auth, async (req, res) => {
 
     const passwordChangesAllowed = getRole(user) === 'worker' || isAdminPasswordChangeAllowed();
 
-    if (passwordChangesAllowed) {
-      const validCurrentPassword = await bcrypt.compare(currentPassword || '', user.password);
-      if (!validCurrentPassword) {
-        return res.status(400).json({ message: 'Current password is incorrect' });
-      }
+    const validCurrentPassword = await bcrypt.compare(currentPassword || '', user.password);
+    if (!validCurrentPassword) {
+      return res.status(400).json({ message: 'Current password is incorrect' });
     }
 
-    if (!nextUsername) {
+    if (!nextUsername || nextUsername.length > 80 || !/^[a-z0-9._-]+$/.test(nextUsername)) {
       return res.status(400).json({ message: 'Username is required' });
     }
 
@@ -226,8 +171,8 @@ router.post('/settings', auth, async (req, res) => {
         return res.status(400).json({ message: 'New passwords do not match' });
       }
 
-      if (newPassword.length < 8) {
-        return res.status(400).json({ message: 'New password must be at least 8 characters' });
+      if (newPassword.length < 12 || newPassword.length > 200) {
+        return res.status(400).json({ message: 'New password must be between 12 and 200 characters' });
       }
 
       if (await hasUsedPassword(user, newPassword)) {
@@ -237,6 +182,7 @@ router.post('/settings', auth, async (req, res) => {
       const hashedPassword = await bcrypt.hash(newPassword, 10);
       user.passwordHistory = [...(user.passwordHistory || []), user.password].slice(-5);
       user.password = hashedPassword;
+      user.sessionVersion = Number(user.sessionVersion || 0) + 1;
       passwordChanged = true;
     }
 
@@ -247,17 +193,13 @@ router.post('/settings', auth, async (req, res) => {
     user.mustChangePassword = false;
     await user.save();
 
-    const token = jwt.sign(
-      { id: user._id },
-      process.env.JWT_SECRET || 'fallback_secret',
-      { expiresIn: '8h' }
-    );
+    const token = signAuthToken(user);
+    setSessionCookie(res, token);
 
     res.json({
       message: passwordChanged
         ? 'Username and password updated successfully'
         : 'Account settings updated successfully',
-      token,
       user: {
         ...serializeUser(user),
         notificationEmails: user.notificationEmails || [],
@@ -267,14 +209,15 @@ router.post('/settings', auth, async (req, res) => {
     if (passwordChanged) void recordAccessAudit(req, 'auth.password_changed', { targetUser: user._id });
     if (usernameChanged) void recordAccessAudit(req, 'auth.username_changed', { targetUser: user._id });
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    console.error('[auth] settings update failed:', err.message);
+    res.status(500).json({ message: 'Account settings could not be updated.' });
   }
 });
 
-router.post('/change-password', auth, async (req, res) => {
-  const currentPassword = req.body?.currentPassword || '';
-  const newPassword = req.body?.newPassword || '';
-  const confirmNewPassword = req.body?.confirmNewPassword || '';
+router.post('/change-password', auth, sensitiveAuthLimit, async (req, res) => {
+  const currentPassword = typeof req.body?.currentPassword === 'string' ? req.body.currentPassword : '';
+  const newPassword = typeof req.body?.newPassword === 'string' ? req.body.newPassword : '';
+  const confirmNewPassword = typeof req.body?.confirmNewPassword === 'string' ? req.body.confirmNewPassword : '';
 
   try {
     const user = await User.findById(req.user.id);
@@ -285,8 +228,8 @@ router.post('/change-password', auth, async (req, res) => {
     if (!(await bcrypt.compare(currentPassword, user.password))) {
       return res.status(400).json({ message: 'Temporary password is incorrect' });
     }
-    if (newPassword.length < 8) {
-      return res.status(400).json({ message: 'New password must be at least 8 characters' });
+    if (newPassword.length < 12 || newPassword.length > 200) {
+      return res.status(400).json({ message: 'New password must be between 12 and 200 characters' });
     }
     if (newPassword !== confirmNewPassword) {
       return res.status(400).json({ message: 'New passwords do not match' });
@@ -297,14 +240,23 @@ router.post('/change-password', auth, async (req, res) => {
 
     user.passwordHistory = [...(user.passwordHistory || []), user.password].slice(-5);
     user.password = await bcrypt.hash(newPassword, 10);
+    user.sessionVersion = Number(user.sessionVersion || 0) + 1;
     user.mustChangePassword = false;
     await user.save();
     void recordAccessAudit(req, 'auth.temporary_password_changed', { targetUser: user._id });
 
+    const token = signAuthToken(user);
+    setSessionCookie(res, token);
     res.json({ message: 'Password changed successfully', user: serializeUser(user) });
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    console.error('[auth] password change failed:', err.message);
+    res.status(500).json({ message: 'Password could not be changed.' });
   }
+});
+
+router.post('/logout', (req, res) => {
+  clearSessionCookie(res);
+  res.json({ message: 'Signed out successfully' });
 });
 
 module.exports = router;

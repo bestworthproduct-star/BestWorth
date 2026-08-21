@@ -41,7 +41,7 @@ export default function NewsMediaManager({ canManage, isAdmin }: Props) {
   const [showSubscribers, setShowSubscribers] = useState(false)
   const [subscribers, setSubscribers] = useState<Subscriber[]>([])
   const [subscriberTotal, setSubscriberTotal] = useState(0)
-  const token = localStorage.getItem('adminToken')
+  const token = 'cookie-session'
 
   const loadPosts = useCallback(async () => {
     setLoading(true)

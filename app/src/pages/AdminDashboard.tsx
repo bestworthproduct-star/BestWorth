@@ -133,8 +133,7 @@ export default function AdminDashboard() {
 
   useEffect(() => {
     const checkAuth = async () => {
-      const token = localStorage.getItem('adminToken')
-      if (!token) return navigate('/login')
+      const token = 'cookie-session'
 
       try {
         const response = await fetch(apiUrl('/api/admin/check'), { headers: { 'Authorization': `Bearer ${token}` } })
@@ -158,7 +157,6 @@ export default function AdminDashboard() {
           setAuthorized(true)
           fetchDashboardData(token, user)
         } else {
-          localStorage.removeItem('adminToken')
           navigate('/login')
         }
       } catch {
@@ -170,7 +168,7 @@ export default function AdminDashboard() {
 
   // Real-time Sync
   const onDataChange = useCallback(() => {
-    const token = localStorage.getItem('adminToken')
+    const token = 'cookie-session'
     if (token && currentUser) fetchDashboardData(token, currentUser)
   }, [fetchDashboardData, currentUser])
 
@@ -182,12 +180,12 @@ export default function AdminDashboard() {
   // --- Handlers ---
 
   const handleLogout = () => {
-    localStorage.removeItem('adminToken')
+    void fetch(apiUrl('/api/auth/logout'), { method: 'POST' })
     navigate('/login')
   }
 
   const handleUpload = async (file: File, target: string, callback: (url: string) => void) => {
-    const token = localStorage.getItem('adminToken')
+    const token = 'cookie-session'
     if (!token) return
     if (file.size > 10 * 1024 * 1024) return alert('Max 10MB allowed')
 
@@ -219,7 +217,7 @@ export default function AdminDashboard() {
   }
 
   const handleUpdateContent = async (key: string, data: any) => {
-    const token = localStorage.getItem('adminToken')
+    const token = 'cookie-session'
     try {
       const res = await fetch(apiUrl(`/api/content/${key}`), {
         method: 'POST',
@@ -232,7 +230,7 @@ export default function AdminDashboard() {
 
   const handleSaveProduct = async (e: React.FormEvent) => {
     e.preventDefault()
-    const token = localStorage.getItem('adminToken')
+    const token = 'cookie-session'
     const method = productModal.editId ? 'PUT' : 'POST'
     const url = productModal.editId ? apiUrl(`/api/products/${productModal.editId}`) : apiUrl('/api/products')
 
@@ -252,7 +250,7 @@ export default function AdminDashboard() {
 
   const handleSaveTeam = async (e: React.FormEvent) => {
     e.preventDefault()
-    const token = localStorage.getItem('adminToken')
+    const token = 'cookie-session'
     const method = teamModal.editId ? 'PUT' : 'POST'
     const url = teamModal.editId ? apiUrl(`/api/team/${teamModal.editId}`) : apiUrl('/api/team')
 
@@ -271,7 +269,7 @@ export default function AdminDashboard() {
   }
 
   const handleUpdateInquiry = async (id: string, status: string) => {
-    const token = localStorage.getItem('adminToken')
+    const token = 'cookie-session'
     await fetch(apiUrl(`/api/inquiries/${id}`), {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
@@ -281,7 +279,7 @@ export default function AdminDashboard() {
   }
 
   const handleSendReply = async (i: Inquiry, subject: string, message: string) => {
-    const token = localStorage.getItem('adminToken')
+    const token = 'cookie-session'
     try {
       const res = await fetch(apiUrl('/api/inquiries/reply'), {
         method: 'POST',
@@ -325,7 +323,7 @@ export default function AdminDashboard() {
           }}
           onDeleteProduct={async (id) => {
             if (!window.confirm('Archive this specification?')) return
-            const token = localStorage.getItem('adminToken')
+            const token = 'cookie-session'
             await fetch(apiUrl(`/api/products/${id}`), { method: 'DELETE', headers: { 'Authorization': `Bearer ${token}` } })
             if (currentUser) fetchDashboardData(token!, currentUser)
           }}
@@ -370,7 +368,7 @@ export default function AdminDashboard() {
           }}
           onDelete={async (id) => {
             if (!window.confirm('Remove from leadership board?')) return
-            const token = localStorage.getItem('adminToken')
+            const token = 'cookie-session'
             await fetch(apiUrl(`/api/team/${id}`), { method: 'DELETE', headers: { 'Authorization': `Bearer ${token}` } })
             if (currentUser) fetchDashboardData(token!, currentUser)
           }}
@@ -388,13 +386,13 @@ export default function AdminDashboard() {
           onUpdateStatus={handleUpdateInquiry}
           onDelete={async (id) => {
             if (!window.confirm('Purge transmission thread?')) return
-            const token = localStorage.getItem('adminToken')
+            const token = 'cookie-session'
             await fetch(apiUrl(`/api/inquiries/${id}`), { method: 'DELETE', headers: { 'Authorization': `Bearer ${token}` } })
             if (currentUser) fetchDashboardData(token!, currentUser)
           }}
           onBulkDelete={async () => {
             if (!window.confirm(`Purge ${selectedInquiries.length} selected threads?`)) return
-            const token = localStorage.getItem('adminToken')
+            const token = 'cookie-session'
             await fetch(apiUrl('/api/inquiries/bulk'), {
               method: 'DELETE',
               headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
@@ -427,7 +425,7 @@ export default function AdminDashboard() {
           onSave={async (e) => {
             e.preventDefault()
             setSavingAccountSettings(true)
-            const token = localStorage.getItem('adminToken')
+            const token = 'cookie-session'
             const res = await fetch(apiUrl('/api/auth/settings'), {
               method: 'POST',
               headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
@@ -435,7 +433,6 @@ export default function AdminDashboard() {
             })
             const result = await res.json()
             if (res.ok) {
-              if (result.token) localStorage.setItem('adminToken', result.token)
               if (result.user) setCurrentUser(result.user)
               setAccountSettings((previous) => ({
                 ...previous,

@@ -29,7 +29,7 @@ interface Campaign {
 }
 
 export default function NewsletterCampaignPanel() {
-  const token = localStorage.getItem('adminToken')
+  const token = 'cookie-session'
   const [articles, setArticles] = useState<NewsOption[]>([])
   const [campaigns, setCampaigns] = useState<Campaign[]>([])
   const [subscriberCount, setSubscriberCount] = useState(0)

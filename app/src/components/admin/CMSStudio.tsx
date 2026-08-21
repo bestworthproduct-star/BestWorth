@@ -9,6 +9,17 @@ interface CMSStudioProps {
   uploading: string | null
 }
 
+const ABOUT_TRUST_DEFAULTS = {
+  vision: 'To be a trusted Nigerian manufacturer recognized for dependable building products and responsible growth.',
+  mission: 'To support construction with durable, efficient and affordable products made to consistent quality standards.',
+  workerCount: 0,
+  workerCountLabel: 'Team Members',
+  workerCountSuffix: '+',
+  businessCount: 0,
+  businessCountLabel: 'Years in Business',
+  businessCountSuffix: '+'
+}
+
 export default function CMSStudio({ cmsContent, onUpdateContent, onUpload, uploading }: CMSStudioProps) {
   const [activeSection, setActiveSection] = useState('hero')
   const [viewMode, setViewMode] = useState<'desktop' | 'mobile'>('desktop')
@@ -74,7 +85,10 @@ export default function CMSStudio({ cmsContent, onUpdateContent, onUpload, uploa
 
   const handleSave = async (key: string) => {
     setIsSaving(true)
-    await onUpdateContent(key, localData[key])
+    const data = key === 'about'
+      ? { ...ABOUT_TRUST_DEFAULTS, ...localData[key] }
+      : localData[key]
+    await onUpdateContent(key, data)
     setIsSaving(false)
   }
 
@@ -256,6 +270,36 @@ export default function CMSStudio({ cmsContent, onUpdateContent, onUpload, uploa
                   {uploading === 'about-imageUrl' ? 'Syncing...' : 'Change Asset'}
                   <input type="file" className="hidden" onChange={e => e.target.files?.[0] && handleFileUpload('about', 'imageUrl', e.target.files[0])}/>
                 </label>
+              </div>
+            </div>
+            <div className="space-y-5 rounded-lg border border-charcoal/8 bg-warm-stone/10 p-4">
+              <div>
+                <h4 className="text-[12px] font-semibold text-charcoal">Trust card content</h4>
+                <p className="mt-1 text-[10px] leading-4 text-charcoal/40">Controls the two slides below the fixed About image and establishment year.</p>
+              </div>
+              <div className="space-y-2">
+                <label className={labelClass}>Our Vision</label>
+                <textarea maxLength={280} rows={4} value={localData.about?.vision ?? ABOUT_TRUST_DEFAULTS.vision} onChange={(e) => handleLocalChange('about', 'vision', e.target.value)} className={`${inputClass} resize-none`} />
+                <p className="text-right text-[9px] text-charcoal/30">{String(localData.about?.vision ?? ABOUT_TRUST_DEFAULTS.vision).length}/280</p>
+              </div>
+              <div className="space-y-2">
+                <label className={labelClass}>Our Mission</label>
+                <textarea maxLength={280} rows={4} value={localData.about?.mission ?? ABOUT_TRUST_DEFAULTS.mission} onChange={(e) => handleLocalChange('about', 'mission', e.target.value)} className={`${inputClass} resize-none`} />
+                <p className="text-right text-[9px] text-charcoal/30">{String(localData.about?.mission ?? ABOUT_TRUST_DEFAULTS.mission).length}/280</p>
+              </div>
+              <div className="border-t border-charcoal/7 pt-4">
+                <p className="mb-3 text-[10px] font-semibold uppercase tracking-[0.12em] text-charcoal/45">Company statistics</p>
+                <div className="grid grid-cols-[1fr_76px_58px] gap-2">
+                  <div><label className={labelClass}>Label</label><input maxLength={40} value={localData.about?.workerCountLabel ?? ABOUT_TRUST_DEFAULTS.workerCountLabel} onChange={(e) => handleLocalChange('about', 'workerCountLabel', e.target.value)} className={inputClass}/></div>
+                  <div><label className={labelClass}>Count</label><input type="number" min="0" max="999999999" value={localData.about?.workerCount ?? ABOUT_TRUST_DEFAULTS.workerCount} onChange={(e) => handleLocalChange('about', 'workerCount', Math.max(0, Number(e.target.value)))} className={inputClass}/></div>
+                  <div><label className={labelClass}>Suffix</label><input maxLength={4} value={localData.about?.workerCountSuffix ?? ABOUT_TRUST_DEFAULTS.workerCountSuffix} onChange={(e) => handleLocalChange('about', 'workerCountSuffix', e.target.value)} className={inputClass}/></div>
+                </div>
+                <div className="mt-3 grid grid-cols-[1fr_76px_58px] gap-2">
+                  <div><label className={labelClass}>Label</label><input maxLength={40} value={localData.about?.businessCountLabel ?? ABOUT_TRUST_DEFAULTS.businessCountLabel} onChange={(e) => handleLocalChange('about', 'businessCountLabel', e.target.value)} className={inputClass}/></div>
+                  <div><label className={labelClass}>Count</label><input type="number" min="0" max="999999999" value={localData.about?.businessCount ?? ABOUT_TRUST_DEFAULTS.businessCount} onChange={(e) => handleLocalChange('about', 'businessCount', Math.max(0, Number(e.target.value)))} className={inputClass}/></div>
+                  <div><label className={labelClass}>Suffix</label><input maxLength={4} value={localData.about?.businessCountSuffix ?? ABOUT_TRUST_DEFAULTS.businessCountSuffix} onChange={(e) => handleLocalChange('about', 'businessCountSuffix', e.target.value)} className={inputClass}/></div>
+                </div>
+                <p className="mt-3 text-[9px] leading-4 text-charcoal/35">The label is flexible, so the second metric can be years in business, completed projects, production capacity or another verified figure.</p>
               </div>
             </div>
             <button onClick={() => handleSave('about')} className="w-full py-3 bg-charcoal text-white rounded text-[12px] font-semibold flex items-center justify-center gap-2 hover:bg-black">

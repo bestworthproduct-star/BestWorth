@@ -73,7 +73,15 @@ const seed = async () => {
             'Bestworth Products Limited has been at the forefront of the construction materials industry since 1987. We specialize in the manufacturing and distribution of premium-grade fasteners that serve as the backbone of modern infrastructure.',
             'Our commitment to quality ensures that every product leaving our facility meets rigorous international standards, providing reliability where it matters most.'
           ],
-          imageUrl: 'https://images.unsplash.com/photo-1504307651254-35680f356dfd?q=80&w=2070'
+          imageUrl: 'https://images.unsplash.com/photo-1504307651254-35680f356dfd?q=80&w=2070',
+          vision: 'To be a trusted Nigerian manufacturer recognized for dependable building products and responsible growth.',
+          mission: 'To support construction with durable, efficient and affordable products made to consistent quality standards.',
+          workerCount: 0,
+          workerCountLabel: 'Team Members',
+          workerCountSuffix: '+',
+          businessCount: 0,
+          businessCountLabel: 'Years in Business',
+          businessCountSuffix: '+'
         }
       },
       {

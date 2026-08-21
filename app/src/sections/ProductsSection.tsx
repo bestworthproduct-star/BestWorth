@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import gsap from 'gsap'
 import { useGSAP } from '@gsap/react'
 import { ArrowRight, ChevronLeft, ChevronRight, Search, X } from 'lucide-react'
@@ -56,6 +57,8 @@ export default function ProductsSection() {
   const headerRef = useRef<HTMLDivElement>(null)
   const categoryRailRef = useRef<HTMLDivElement>(null)
   const modalScrollRef = useRef<HTMLDivElement>(null)
+  const modalRef = useRef<HTMLDivElement>(null)
+  const modalCloseRef = useRef<HTMLButtonElement>(null)
 
   const fetchCategories = useCallback(() => {
     fetch(apiUrl('/api/content/categories'))
@@ -85,7 +88,11 @@ export default function ProductsSection() {
   }, [searchInput])
 
   useEffect(() => {
-    const handleResize = () => setProductsPerPage(getProductsPerPage(window.innerWidth))
+    const handleResize = () => {
+      setProductsPerPage(getProductsPerPage(window.innerWidth))
+      if (window.innerWidth < 640) setActiveFilter('all')
+    }
+    handleResize()
     window.addEventListener('resize', handleResize)
     return () => window.removeEventListener('resize', handleResize)
   }, [])
@@ -99,8 +106,24 @@ export default function ProductsSection() {
     const previousBodyPosition = document.body.style.position
     const previousBodyTop = document.body.style.top
     const previousBodyWidth = document.body.style.width
+    const previouslyFocused = document.activeElement instanceof HTMLElement ? document.activeElement : null
     const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') setSelectedProduct(null)
+      if (event.key === 'Escape') {
+        setSelectedProduct(null)
+        return
+      }
+      if (event.key !== 'Tab' || !modalRef.current) return
+      const focusable = Array.from(modalRef.current.querySelectorAll<HTMLElement>('button:not([disabled]), a[href], input:not([disabled]), [tabindex]:not([tabindex="-1"])'))
+      if (!focusable.length) return
+      const first = focusable[0]
+      const last = focusable[focusable.length - 1]
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault()
+        last.focus()
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault()
+        first.focus()
+      }
     }
 
     document.documentElement.style.overflow = 'hidden'
@@ -109,6 +132,7 @@ export default function ProductsSection() {
     document.body.style.top = `-${scrollY}px`
     document.body.style.width = '100%'
     window.addEventListener('keydown', handleKeyDown)
+    const focusFrame = window.requestAnimationFrame(() => modalCloseRef.current?.focus())
     return () => {
       document.documentElement.style.overflow = previousHtmlOverflow
       document.body.style.overflow = previousBodyOverflow
@@ -116,7 +140,9 @@ export default function ProductsSection() {
       document.body.style.top = previousBodyTop
       document.body.style.width = previousBodyWidth
       window.removeEventListener('keydown', handleKeyDown)
+      window.cancelAnimationFrame(focusFrame)
       window.scrollTo(0, scrollY)
+      previouslyFocused?.focus({ preventScroll: true })
     }
   }, [selectedProduct])
 
@@ -306,22 +332,6 @@ export default function ProductsSection() {
 
           <div className="reveal-item mt-10 grid items-center gap-4 lg:grid-cols-[minmax(0,1fr)_360px]">
             <div className="order-2 min-w-0 lg:order-1">
-              <div className="sm:hidden">
-                <label htmlFor="product-category" className="mb-2 block text-[10px] font-bold uppercase tracking-[0.22em] text-charcoal/45">
-                  Product Category
-                </label>
-                <select
-                  id="product-category"
-                  value={activeFilter}
-                  onChange={(event) => selectCategory(event.target.value)}
-                  className="w-full border border-charcoal/15 bg-white px-4 py-3.5 font-body text-sm font-semibold text-charcoal outline-none focus:border-brass rounded-lg"
-                >
-                  {filters.map((filter) => (
-                    <option key={filter.value} value={filter.value}>{filter.label}</option>
-                  ))}
-                </select>
-              </div>
-
               <div className="hidden items-center gap-2 sm:flex">
                 <button
                   type="button"
@@ -539,29 +549,30 @@ export default function ProductsSection() {
         )}
       </div>
 
-      {selectedProduct && (
-        <div className="fixed inset-0 z-[10000] flex items-end justify-center p-0 sm:items-center sm:p-4 md:p-8" role="dialog" aria-modal="true" aria-labelledby="product-modal-title">
+      {selectedProduct && typeof document !== 'undefined' && createPortal(
+        <div ref={modalRef} className="fixed inset-0 z-[2147483000] flex items-end justify-center p-0 sm:items-center sm:p-5" role="dialog" aria-modal="true" aria-labelledby="product-modal-title">
           <button
             type="button"
-            className="absolute inset-0 bg-charcoal/90 backdrop-blur-sm"
+            className="absolute inset-0 bg-charcoal/75 backdrop-blur-[3px]"
             onClick={() => setSelectedProduct(null)}
             aria-label="Close product details"
           />
-          <div className="relative max-h-[92dvh] w-full max-w-5xl overflow-hidden rounded-t-2xl border border-white/10 bg-white shadow-[0_35px_100px_rgba(0,0,0,0.45)] sm:rounded-2xl md:max-h-[88vh]">
+          <div className="relative max-h-[92dvh] w-full overflow-hidden rounded-t-xl border border-charcoal/10 bg-white shadow-[0_28px_80px_rgba(0,0,0,0.32)] sm:max-w-[860px] sm:rounded-xl md:max-h-[76vh]">
             <button
+              ref={modalCloseRef}
               type="button"
               onClick={() => setSelectedProduct(null)}
-              className="absolute right-3 top-3 z-30 flex h-12 w-12 items-center justify-center rounded-full bg-charcoal text-white shadow-lg transition-colors hover:bg-brass sm:right-4 sm:top-4 sm:h-10 sm:w-10 sm:rounded-none"
+              className="absolute right-3 top-3 z-30 flex h-10 w-10 items-center justify-center rounded-md border border-charcoal/10 bg-white/95 text-charcoal shadow-sm outline-none transition-colors hover:border-charcoal/25 hover:bg-warm-stone focus-visible:ring-2 focus-visible:ring-brass/35 sm:right-4 sm:top-4"
               aria-label="Close product details"
             >
-              <X size={19} />
+              <X size={16} strokeWidth={1.8} />
             </button>
             <div
               ref={modalScrollRef}
               data-lenis-prevent
-              className="grid max-h-[92dvh] overscroll-contain overflow-y-auto md:max-h-[88vh] md:grid-cols-[0.95fr_1.05fr]"
+              className="grid max-h-[92dvh] overscroll-contain overflow-y-auto md:max-h-[76vh] md:grid-cols-[0.9fr_1.1fr] md:overflow-hidden"
             >
-              <div className="relative min-h-[190px] bg-charcoal/[0.04] sm:min-h-[260px] md:min-h-[560px]">
+              <div className="relative min-h-[190px] bg-charcoal/[0.04] sm:min-h-[250px] md:min-h-[440px]">
                 <img
                   src={resolveMediaUrl(selectedProduct.image)}
                   alt={selectedProduct.name}
@@ -573,28 +584,29 @@ export default function ProductsSection() {
                   </span>
                 )}
               </div>
-              <div className="flex flex-col justify-center p-5 sm:p-7 md:p-10 lg:p-14">
+              <div data-lenis-prevent className="flex flex-col justify-center p-5 sm:p-7 md:max-h-[76vh] md:overflow-y-auto md:p-8 lg:p-10">
                 <span className="font-body text-[10px] font-bold uppercase tracking-[0.22em] text-brass">
                   {getCategoryName(selectedProduct.category)}
                 </span>
-                <h2 id="product-modal-title" className="mt-3 pr-10 font-display text-2xl font-medium leading-[1.05] tracking-[-0.03em] text-charcoal sm:mt-4 sm:text-3xl md:text-5xl">
+                <h2 id="product-modal-title" className="mt-3 pr-10 font-display text-2xl font-medium leading-[1.1] tracking-[-0.025em] text-charcoal sm:text-3xl md:pr-8 md:text-[34px]">
                   {selectedProduct.name}
                 </h2>
-                <div className="my-5 h-px w-16 bg-brass sm:my-7" />
-                <p className="font-body text-sm leading-6 text-charcoal/70 sm:leading-7 md:text-base">
+                <div className="my-5 h-px w-12 bg-brass" />
+                <p className="font-body text-sm leading-6 text-charcoal/70 md:text-[15px] md:leading-7">
                   {selectedProduct.description}
                 </p>
                 <button
                   type="button"
                   onClick={() => startProductInquiry(selectedProduct)}
-                  className="mt-6 inline-flex items-center justify-center gap-3 bg-charcoal px-7 py-3.5 font-body text-[10px] font-bold uppercase tracking-[0.2em] text-white transition-colors hover:bg-brass sm:mt-9 sm:py-4"
+                  className="mt-6 inline-flex self-start items-center justify-center gap-2 rounded-md bg-charcoal px-5 py-3 font-body text-[10px] font-bold uppercase tracking-[0.14em] text-white transition-colors hover:bg-brass md:mt-7"
                 >
-                  Send an Inquiry <ArrowRight size={16} />
+                  Send an Inquiry <ArrowRight size={14} />
                 </button>
               </div>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </section>
   )

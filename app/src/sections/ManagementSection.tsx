@@ -1,4 +1,5 @@
 import { useRef, useEffect, useState, useCallback, useMemo } from 'react'
+import { createPortal } from 'react-dom'
 import gsap from 'gsap'
 import { useGSAP } from '@gsap/react'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
@@ -46,6 +47,7 @@ export default function ManagementSection() {
   const headerRef = useRef<HTMLDivElement>(null)
   const cardsRef = useRef<HTMLDivElement>(null)
   const modalScrollRef = useRef<HTMLDivElement>(null)
+  const modalCloseRef = useRef<HTMLButtonElement>(null)
 
   const fetchTeam = useCallback(() => {
     fetch(apiUrl('/api/team'))
@@ -107,12 +109,18 @@ export default function ManagementSection() {
     const previousPosition = document.body.style.position
     const previousTop = document.body.style.top
     const previousWidth = document.body.style.width
+    const previouslyFocused = document.activeElement instanceof HTMLElement ? document.activeElement : null
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setSelectedMember(null)
+    }
 
     document.documentElement.style.overflow = 'hidden'
     document.body.style.overflow = 'hidden'
     document.body.style.position = 'fixed'
     document.body.style.top = `-${scrollY}px`
     document.body.style.width = '100%'
+    window.addEventListener('keydown', handleKeyDown)
+    const focusFrame = window.requestAnimationFrame(() => modalCloseRef.current?.focus())
 
     return () => {
       document.documentElement.style.overflow = previousHtmlOverflow
@@ -120,7 +128,10 @@ export default function ManagementSection() {
       document.body.style.position = previousPosition
       document.body.style.top = previousTop
       document.body.style.width = previousWidth
+      window.removeEventListener('keydown', handleKeyDown)
+      window.cancelAnimationFrame(focusFrame)
       window.scrollTo(0, scrollY)
+      previouslyFocused?.focus({ preventScroll: true })
     }
   }, [selectedMember])
 
@@ -407,8 +418,8 @@ export default function ManagementSection() {
         </div>
       </div>
 
-      {selectedMember && (
-        <div className="fixed inset-0 z-[3000] flex items-center justify-center p-4 pt-24 md:p-8 md:pt-28">
+      {selectedMember && typeof document !== 'undefined' && createPortal(
+        <div className="fixed inset-0 z-[2147483000] flex items-center justify-center p-4 pt-24 md:p-8 md:pt-28" role="dialog" aria-modal="true" aria-labelledby="leadership-modal-title">
           <div
             className="absolute inset-0 bg-charcoal/95 backdrop-blur-md"
             onClick={() => setSelectedMember(null)}
@@ -419,8 +430,11 @@ export default function ManagementSection() {
             className="relative bg-[rgb(6,2,115)] border border-[#060273]/30 w-full max-w-5xl h-[min(78vh,720px)] overflow-hidden grid grid-rows-[200px_minmax(0,1fr)] md:grid-rows-1 md:grid-cols-[300px_minmax(0,1fr)] shadow-[0_30px_80px_rgba(0,0,0,0.45)] animate-in fade-in zoom-in duration-300 rounded-2xl"
           >
             <button
+              ref={modalCloseRef}
+              type="button"
               onClick={() => setSelectedMember(null)}
               className="absolute top-5 right-5 z-10 w-10 h-10 border border-[#060273]/25 bg-[#060273]/15 flex items-center justify-center text-white hover:bg-[#060273]/25 transition-all rounded-full"
+              aria-label="Close leadership profile"
             >
               ✕
             </button>
@@ -441,7 +455,7 @@ export default function ManagementSection() {
               <span className="text-[10px] font-bold text-[#D64545] uppercase tracking-[0.28em] mb-3 block">
                 Executive Profile
               </span>
-              <h3 className="font-display text-[28px] md:text-[46px] text-white tracking-[-0.03em] font-medium mb-2 leading-[1.02]">
+              <h3 id="leadership-modal-title" className="font-display text-[28px] md:text-[46px] text-white tracking-[-0.03em] font-medium mb-2 leading-[1.02]">
                 {selectedMember.name}
               </h3>
               <p className="text-[14px] md:text-[16px] text-white/80 font-body mb-6 uppercase tracking-[0.08em]">
@@ -463,7 +477,8 @@ export default function ManagementSection() {
               </div>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </section>
   )

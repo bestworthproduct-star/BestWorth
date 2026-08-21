@@ -5,6 +5,7 @@ import { useSocket } from '../hooks/useSocket'
 import { apiUrl } from '@/lib/api'
 import { Link } from 'react-router-dom'
 import { Mail, Phone, MapPin, Send, Clock, ArrowRight, X } from 'lucide-react'
+import ExternalMediaGate from '@/components/ExternalMediaGate'
 
 interface ContactData {
   address: string
@@ -302,6 +303,8 @@ export default function ContactSection() {
                   </div>
 
                   <div className="relative aspect-[16/10] overflow-hidden rounded-xl border border-charcoal/10 group shadow-lg">
+                    <ExternalMediaGate title="Google Maps">
+                    <>
                     <iframe
                       src={mapUrl}
                       width="100%"
@@ -319,6 +322,8 @@ export default function ContactSection() {
                     >
                       Maximize Map
                     </button>
+                    </>
+                    </ExternalMediaGate>
                   </div>
                 </div>
               </div>
@@ -388,6 +393,8 @@ export default function ContactSection() {
                   </div>
 
                   <div className="relative aspect-[4/3] rounded-2xl overflow-hidden border border-charcoal/10 shadow-inner">
+                    <ExternalMediaGate title="Google Maps">
+                    <>
                     <iframe
                       src={mapUrl}
                       width="100%"
@@ -404,6 +411,8 @@ export default function ContactSection() {
                     >
                       Open in Maps
                     </button>
+                    </>
+                    </ExternalMediaGate>
                   </div>
                 </>
               ) : (

@@ -85,12 +85,12 @@ async function deliverCampaign(campaignId, io) {
     const status = failedCount === 0 ? 'sent' : sentCount > 0 ? 'partial' : 'failed';
     const updated = await NewsletterCampaign.findByIdAndUpdate(campaignId, {
       status, sentCount, failedCount, lastError, completedAt: new Date()
-    }, { new: true }).populate('post', 'title slug').lean();
+    }, { returnDocument: 'after' }).populate('post', 'title slug').lean();
     io?.to('owners').emit('newsletter_campaign_change', { action: 'complete', data: updated });
   } catch (error) {
     const updated = await NewsletterCampaign.findByIdAndUpdate(campaignId, {
       status: 'failed', lastError: String(error.message || 'Campaign failed').slice(0, 500), completedAt: new Date()
-    }, { new: true }).populate('post', 'title slug').lean();
+    }, { returnDocument: 'after' }).populate('post', 'title slug').lean();
     console.error('[newsletter] campaign failed', { campaignId: String(campaignId), message: error.message });
     io?.to('owners').emit('newsletter_campaign_change', { action: 'failed', data: updated });
   }

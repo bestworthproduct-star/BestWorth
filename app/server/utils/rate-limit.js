@@ -17,12 +17,12 @@ async function consume(scope, rawKey, limit, windowMs) {
     entry = await RateLimitEntry.findOneAndUpdate(
       { scope, keyHash, windowStart },
       { $inc: { count: 1 }, $setOnInsert: { expiresAt } },
-      { upsert: true, new: true, setDefaultsOnInsert: false }
+      { upsert: true, returnDocument: 'after', setDefaultsOnInsert: false }
     ).lean();
   } catch (error) {
     if (error?.code !== 11000) throw error;
     entry = await RateLimitEntry.findOneAndUpdate(
-      { scope, keyHash, windowStart }, { $inc: { count: 1 } }, { new: true }
+      { scope, keyHash, windowStart }, { $inc: { count: 1 } }, { returnDocument: 'after' }
     ).lean();
   }
   return { allowed: entry.count <= limit, count: entry.count, limit, retryAfterSeconds: Math.max(Math.ceil((startMs + windowMs - now) / 1000), 1) };

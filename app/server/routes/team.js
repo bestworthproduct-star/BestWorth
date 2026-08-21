@@ -119,7 +119,7 @@ router.put('/:id', auth, requirePermission('leadership', 'manage'), async (req, 
     const updatedMember = await TeamMember.findByIdAndUpdate(
       req.params.id,
       payload,
-      { new: true, runValidators: true }
+      { returnDocument: 'after', runValidators: true }
     );
 
     if (!updatedMember) {

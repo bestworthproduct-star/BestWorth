@@ -1,10 +1,11 @@
-import { useRef, useEffect, useState } from 'react'
+import { useRef, useEffect, useMemo, useState } from 'react'
 import gsap from 'gsap'
 import { useGSAP } from '@gsap/react'
 import { ChevronDown, ChevronLeft, ChevronRight } from 'lucide-react'
 import { useSocket } from '../hooks/useSocket'
 import { apiUrl } from '@/lib/api'
 import { resolveMediaUrl } from '@/lib/media'
+import { isExternalMediaUrl, useCookieConsent } from '@/lib/cookie-consent'
 
 interface HeroSectionProps {
   scrollTo: (target: string) => void
@@ -37,6 +38,11 @@ export default function HeroSection({ scrollTo }: HeroSectionProps) {
   const [heroData, setHeroData] = useState<HeroData | null>(null)
   const [currentVideoIndex, setCurrentVideoIndex] = useState(0)
   const [isHeroActive, setIsHeroActive] = useState(true)
+  const consent = useCookieConsent()
+  const videoUrls = useMemo(
+    () => (heroData?.videoUrls || []).filter((url) => consent?.externalMedia || !isExternalMediaUrl(resolveMediaUrl(url))),
+    [consent?.externalMedia, heroData?.videoUrls]
+  )
   const heroRef = useRef<HTMLElement>(null)
   const overlayRef = useRef<HTMLDivElement>(null)
   const contentWrapRef = useRef<HTMLDivElement>(null)
@@ -74,24 +80,28 @@ export default function HeroSection({ scrollTo }: HeroSectionProps) {
 
   // Auto-slide effect
   useEffect(() => {
-    if (!heroData?.videoUrls || heroData.videoUrls.length <= 1) return
+    if (videoUrls.length <= 1) return
 
     const interval = setInterval(() => {
-      setCurrentVideoIndex((prev) => (prev + 1) % heroData.videoUrls.length)
+      setCurrentVideoIndex((prev) => (prev + 1) % videoUrls.length)
     }, 8000) // 8 seconds per slide
 
     return () => clearInterval(interval)
-  }, [heroData?.videoUrls])
+  }, [videoUrls])
+
+  useEffect(() => {
+    if (currentVideoIndex >= videoUrls.length) setCurrentVideoIndex(0)
+  }, [currentVideoIndex, videoUrls.length])
 
   const nextVideo = () => {
-    if (heroData?.videoUrls) {
-      setCurrentVideoIndex((prev) => (prev + 1) % heroData.videoUrls.length)
+    if (videoUrls.length) {
+      setCurrentVideoIndex((prev) => (prev + 1) % videoUrls.length)
     }
   }
 
   const prevVideo = () => {
-    if (heroData?.videoUrls) {
-      setCurrentVideoIndex((prev) => (prev - 1 + heroData.videoUrls.length) % heroData.videoUrls.length)
+    if (videoUrls.length) {
+      setCurrentVideoIndex((prev) => (prev - 1 + videoUrls.length) % videoUrls.length)
     }
   }
 
@@ -261,7 +271,7 @@ export default function HeroSection({ scrollTo }: HeroSectionProps) {
     >
       {/* Video Background */}
       <div className="absolute inset-0 w-full h-full z-[1]">
-        {heroData.videoUrls?.map((url, idx) => (
+        {videoUrls.map((url, idx) => (
           <video
             key={url + idx}
             autoPlay
@@ -276,7 +286,7 @@ export default function HeroSection({ scrollTo }: HeroSectionProps) {
             <source src={resolveMediaUrl(url)} type="video/mp4" />
           </video>
         ))}
-        {!heroData.videoUrls?.length && (
+        {!videoUrls.length && (
            <video
            autoPlay
            muted
@@ -337,7 +347,7 @@ export default function HeroSection({ scrollTo }: HeroSectionProps) {
       </div>
 
       {/* Navigation Arrows */}
-      {heroData.videoUrls && heroData.videoUrls.length > 1 && (
+      {videoUrls.length > 1 && (
         <div className="absolute inset-y-0 left-0 right-0 flex items-center justify-between px-4 md:px-10 z-[4] pointer-events-none">
           <button 
             onClick={prevVideo}
@@ -360,9 +370,9 @@ export default function HeroSection({ scrollTo }: HeroSectionProps) {
       </div>
 
       {/* Slide Indicators */}
-      {heroData.videoUrls && heroData.videoUrls.length > 1 && (
+      {videoUrls.length > 1 && (
         <div className="absolute bottom-10 left-1/2 -translate-x-1/2 flex gap-3 z-[4]">
-          {heroData.videoUrls.map((_, idx) => (
+          {videoUrls.map((_, idx) => (
             <button
               key={idx}
               onClick={() => setCurrentVideoIndex(idx)}

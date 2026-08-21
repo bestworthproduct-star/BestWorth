@@ -6,6 +6,7 @@ import { useSocket } from '../hooks/useSocket'
 import { apiUrl } from '@/lib/api'
 import { resolveMediaUrl } from '@/lib/media'
 import { Link } from 'react-router-dom'
+import { openCookiePreferences } from '@/lib/cookie-consent'
 
 interface FooterProps {
   scrollTo: (target: string) => void
@@ -394,14 +395,15 @@ export default function Footer({ scrollTo }: FooterProps) {
           <p className="font-body text-[10px] font-bold uppercase tracking-[0.2em] text-white/25">
             {footerData?.copyright || '© 2024 Bestworth Products Limited.'}
           </p>
-          <div className="flex items-center gap-6">
+          <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-3">
             <span className="font-body text-[9px] font-bold uppercase tracking-widest text-white/20">
               Engineering Excellence Site
             </span>
             <div className="h-4 w-px bg-white/5" />
             <Link to="/cookie-policy" className="text-[10px] font-bold text-white/20 hover:text-white transition-colors uppercase tracking-widest">
-              Cookies
+              Cookie Policy
             </Link>
+            <button type="button" onClick={openCookiePreferences} className="text-[10px] font-bold text-white/20 hover:text-white transition-colors uppercase tracking-widest">Cookie Settings</button>
           </div>
         </div>
       </div>

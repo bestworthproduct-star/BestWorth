@@ -26,6 +26,7 @@ import NewsletterUnsubscribePage from './pages/NewsletterUnsubscribePage'
 import { apiUrl } from './lib/api'
 import { resolveMediaUrl } from './lib/media'
 import { useSocket } from './hooks/useSocket'
+import CookieConsentBanner from './components/CookieConsentBanner'
 
 gsap.registerPlugin(ScrollTrigger)
 
@@ -151,6 +152,7 @@ function App() {
   }
 
   return (
+    <>
     <Routes>
       <Route path="/login" element={<Login />} />
       <Route path="/admin" element={<AdminDashboard />} />
@@ -180,6 +182,8 @@ function App() {
       } />
       <Route path="*" element={<NotFound />} />
     </Routes>
+    <CookieConsentBanner hidden={isAdminPath || isServiceUnavailablePath} />
+    </>
   )
 }
 

@@ -4,6 +4,8 @@ import { Link } from 'react-router-dom'
 import { resolveMediaUrl } from '@/lib/media'
 import type { NewsMediaPost } from '@/types/news-media'
 import { formatNewsDate } from './NewsMediaCard'
+import ExternalMediaGate from './ExternalMediaGate'
+import { isExternalMediaUrl, useCookieConsent } from '@/lib/cookie-consent'
 
 type EmbedProvider = 'youtube' | 'vimeo'
 
@@ -14,7 +16,7 @@ function getEmbed(value: string): { provider: EmbedProvider; url: string } | nul
       const id = url.hostname === 'youtu.be'
         ? url.pathname.slice(1)
         : url.searchParams.get('v') || url.pathname.split('/').filter(Boolean).pop()
-      return id ? { provider: 'youtube', url: `https://www.youtube.com/embed/${id}?enablejsapi=1&controls=0&playsinline=1&rel=0&autoplay=0&mute=1` } : null
+      return id ? { provider: 'youtube', url: `https://www.youtube-nocookie.com/embed/${id}?enablejsapi=1&controls=0&playsinline=1&rel=0&autoplay=0&mute=1` } : null
     }
     if (url.hostname.includes('vimeo.com')) {
       const id = url.pathname.split('/').filter(Boolean).pop()
@@ -42,6 +44,8 @@ export default function HomepageVideoPlayer({ post, onEnded }: { post: NewsMedia
   const [currentTime, setCurrentTime] = useState(0)
   const [duration, setDuration] = useState(0)
   const embed = useMemo(() => getEmbed(post.videoUrl), [post.videoUrl])
+  const consent = useCookieConsent()
+  const requiresExternalConsent = Boolean(embed || isExternalMediaUrl(resolveMediaUrl(post.videoUrl)))
 
   useEffect(() => {
     if (!embed) return
@@ -137,6 +141,11 @@ export default function HomepageVideoPlayer({ post, onEnded }: { post: NewsMedia
   const enterFullscreen = () => {
     const element = frameRef.current
     if (element?.requestFullscreen) void element.requestFullscreen()
+  }
+
+  if (requiresExternalConsent && !consent?.externalMedia) {
+    const providerLabel = embed ? (embed.provider === 'youtube' ? 'YouTube' : 'Vimeo') : 'Externally hosted'
+    return <div ref={frameRef} className="relative aspect-video overflow-hidden bg-[#07192C]"><ExternalMediaGate title={`${providerLabel} video`}><span /></ExternalMediaGate></div>
   }
 
   return (

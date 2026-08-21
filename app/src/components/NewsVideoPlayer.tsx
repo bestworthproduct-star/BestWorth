@@ -1,6 +1,8 @@
 import { useMemo, useRef, useState } from 'react'
 import { Maximize, Pause, Play, Volume2, VolumeX } from 'lucide-react'
 import { resolveMediaUrl } from '@/lib/media'
+import ExternalMediaGate from './ExternalMediaGate'
+import { isExternalMediaUrl, useCookieConsent } from '@/lib/cookie-consent'
 
 type EmbedProvider = 'youtube' | 'vimeo'
 
@@ -9,7 +11,7 @@ function getEmbed(value: string): { provider: EmbedProvider; url: string } | nul
     const url = new URL(value)
     if (url.hostname.includes('youtube.com') || url.hostname === 'youtu.be') {
       const id = url.hostname === 'youtu.be' ? url.pathname.slice(1) : url.searchParams.get('v') || url.pathname.split('/').filter(Boolean).pop()
-      return id ? { provider: 'youtube', url: `https://www.youtube.com/embed/${id}?enablejsapi=1&controls=0&playsinline=1&rel=0&autoplay=0&mute=1` } : null
+      return id ? { provider: 'youtube', url: `https://www.youtube-nocookie.com/embed/${id}?enablejsapi=1&controls=0&playsinline=1&rel=0&autoplay=0&mute=1` } : null
     }
     if (url.hostname.includes('vimeo.com')) {
       const id = url.pathname.split('/').filter(Boolean).pop()
@@ -35,6 +37,8 @@ export default function NewsVideoPlayer({ src, poster, title }: Props) {
   const videoRef = useRef<HTMLVideoElement>(null)
   const iframeRef = useRef<HTMLIFrameElement>(null)
   const embed = useMemo(() => getEmbed(src), [src])
+  const consent = useCookieConsent()
+  const requiresExternalConsent = Boolean(embed || isExternalMediaUrl(resolveMediaUrl(src)))
   const [started, setStarted] = useState(false)
   const [playing, setPlaying] = useState(false)
   const [muted, setMuted] = useState(true)
@@ -77,6 +81,11 @@ export default function NewsVideoPlayer({ src, poster, title }: Props) {
     setMuted(next)
     if (embed) sendEmbedCommand(next ? 'mute' : 'unmute')
     else if (videoRef.current) videoRef.current.muted = next
+  }
+
+  if (requiresExternalConsent && !consent?.externalMedia) {
+    const providerLabel = embed ? (embed.provider === 'youtube' ? 'YouTube' : 'Vimeo') : 'Externally hosted'
+    return <div ref={frameRef} className="relative aspect-video overflow-hidden bg-[#07192C]"><ExternalMediaGate title={`${providerLabel} video`}><span /></ExternalMediaGate></div>
   }
 
   return (

@@ -150,7 +150,8 @@ export default function AdminDashboard() {
               ['team', 'leadership'],
               ['inquiries', 'inquiries'],
               ['media', 'media'],
-              ['cms', 'cms']
+              ['cms', 'cms'],
+              ['workers', 'workers']
             ] as const).find(([, moduleName]) => canAccess(user, moduleName))
             setActiveTab(firstAvailable?.[0] || 'settings')
           }
@@ -297,6 +298,7 @@ export default function AdminDashboard() {
   const canManageInquiries = canAccess(currentUser, 'inquiries', 'manage')
   const canManageMedia = canAccess(currentUser, 'media', 'manage')
   const canManageCms = canAccess(currentUser, 'cms', 'manage')
+  const canManageWorkers = canAccess(currentUser, 'workers', 'manage')
 
   const renderContent = () => {
     if (loading) return (
@@ -414,7 +416,9 @@ export default function AdminDashboard() {
         /></div></>
       )
       case 'media': return <><ReadOnlyGate enabled={!canManageMedia}/><NewsMediaManager canManage={canManageMedia} isAdmin={currentUser.role === 'admin'}/></>
-      case 'workers': return currentUser.role === 'admin' ? <WorkerAccessManager /> : null
+      case 'workers': return canAccess(currentUser, 'workers')
+        ? <WorkerAccessManager currentUser={currentUser} canManage={canManageWorkers} isOwner={currentUser.role === 'admin'} />
+        : null
       case 'settings': return (
         <AccountSettings
           settings={accountSettings}

@@ -19,7 +19,6 @@ interface NavItem {
   label: string
   icon: LucideIcon
   permission?: PermissionModule
-  adminOnly?: boolean
 }
 
 export const navItems: readonly NavItem[] = [
@@ -29,7 +28,7 @@ export const navItems: readonly NavItem[] = [
   { id: 'inquiries', label: 'Inquiries', icon: MessageSquare, permission: 'inquiries' },
   { id: 'media', label: 'News & Media', icon: Newspaper, permission: 'media' },
   { id: 'cms', label: 'Site CMS', icon: FileEdit, permission: 'cms' },
-  { id: 'workers', label: 'Worker Access', icon: ShieldCheck, adminOnly: true },
+  { id: 'workers', label: 'Worker Access', icon: ShieldCheck, permission: 'workers' },
   { id: 'settings', label: 'Settings', icon: Settings }
 ] as const
 
@@ -38,7 +37,6 @@ export default function AdminLayout({ children, activeTab, setActiveTab, handleL
   const [branding, setBranding] = useState<any>(null)
   const isCMS = activeTab === 'cms'
   const visibleNavItems = navItems.filter((item) => {
-    if (item.adminOnly) return user.role === 'admin'
     if (item.permission) return canAccess(user, item.permission)
     return true
   })
@@ -127,7 +125,7 @@ export default function AdminLayout({ children, activeTab, setActiveTab, handleL
             <div className="p-6 border-t border-charcoal/5">
               <div className="mb-4 min-w-0">
                 <p className="truncate text-[11px] font-semibold text-charcoal/70">{user.fullName || user.username}</p>
-                <p className="mt-0.5 text-[9px] font-medium uppercase tracking-widest text-charcoal/30">{user.role === 'admin' ? 'Owner' : 'Worker'}</p>
+                <p className="mt-0.5 truncate text-[9px] font-medium uppercase tracking-widest text-charcoal/30">{user.role === 'admin' ? 'Owner' : (user.jobTitle || 'Worker')}</p>
               </div>
               <button onClick={handleLogout} className="text-[12px] font-medium text-charcoal/40 hover:text-red-600 flex items-center gap-2 transition-colors"><LogOut size={14}/> Sign Out</button>
             </div>

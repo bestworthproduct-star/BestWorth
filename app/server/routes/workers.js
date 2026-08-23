@@ -4,14 +4,14 @@ const crypto = require('crypto');
 const User = require('../models/User');
 const AccessAudit = require('../models/AccessAudit');
 const auth = require('../middleware/auth');
-const { requireAdmin } = require('../middleware/authorize');
-const { normalizePermissions, serializeUser } = require('../utils/permissions');
+const { requireAdmin, requirePermission } = require('../middleware/authorize');
+const { canDelegatePermissions, getRole, isCreatorProtectedTarget, normalizePermissions, serializeUser } = require('../utils/permissions');
 const { recordAccessAudit } = require('../utils/access-audit');
 const { objectId, stringField, emailField } = require('../utils/validation');
 const { rateLimit, clientIp } = require('../utils/rate-limit');
 
 const router = express.Router();
-router.use(auth, requireAdmin);
+router.use(auth);
 router.use(rateLimit({ scope: 'workers-admin', limit: 120, windowMs: 15 * 60 * 1000, key: (req) => `${clientIp(req)}:${req.user.id}` }));
 
 const normalizeUsername = (value) => String(value || '').trim().toLowerCase();
@@ -24,7 +24,51 @@ async function findWorker(id) {
   return User.findOne({ _id: id, role: 'worker' });
 }
 
-router.get('/', async (_req, res) => {
+function isOwner(req) {
+  return getRole(req.user) === 'admin';
+}
+
+function isSelf(req, worker) {
+  return String(req.user.id) === String(worker._id);
+}
+
+function rejectProtectedWorker(req, res, worker) {
+  if (!isOwner(req) && isSelf(req, worker)) {
+    res.status(403).json({
+      message: 'Use your account settings to update your own account.',
+      code: 'SELF_MANAGEMENT_DENIED'
+    });
+    return true;
+  }
+  if (isCreatorProtectedTarget(req.user, worker)) {
+    res.status(403).json({
+      message: 'The worker who created your account is protected from changes.',
+      code: 'CREATOR_ACCOUNT_PROTECTED'
+    });
+    return true;
+  }
+  if (!isOwner(req) && !canDelegatePermissions(req.user, worker.permissions, worker.permissions)) {
+    res.status(403).json({
+      message: 'This account has access above your management authority.',
+      code: 'TARGET_ACCESS_PROTECTED'
+    });
+    return true;
+  }
+  return false;
+}
+
+function rejectPrivilegeEscalation(req, res, permissions, existingPermissions = null) {
+  if (!canDelegatePermissions(req.user, permissions, existingPermissions)) {
+    res.status(403).json({
+      message: 'You cannot grant access above your own permissions or delegate Worker Access.',
+      code: 'PERMISSION_ESCALATION_DENIED'
+    });
+    return true;
+  }
+  return false;
+}
+
+router.get('/', requirePermission('workers', 'view'), async (_req, res) => {
   try {
     const workers = await User.find({ role: 'worker' }).sort({ createdAt: -1 });
     res.json(workers.map(serializeUser));
@@ -33,9 +77,10 @@ router.get('/', async (_req, res) => {
   }
 });
 
-router.post('/', async (req, res) => {
+router.post('/', requirePermission('workers', 'manage'), async (req, res) => {
   try {
     const fullName = stringField(req.body?.fullName, { name: 'Full name', required: true, max: 120 });
+    const jobTitle = stringField(req.body?.jobTitle, { name: 'Company role / job title', required: true, max: 100 });
     const username = stringField(normalizeUsername(req.body?.username), { name: 'Username', required: true, max: 80 });
     const email = emailField(req.body?.email);
     if (!fullName || !/^[a-z0-9._-]{3,80}$/.test(username) || !email) {
@@ -46,14 +91,18 @@ router.post('/', async (req, res) => {
       return res.status(409).json({ message: 'That username or email is already in use.' });
     }
 
+    const permissions = normalizePermissions('worker', req.body?.permissions);
+    if (rejectPrivilegeEscalation(req, res, permissions)) return;
+
     const temporaryPassword = makeTemporaryPassword();
     const worker = await User.create({
       fullName,
+      jobTitle,
       username,
       email,
       password: await bcrypt.hash(temporaryPassword, 10),
       role: 'worker',
-      permissions: normalizePermissions('worker', req.body?.permissions),
+      permissions,
       active: true,
       mustChangePassword: true,
       createdBy: req.user.id
@@ -65,11 +114,13 @@ router.post('/', async (req, res) => {
   }
 });
 
-router.patch('/:id', async (req, res) => {
+router.patch('/:id', requirePermission('workers', 'manage'), async (req, res) => {
   try {
     const worker = await findWorker(req.params.id);
     if (!worker) return res.status(404).json({ message: 'Worker not found.' });
+    if (rejectProtectedWorker(req, res, worker)) return;
     const fullName = stringField(req.body?.fullName ?? worker.fullName, { name: 'Full name', required: true, max: 120 });
+    const jobTitle = stringField(req.body?.jobTitle ?? worker.jobTitle, { name: 'Company role / job title', max: 100 });
     const username = normalizeUsername(req.body?.username ?? worker.username);
     const email = emailField(req.body?.email ?? worker.email);
     if (!fullName || !/^[a-z0-9._-]{3,80}$/.test(username) || !validEmail(email)) {
@@ -79,6 +130,7 @@ router.patch('/:id', async (req, res) => {
       return res.status(409).json({ message: 'That username or email is already in use.' });
     }
     worker.fullName = fullName;
+    worker.jobTitle = jobTitle;
     worker.username = username;
     worker.email = email;
     await worker.save();
@@ -89,11 +141,14 @@ router.patch('/:id', async (req, res) => {
   }
 });
 
-router.patch('/:id/permissions', async (req, res) => {
+router.patch('/:id/permissions', requirePermission('workers', 'manage'), async (req, res) => {
   try {
     const worker = await findWorker(req.params.id);
     if (!worker) return res.status(404).json({ message: 'Worker not found.' });
-    worker.permissions = normalizePermissions('worker', req.body?.permissions);
+    if (rejectProtectedWorker(req, res, worker)) return;
+    const permissions = normalizePermissions('worker', req.body?.permissions);
+    if (rejectPrivilegeEscalation(req, res, permissions, worker.permissions)) return;
+    worker.permissions = permissions;
     await worker.save();
     void recordAccessAudit(req, 'worker.permissions_updated', {
       targetUser: worker._id,
@@ -105,10 +160,11 @@ router.patch('/:id/permissions', async (req, res) => {
   }
 });
 
-router.patch('/:id/status', async (req, res) => {
+router.patch('/:id/status', requirePermission('workers', 'manage'), async (req, res) => {
   try {
     const worker = await findWorker(req.params.id);
     if (!worker) return res.status(404).json({ message: 'Worker not found.' });
+    if (rejectProtectedWorker(req, res, worker)) return;
     if (typeof req.body?.active !== 'boolean') {
       return res.status(400).json({ message: 'An active status is required.' });
     }
@@ -122,10 +178,11 @@ router.patch('/:id/status', async (req, res) => {
   }
 });
 
-router.post('/:id/reset-password', async (req, res) => {
+router.post('/:id/reset-password', requirePermission('workers', 'manage'), async (req, res) => {
   try {
     const worker = await findWorker(req.params.id);
     if (!worker) return res.status(404).json({ message: 'Worker not found.' });
+    if (rejectProtectedWorker(req, res, worker)) return;
     const temporaryPassword = makeTemporaryPassword();
     worker.passwordHistory = [...(worker.passwordHistory || []), worker.password].slice(-5);
     worker.password = await bcrypt.hash(temporaryPassword, 10);
@@ -139,7 +196,7 @@ router.post('/:id/reset-password', async (req, res) => {
   }
 });
 
-router.get('/:id/activity', async (req, res) => {
+router.get('/:id/activity', requirePermission('workers', 'view'), async (req, res) => {
   try {
     const worker = await findWorker(req.params.id);
     if (!worker) return res.status(404).json({ message: 'Worker not found.' });
@@ -152,7 +209,7 @@ router.get('/:id/activity', async (req, res) => {
   }
 });
 
-router.delete('/:id', async (req, res) => {
+router.delete('/:id', requireAdmin, async (req, res) => {
   try {
     const worker = await findWorker(req.params.id);
     if (!worker) return res.status(404).json({ message: 'Worker not found.' });

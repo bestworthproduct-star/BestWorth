@@ -6,7 +6,8 @@ const permissionSchema = new mongoose.Schema({
   leadership: { type: String, enum: ['none', 'view', 'manage'], default: 'none' },
   inquiries: { type: String, enum: ['none', 'view', 'manage'], default: 'none' },
   media: { type: String, enum: ['none', 'view', 'manage'], default: 'none' },
-  cms: { type: String, enum: ['none', 'view', 'manage'], default: 'none' }
+  cms: { type: String, enum: ['none', 'view', 'manage'], default: 'none' },
+  workers: { type: String, enum: ['none', 'view', 'manage'], default: 'none' }
 }, { _id: false });
 
 const userSchema = new mongoose.Schema({
@@ -15,6 +16,7 @@ const userSchema = new mongoose.Schema({
   passwordHistory: [{ type: String }],
   notificationEmails: [{ type: String }],
   fullName: { type: String, trim: true, default: '' },
+  jobTitle: { type: String, trim: true, maxlength: 100, default: '' },
   email: { type: String, trim: true, lowercase: true },
   // Intentionally no default: legacy accounts without a role are treated as the owner.
   role: { type: String, enum: ['admin', 'worker'] },

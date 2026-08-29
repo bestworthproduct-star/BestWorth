@@ -36,8 +36,8 @@ const footerLinks = [
   { label: 'OVERVIEW', target: '#hero' },
   { label: 'WHO WE ARE', target: '#about' },
   { label: 'WHAT WE DO', target: '#products' },
-  { label: 'LEADERSHIP', target: '#management' },
   { label: 'NEWS & MEDIA', target: '#news-media' },
+  { label: 'LEADERSHIP', target: '#management' },
   { label: 'GET IN TOUCH', target: '#contact' },
 ]
 

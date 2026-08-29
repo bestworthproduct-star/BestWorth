@@ -10,8 +10,8 @@ const navLinks = [
   { label: 'OVERVIEW', target: '#hero', icon: <Menu size={20} /> },
   { label: 'WHO WE ARE', target: '#about', icon: <Menu size={20} /> },
   { label: 'WHAT WE DO', target: '#products', icon: <Menu size={20} /> },
-  { label: 'LEADERSHIP', target: '#management', icon: <Menu size={20} /> },
   { label: 'NEWS & MEDIA', target: '#news-media', icon: <Menu size={20} /> },
+  { label: 'LEADERSHIP', target: '#management', icon: <Menu size={20} /> },
   { label: 'GET IN TOUCH', target: '#contact', icon: <Menu size={20} /> },
 ]
 
@@ -44,7 +44,7 @@ export default function Navigation({ scrollTo }: { scrollTo: (target: string) =>
     const handleScroll = () => {
       setScrolled(window.scrollY > 100)
 
-      const sections = ['hero', 'about', 'products', 'management', 'news-media', 'contact']
+      const sections = ['hero', 'about', 'products', 'news-media', 'management', 'contact']
       for (let i = sections.length - 1; i >= 0; i--) {
         const el = document.getElementById(sections[i])
         if (el) {

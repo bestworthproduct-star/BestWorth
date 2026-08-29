@@ -171,10 +171,12 @@ function App() {
           <main>
             <HeroSection scrollTo={scrollTo} />
             <AboutSection />
-            <ValuesSection />
             <ProductsSection />
-            <ManagementSection />
+            <div aria-hidden="true" className="relative z-10 h-px bg-gradient-to-r from-transparent via-[#102B4C]/[0.14] to-transparent" />
+            <ValuesSection />
+            <div aria-hidden="true" className="relative z-10 h-px bg-gradient-to-r from-transparent via-[#102B4C]/[0.14] to-transparent" />
             <NewsMediaSection />
+            <ManagementSection />
             <ContactSection />
             <Footer scrollTo={scrollTo} />
           </main>

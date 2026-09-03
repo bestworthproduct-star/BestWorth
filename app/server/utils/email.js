@@ -667,10 +667,169 @@ const sendAdminReply = async (to, subject, message, cmsData = {}) => {
   }
 };
 
+function getWorkerDisplayName(user = {}) {
+  return user.fullName || user.username || 'Team member';
+}
+
+function getWorkerLoginUrl() {
+  return `${buildAppUrl()}/login`;
+}
+
+function buildActionButton(href, label) {
+  return `<a href="${escapeHtml(href)}" style="display:inline-block;padding:12px 20px;border-radius:5px;background:#060273;color:#ffffff;text-decoration:none;font-size:11px;font-weight:700;letter-spacing:0.4px;">${escapeHtml(label)}</a>`;
+}
+
+function buildCredentialBlock(rows) {
+  return `
+    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="margin:26px 0;background:#F3F6FA;border:1px solid #dfe7f0;border-radius:8px;">
+      ${rows.map(({ label, value }) => `
+        <tr>
+          <td style="padding:14px 18px;border-bottom:1px solid #dfe7f0;color:#60758b;font-size:10px;font-weight:700;letter-spacing:1.2px;text-transform:uppercase;">${escapeHtml(label)}</td>
+          <td style="padding:14px 18px;border-bottom:1px solid #dfe7f0;color:#102B4C;font-size:14px;font-weight:600;text-align:right;">${escapeHtml(value)}</td>
+        </tr>
+      `).join('')}
+    </table>
+  `;
+}
+
+async function sendWorkerWelcomeEmail(worker, temporaryPassword, actor = null, cmsData = {}) {
+  if (!worker?.email) return null;
+
+  const brandingData = await buildEmailBranding(cmsData);
+  const loginUrl = getWorkerLoginUrl();
+  const actorName = actor ? getWorkerDisplayName(actor) : 'Bestworth administration';
+  const content = `
+    <span style="display:block;margin-bottom:9px;color:#D64545;font-size:10px;font-weight:700;letter-spacing:1.6px;text-transform:uppercase;">Account created</span>
+    <h1 style="font-size:24px;line-height:1.3;margin:0 0 22px;font-weight:600;color:#102B4C;">Your Bestworth admin access is ready</h1>
+    <div style="font-size:15px;color:#425a70;line-height:1.8;">
+      <div style="margin-bottom:14px;">Hello ${escapeHtml(getWorkerDisplayName(worker))},</div>
+      <div>${escapeHtml(actorName)} created an admin account for you on Bestworth Products Limited.</div>
+      <div style="margin-top:12px;">Use the temporary password below to sign in. You will be asked to create a private password immediately after signing in.</div>
+    </div>
+    ${buildCredentialBlock([
+      { label: 'Username', value: worker.username },
+      { label: 'Temporary password', value: temporaryPassword }
+    ])}
+    <div style="margin-top:28px;">${buildActionButton(loginUrl, 'Open admin login')}</div>
+    <div style="margin-top:28px;padding:16px 18px;border-left:3px solid #D64545;background:#FFF5F5;color:#6f4b4b;font-size:12px;line-height:1.7;">
+      If you were not expecting this account, please contact Bestworth administration before signing in.
+    </div>
+  `;
+
+  return sendMail({
+    from: process.env.EMAIL_FROM || process.env.EMAIL_USER || `"Bestworth System" <${process.env.EMAIL_USER}>`,
+    to: worker.email,
+    replyTo: process.env.EMAIL_REPLY_TO || process.env.COMPANY_EMAIL || process.env.EMAIL_USER,
+    subject: 'Your Bestworth admin account has been created',
+    text: `Hello ${getWorkerDisplayName(worker)},\n\nYour Bestworth admin account has been created.\n\nUsername: ${worker.username}\nTemporary password: ${temporaryPassword}\n\nSign in: ${loginUrl}\n\nYou will be asked to create a private password after signing in.`,
+    html: EmailLayout(content, 'Your Bestworth admin account is ready. Sign in and change your temporary password.', brandingData),
+    attachments: brandingData.attachments
+  }, 'worker welcome');
+}
+
+async function sendWorkerPasswordResetEmail(worker, temporaryPassword, actor = null, cmsData = {}) {
+  if (!worker?.email) return null;
+
+  const brandingData = await buildEmailBranding(cmsData);
+  const loginUrl = getWorkerLoginUrl();
+  const actorName = actor ? getWorkerDisplayName(actor) : 'Bestworth administration';
+  const content = `
+    <span style="display:block;margin-bottom:9px;color:#D64545;font-size:10px;font-weight:700;letter-spacing:1.6px;text-transform:uppercase;">Password reset</span>
+    <h1 style="font-size:24px;line-height:1.3;margin:0 0 22px;font-weight:600;color:#102B4C;">A new temporary password was issued</h1>
+    <div style="font-size:15px;color:#425a70;line-height:1.8;">
+      <div style="margin-bottom:14px;">Hello ${escapeHtml(getWorkerDisplayName(worker))},</div>
+      <div>${escapeHtml(actorName)} reset your Bestworth admin password.</div>
+      <div style="margin-top:12px;">Use this temporary password to sign in. You will be asked to create a new private password immediately.</div>
+    </div>
+    ${buildCredentialBlock([
+      { label: 'Username', value: worker.username },
+      { label: 'Temporary password', value: temporaryPassword }
+    ])}
+    <div style="margin-top:28px;">${buildActionButton(loginUrl, 'Open admin login')}</div>
+    <div style="margin-top:28px;padding:16px 18px;border-left:3px solid #D64545;background:#FFF5F5;color:#6f4b4b;font-size:12px;line-height:1.7;">
+      If you did not request or expect this reset, contact Bestworth administration immediately.
+    </div>
+  `;
+
+  return sendMail({
+    from: process.env.EMAIL_FROM || process.env.EMAIL_USER || `"Bestworth System" <${process.env.EMAIL_USER}>`,
+    to: worker.email,
+    replyTo: process.env.EMAIL_REPLY_TO || process.env.COMPANY_EMAIL || process.env.EMAIL_USER,
+    subject: 'Your Bestworth admin password was reset',
+    text: `Hello ${getWorkerDisplayName(worker)},\n\nYour Bestworth admin password was reset.\n\nUsername: ${worker.username}\nTemporary password: ${temporaryPassword}\n\nSign in: ${loginUrl}\n\nYou will be asked to create a new private password after signing in.`,
+    html: EmailLayout(content, 'A new temporary password was issued for your Bestworth admin account.', brandingData),
+    attachments: brandingData.attachments
+  }, 'worker password reset');
+}
+
+async function sendWorkerPasswordChangedEmail(worker, options = {}, cmsData = {}) {
+  if (!worker?.email) return null;
+
+  const brandingData = await buildEmailBranding(cmsData);
+  const loginUrl = getWorkerLoginUrl();
+  const isFirstSetup = Boolean(options.firstSetup);
+  const heading = isFirstSetup ? 'Your private password has been created' : 'Your password was changed';
+  const intro = isFirstSetup
+    ? 'Your temporary password has been replaced with your private Bestworth admin password.'
+    : 'The password for your Bestworth admin account was changed successfully.';
+  const content = `
+    <span style="display:block;margin-bottom:9px;color:#D64545;font-size:10px;font-weight:700;letter-spacing:1.6px;text-transform:uppercase;">Security notice</span>
+    <h1 style="font-size:24px;line-height:1.3;margin:0 0 22px;font-weight:600;color:#102B4C;">${escapeHtml(heading)}</h1>
+    <div style="font-size:15px;color:#425a70;line-height:1.8;">
+      <div style="margin-bottom:14px;">Hello ${escapeHtml(getWorkerDisplayName(worker))},</div>
+      <div>${escapeHtml(intro)}</div>
+      <div style="margin-top:12px;">No password is included in this email for security reasons.</div>
+    </div>
+    <div style="margin-top:28px;">${buildActionButton(loginUrl, 'Open admin portal')}</div>
+    <div style="margin-top:28px;padding:16px 18px;border-left:3px solid #D64545;background:#FFF5F5;color:#6f4b4b;font-size:12px;line-height:1.7;">
+      If you did not make this change, contact Bestworth administration immediately.
+    </div>
+  `;
+
+  return sendMail({
+    from: process.env.EMAIL_FROM || process.env.EMAIL_USER || `"Bestworth Security" <${process.env.EMAIL_USER}>`,
+    to: worker.email,
+    replyTo: process.env.EMAIL_REPLY_TO || process.env.COMPANY_EMAIL || process.env.EMAIL_USER,
+    subject: isFirstSetup ? 'Bestworth admin password created' : 'Bestworth admin password changed',
+    text: `Hello ${getWorkerDisplayName(worker)},\n\n${intro}\n\nNo password is included in this email for security reasons.\n\nOpen admin portal: ${loginUrl}\n\nIf you did not make this change, contact Bestworth administration immediately.`,
+    html: EmailLayout(content, isFirstSetup ? 'Your temporary password has been replaced.' : 'Your Bestworth admin password was changed.', brandingData),
+    attachments: brandingData.attachments
+  }, isFirstSetup ? 'worker first password changed' : 'worker password changed');
+}
+
+async function sendWorkerFirstLoginEmail(worker, cmsData = {}) {
+  if (!worker?.email) return null;
+
+  const brandingData = await buildEmailBranding(cmsData);
+  const content = `
+    <span style="display:block;margin-bottom:9px;color:#D64545;font-size:10px;font-weight:700;letter-spacing:1.6px;text-transform:uppercase;">First sign-in</span>
+    <h1 style="font-size:24px;line-height:1.3;margin:0 0 22px;font-weight:600;color:#102B4C;">First sign-in detected</h1>
+    <div style="font-size:15px;color:#425a70;line-height:1.8;">
+      <div style="margin-bottom:14px;">Hello ${escapeHtml(getWorkerDisplayName(worker))},</div>
+      <div>Your Bestworth admin account was signed in for the first time.</div>
+      <div style="margin-top:12px;">If this was you, no action is needed. If this was not you, contact Bestworth administration immediately.</div>
+    </div>
+  `;
+
+  return sendMail({
+    from: process.env.EMAIL_FROM || process.env.EMAIL_USER || `"Bestworth Security" <${process.env.EMAIL_USER}>`,
+    to: worker.email,
+    replyTo: process.env.EMAIL_REPLY_TO || process.env.COMPANY_EMAIL || process.env.EMAIL_USER,
+    subject: 'First sign-in to your Bestworth admin account',
+    text: `Hello ${getWorkerDisplayName(worker)},\n\nYour Bestworth admin account was signed in for the first time.\n\nIf this was not you, contact Bestworth administration immediately.`,
+    html: EmailLayout(content, 'Your Bestworth admin account was signed in for the first time.', brandingData),
+    attachments: brandingData.attachments
+  }, 'worker first login');
+}
+
 module.exports = {
   sendInquiryNotification,
   sendInquiryConfirmation,
   sendAdminReply,
+  sendWorkerWelcomeEmail,
+  sendWorkerPasswordResetEmail,
+  sendWorkerPasswordChangedEmail,
+  sendWorkerFirstLoginEmail,
   sendMail,
   buildEmailBranding,
   EmailLayout,

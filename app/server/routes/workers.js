@@ -9,6 +9,7 @@ const { canDelegatePermissions, getRole, isCreatorProtectedTarget, normalizePerm
 const { recordAccessAudit } = require('../utils/access-audit');
 const { objectId, stringField, emailField } = require('../utils/validation');
 const { rateLimit, clientIp } = require('../utils/rate-limit');
+const { sendWorkerWelcomeEmail, sendWorkerPasswordResetEmail } = require('../utils/email');
 
 const router = express.Router();
 router.use(auth);
@@ -18,6 +19,16 @@ const normalizeUsername = (value) => String(value || '').trim().toLowerCase();
 const normalizeEmail = (value) => String(value || '').trim().toLowerCase();
 const validEmail = (value) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
 const makeTemporaryPassword = () => `${crypto.randomBytes(12).toString('base64url')}!7a`;
+
+function sendWorkerAccountEmail(sendPromise, label, worker) {
+  void sendPromise.catch((error) => {
+    console.error(`[workers] ${label} email failed`, {
+      workerId: String(worker?._id || worker?.id || ''),
+      email: worker?.email || '',
+      message: error.message
+    });
+  });
+}
 
 async function findWorker(id) {
   objectId(id, 'Worker ID');
@@ -108,6 +119,7 @@ router.post('/', requirePermission('workers', 'manage'), async (req, res) => {
       createdBy: req.user.id
     });
     void recordAccessAudit(req, 'worker.created', { targetUser: worker._id });
+    sendWorkerAccountEmail(sendWorkerWelcomeEmail(worker, temporaryPassword, req.user), 'welcome', worker);
     res.status(201).json({ worker: serializeUser(worker), temporaryPassword });
   } catch (error) {
     res.status(500).json({ message: 'Worker account could not be created.' });
@@ -190,6 +202,7 @@ router.post('/:id/reset-password', requirePermission('workers', 'manage'), async
     worker.mustChangePassword = true;
     await worker.save();
     void recordAccessAudit(req, 'worker.password_reset', { targetUser: worker._id });
+    sendWorkerAccountEmail(sendWorkerPasswordResetEmail(worker, temporaryPassword, req.user), 'password reset', worker);
     res.json({ worker: serializeUser(worker), temporaryPassword });
   } catch (error) {
     res.status(500).json({ message: 'Worker password could not be reset.' });

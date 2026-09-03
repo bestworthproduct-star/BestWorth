@@ -8,6 +8,7 @@ const { recordAccessAudit } = require('../utils/access-audit');
 const { signAuthToken, setSessionCookie, clearSessionCookie } = require('../utils/auth-token');
 const { rateLimit, consume, clientIp } = require('../utils/rate-limit');
 const { escapeRegex } = require('../utils/validation');
+const { sendWorkerPasswordChangedEmail, sendWorkerFirstLoginEmail } = require('../utils/email');
 
 const MAX_LOGIN_ATTEMPTS = 5;
 const MAX_LOGIN_REQUESTS = 10;
@@ -53,6 +54,16 @@ async function hasUsedPassword(user, plainPassword) {
   return false;
 }
 
+function sendWorkerSecurityEmail(sendPromise, label, user) {
+  void sendPromise.catch((error) => {
+    console.error(`[auth] ${label} email failed`, {
+      userId: String(user?._id || user?.id || ''),
+      email: user?.email || '',
+      message: error.message
+    });
+  });
+}
+
 const loginRequestLimit = rateLimit({ scope: 'auth-login-ip', limit: MAX_LOGIN_REQUESTS, windowMs: LOGIN_WINDOW_MS });
 const sensitiveAuthLimit = rateLimit({ scope: 'auth-sensitive', limit: 10, windowMs: LOGIN_WINDOW_MS, key: (req) => `${clientIp(req)}:${req.user?.id || 'anonymous'}` });
 
@@ -82,6 +93,7 @@ router.post('/login', loginRequestLimit, async (req, res) => {
       return res.status(403).json({ message: 'This account has been disabled.', code: 'ACCOUNT_DISABLED' });
     }
 
+    const isFirstLogin = !user.lastLoginAt;
     user.lastLoginAt = new Date();
     await user.save();
 
@@ -92,6 +104,9 @@ router.post('/login', loginRequestLimit, async (req, res) => {
       user: serializeUser(user)
     });
     void recordAccessAudit(req, 'auth.login', { actor: user._id });
+    if (isFirstLogin && getRole(user) === 'worker') {
+      sendWorkerSecurityEmail(sendWorkerFirstLoginEmail(user), 'first login', user);
+    }
   } catch (err) {
     console.error('[auth] login failed:', err.message);
     res.status(500).json({ message: 'Sign-in could not be completed.' });
@@ -208,6 +223,9 @@ router.post('/settings', auth, sensitiveAuthLimit, async (req, res) => {
     });
     if (passwordChanged) void recordAccessAudit(req, 'auth.password_changed', { targetUser: user._id });
     if (usernameChanged) void recordAccessAudit(req, 'auth.username_changed', { targetUser: user._id });
+    if (passwordChanged && getRole(user) === 'worker') {
+      sendWorkerSecurityEmail(sendWorkerPasswordChangedEmail(user), 'password changed', user);
+    }
   } catch (err) {
     console.error('[auth] settings update failed:', err.message);
     res.status(500).json({ message: 'Account settings could not be updated.' });
@@ -222,6 +240,7 @@ router.post('/change-password', auth, sensitiveAuthLimit, async (req, res) => {
   try {
     const user = await User.findById(req.user.id);
     if (!user) return res.status(404).json({ message: 'Account not found' });
+    const wasTemporaryPassword = Boolean(user.mustChangePassword);
     if (getRole(user) === 'admin' && !isAdminPasswordChangeAllowed()) {
       return res.status(403).json({ message: 'Password changes are temporarily disabled during preview.' });
     }
@@ -248,6 +267,13 @@ router.post('/change-password', auth, sensitiveAuthLimit, async (req, res) => {
     const token = signAuthToken(user);
     setSessionCookie(res, token);
     res.json({ message: 'Password changed successfully', user: serializeUser(user) });
+    if (getRole(user) === 'worker') {
+      sendWorkerSecurityEmail(
+        sendWorkerPasswordChangedEmail(user, { firstSetup: wasTemporaryPassword }),
+        wasTemporaryPassword ? 'first password changed' : 'password changed',
+        user
+      );
+    }
   } catch (err) {
     console.error('[auth] password change failed:', err.message);
     res.status(500).json({ message: 'Password could not be changed.' });

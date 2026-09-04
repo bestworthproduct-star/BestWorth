@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useLocation, useNavigate } from 'react-router-dom'
 import { useSocket } from '../hooks/useSocket'
 import { apiUrl } from '@/lib/api'
 import { resolveMediaUrl } from '@/lib/media'
@@ -13,6 +13,7 @@ import CommunicationCenter from '@/components/admin/CommunicationCenter'
 import CMSStudio from '@/components/admin/CMSStudio'
 import AccountSettings from '@/components/admin/AccountSettings'
 import WorkerAccessManager from '@/components/admin/WorkerAccessManager'
+import AdvancedWorkerAccess from '@/components/admin/AdvancedWorkerAccess'
 import ReadOnlyNotice from '@/components/admin/ReadOnlyNotice'
 import NewsMediaManager from '@/components/admin/NewsMediaManager'
 import { canAccess } from '@/lib/permissions'
@@ -60,6 +61,8 @@ export default function AdminDashboard() {
   const [currentUser, setCurrentUser] = useState<AuthUser | null>(null)
   const [loading, setLoading] = useState(true)
   const navigate = useNavigate()
+  const location = useLocation()
+  const advancedAccessPage = location.pathname === '/admin/workers/advanced'
 
   // Data State
   const [data, setData] = useState<{ products: Product[], inquiries: Inquiry[], team: TeamMember[] }>({ products: [], inquiries: [], team: [] })
@@ -143,7 +146,9 @@ export default function AdminDashboard() {
           const profileResponse = await fetch(apiUrl('/api/auth/me'), { headers: { 'Authorization': `Bearer ${token}` } })
           const user = profileResponse.ok ? await profileResponse.json() as AuthUser : result.user as AuthUser
           if (user.mustChangePassword) return navigate('/admin/change-password', { replace: true })
+          if (advancedAccessPage && user.role !== 'admin') return navigate('/admin', { replace: true, state: { adminTab: 'workers' } })
           setCurrentUser(user)
+          if (advancedAccessPage || (location.state as { adminTab?: string } | null)?.adminTab === 'workers') setActiveTab('workers')
           if (!canAccess(user, 'overview')) {
             const firstAvailable = ([
               ['products', 'catalog'],
@@ -165,7 +170,7 @@ export default function AdminDashboard() {
       }
     }
     checkAuth()
-  }, [navigate, fetchDashboardData, redirectToServiceUnavailable])
+  }, [navigate, fetchDashboardData, redirectToServiceUnavailable, advancedAccessPage, location.state])
 
   // Real-time Sync
   const onDataChange = useCallback(() => {
@@ -417,7 +422,9 @@ export default function AdminDashboard() {
       )
       case 'media': return <><ReadOnlyGate enabled={!canManageMedia}/><NewsMediaManager canManage={canManageMedia} isAdmin={currentUser.role === 'admin'}/></>
       case 'workers': return canAccess(currentUser, 'workers')
-        ? <WorkerAccessManager currentUser={currentUser} canManage={canManageWorkers} isOwner={currentUser.role === 'admin'} />
+        ? advancedAccessPage && currentUser.role === 'admin'
+          ? <AdvancedWorkerAccess onBack={() => navigate('/admin', { state: { adminTab: 'workers' } })} />
+          : <WorkerAccessManager currentUser={currentUser} canManage={canManageWorkers} isOwner={currentUser.role === 'admin'} onOpenAdvanced={() => navigate('/admin/workers/advanced')} />
         : null
       case 'settings': return (
         <AccountSettings
@@ -461,6 +468,7 @@ export default function AdminDashboard() {
     <AdminLayout
       activeTab={activeTab}
       setActiveTab={(tab) => {
+        if (advancedAccessPage) navigate('/admin', { state: { adminTab: tab } })
         if (tab === 'cms' && window.innerWidth < 1024) {
           setShowCMSMobileWarning(true)
         } else {

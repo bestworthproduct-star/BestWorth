@@ -4,7 +4,6 @@ const assert = require('node:assert/strict');
 const {
   canDelegatePermissions,
   hasPermission,
-  isCreatorProtectedTarget,
   normalizePermissions,
   serializeUser
 } = require('../utils/permissions');
@@ -63,12 +62,4 @@ test('serialized accounts include the display-only company job title', () => {
   assert.equal(result.jobTitle, 'Operations Manager');
   assert.equal(result.createdBy, '507f1f77bcf86cd799439012');
   assert.equal(result.role, 'worker');
-});
-
-test('a delegated worker cannot manage the worker who created their account', () => {
-  const creator = { _id: '507f1f77bcf86cd799439012', role: 'worker' };
-  const childWorker = { ...delegatedManager, createdBy: creator._id };
-  assert.equal(isCreatorProtectedTarget(childWorker, creator), true);
-  assert.equal(isCreatorProtectedTarget({ role: 'admin', createdBy: creator._id }, creator), false);
-  assert.equal(isCreatorProtectedTarget(childWorker, { _id: '507f1f77bcf86cd799439013' }), false);
 });

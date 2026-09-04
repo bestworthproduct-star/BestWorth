@@ -18,6 +18,8 @@ export interface AuthUser {
   lastLoginAt: string | null
   createdAt: string | null
   updatedAt: string | null
+  accessScope?: 'exception'
+  accessLevel?: 'view' | 'manage'
   notificationEmails?: string[]
   passwordChangeLocked?: boolean
 }

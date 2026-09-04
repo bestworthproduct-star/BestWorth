@@ -156,6 +156,7 @@ function App() {
     <Routes>
       <Route path="/login" element={<Login />} />
       <Route path="/admin" element={<AdminDashboard />} />
+      <Route path="/admin/workers/advanced" element={<AdminDashboard />} />
       <Route path="/admin/change-password" element={<FirstLoginPassword />} />
       <Route path="/admin/preview" element={<CMSPreview />} />
       <Route path="/service-unavailable" element={<ServiceUnavailable />} />

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { Check, Copy, KeyRound, Pencil, Plus, Search, Shield, Trash2, UserRound, X } from 'lucide-react'
+import { Check, Copy, KeyRound, MailCheck, MailX, Pencil, Plus, Search, Settings2, Shield, Trash2, UserRound, X } from 'lucide-react'
 import { apiUrl } from '@/lib/api'
 import type { AuthUser, PermissionLevel, PermissionModule, Permissions } from '@/types/auth'
 
@@ -28,12 +28,16 @@ function startingPermissions(user: AuthUser, isOwner: boolean): Permissions {
   }
 }
 
-interface WorkerResult { worker: AuthUser; temporaryPassword?: string }
+interface EmailDelivery {
+  status: 'sent' | 'failed' | 'skipped'
+  message: string
+}
+interface WorkerResult { worker: AuthUser; temporaryPassword?: string; emailDelivery?: EmailDelivery }
 interface ActivityItem { _id: string; action: string; createdAt: string }
-interface WorkerAccessManagerProps { currentUser: AuthUser; canManage: boolean; isOwner: boolean }
+interface WorkerAccessManagerProps { currentUser: AuthUser; canManage: boolean; isOwner: boolean; onOpenAdvanced?: () => void }
 interface ProfileValue { fullName: string; jobTitle: string; username: string; email: string }
 
-export default function WorkerAccessManager({ currentUser, canManage, isOwner }: WorkerAccessManagerProps) {
+export default function WorkerAccessManager({ currentUser, canManage, isOwner, onOpenAdvanced }: WorkerAccessManagerProps) {
   const [workers, setWorkers] = useState<AuthUser[]>([])
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [showCreate, setShowCreate] = useState(false)
@@ -44,6 +48,7 @@ export default function WorkerAccessManager({ currentUser, canManage, isOwner }:
   const [editForm, setEditForm] = useState({ ...emptyProfile })
   const [activity, setActivity] = useState<ActivityItem[]>([])
   const [temporaryPassword, setTemporaryPassword] = useState('')
+  const [passwordEmailDelivery, setPasswordEmailDelivery] = useState<EmailDelivery | null>(null)
   const [saving, setSaving] = useState(false)
   const [deleting, setDeleting] = useState(false)
   const [error, setError] = useState('')
@@ -63,7 +68,8 @@ export default function WorkerAccessManager({ currentUser, canManage, isOwner }:
   }, [currentUser.permissions, isOwner, selected])
 
   const creatorProtected = Boolean(selected && !isOwner && currentUser.createdBy === selected.id)
-  const canManageSelected = Boolean(canManage && selected && selected.id !== currentUser.id && !creatorProtected && selectedWithinAuthority)
+  const exceptionViewOnly = Boolean(selected?.accessScope === 'exception' && selected.accessLevel !== 'manage')
+  const canManageSelected = Boolean(canManage && selected && selected.id !== currentUser.id && !creatorProtected && !exceptionViewOnly && selectedWithinAuthority)
 
   const request = useCallback(async (path: string, options?: RequestInit) => {
     const response = await fetch(apiUrl(path), {
@@ -104,6 +110,7 @@ export default function WorkerAccessManager({ currentUser, canManage, isOwner }:
     try {
       const result = await request('/api/workers', { method: 'POST', body: JSON.stringify(form) }) as WorkerResult
       setTemporaryPassword(result.temporaryPassword || '')
+      setPasswordEmailDelivery(result.emailDelivery || null)
       setWorkers((current) => [result.worker, ...current])
       setSelectedId(result.worker.id); setShowCreate(false)
       setForm({ ...emptyProfile, permissions: startingPermissions(currentUser, isOwner) })
@@ -148,7 +155,7 @@ export default function WorkerAccessManager({ currentUser, canManage, isOwner }:
     if (!selected || !canManageSelected || !window.confirm(`Issue a new temporary password for ${selected.fullName || selected.username}?`)) return
     try {
       const result = await request(`/api/workers/${selected.id}/reset-password`, { method: 'POST' }) as WorkerResult
-      updateSelected(result.worker); setTemporaryPassword(result.temporaryPassword || '')
+      updateSelected(result.worker); setTemporaryPassword(result.temporaryPassword || ''); setPasswordEmailDelivery(result.emailDelivery || null)
     } catch (resetError) { setError(resetError instanceof Error ? resetError.message : 'Could not reset password') }
   }
 
@@ -172,12 +179,12 @@ export default function WorkerAccessManager({ currentUser, canManage, isOwner }:
   return <div className="space-y-6">
     <div className="flex flex-col gap-4 rounded-lg border border-[#102B4C]/10 bg-white p-5 sm:flex-row sm:items-center sm:justify-between">
       <div><div className="flex items-center gap-2 text-[#102B4C]"><Shield size={17}/><h2 className="text-[13px] font-semibold">Worker access</h2></div><p className="mt-1 text-[11px] leading-5 text-[#102B4C]/50">Review team accounts and give each person only the access required for their work.</p></div>
-      {canManage && <button onClick={() => { setError(''); setShowCreate(true) }} className="inline-flex items-center justify-center gap-2 rounded-lg bg-[#102B4C] px-4 py-2.5 text-[11px] font-semibold text-white transition hover:bg-[#060273]"><Plus size={14}/> Add worker</button>}
+      <div className="flex flex-wrap gap-2">{isOwner && onOpenAdvanced && <button type="button" onClick={onOpenAdvanced} className="inline-flex items-center justify-center gap-2 rounded-lg border border-[#102B4C]/12 bg-white px-4 py-2.5 text-[11px] font-semibold text-[#102B4C] transition hover:bg-[#F7F9FC]"><Settings2 size={14}/> Advanced access</button>}{canManage && <button onClick={() => { setError(''); setShowCreate(true) }} className="inline-flex items-center justify-center gap-2 rounded-lg bg-[#102B4C] px-4 py-2.5 text-[11px] font-semibold text-white transition hover:bg-[#060273]"><Plus size={14}/> Add worker</button>}</div>
     </div>
 
     {!canManage && <div className="rounded-lg border border-[#102B4C]/10 bg-[#F7F9FC] px-4 py-3"><p className="text-[11px] font-semibold text-[#102B4C]">View-only access</p><p className="mt-1 text-[10px] text-[#102B4C]/48">You can review accounts and activity, but only an authorised manager can make changes.</p></div>}
     {error && <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-[12px] text-red-700">{error}</div>}
-    {temporaryPassword && <div className="rounded-lg border border-[#060273]/15 bg-[#F5F8FC] p-4 sm:flex sm:items-center sm:justify-between"><div><p className="text-[11px] font-semibold text-[#102B4C]">Temporary password — shown once</p><code className="mt-1 block text-[14px] text-[#060273]">{temporaryPassword}</code></div><div className="mt-3 flex gap-2 sm:mt-0"><button onClick={() => void navigator.clipboard.writeText(temporaryPassword)} className="inline-flex items-center gap-2 rounded-md border border-[#102B4C]/10 bg-white px-3 py-2 text-[11px] text-[#102B4C]"><Copy size={13}/> Copy</button><button onClick={() => setTemporaryPassword('')} className="rounded-md p-2 text-[#102B4C]/40"><X size={15}/></button></div></div>}
+    {temporaryPassword && <div className="rounded-lg border border-[#060273]/15 bg-[#F5F8FC] p-4 sm:flex sm:items-start sm:justify-between"><div><p className="text-[11px] font-semibold text-[#102B4C]">Temporary password — shown once</p><code className="mt-1 block text-[14px] text-[#060273]">{temporaryPassword}</code>{passwordEmailDelivery && <div className={`mt-3 inline-flex items-center gap-2 rounded-md border bg-white px-2.5 py-1.5 text-[10px] font-medium ${passwordEmailDelivery.status === 'sent' ? 'border-emerald-200 text-emerald-700' : 'border-red-200 text-red-700'}`}>{passwordEmailDelivery.status === 'sent' ? <MailCheck size={13}/> : <MailX size={13}/>}<span>{passwordEmailDelivery.message}{passwordEmailDelivery.status !== 'sent' ? ' Copy and send it manually.' : ''}</span></div>}</div><div className="mt-3 flex gap-2 sm:mt-0"><button onClick={() => void navigator.clipboard.writeText(temporaryPassword)} className="inline-flex items-center gap-2 rounded-md border border-[#102B4C]/10 bg-white px-3 py-2 text-[11px] text-[#102B4C]"><Copy size={13}/> Copy</button><button onClick={() => { setTemporaryPassword(''); setPasswordEmailDelivery(null) }} aria-label="Dismiss temporary password" className="rounded-md p-2 text-[#102B4C]/40"><X size={15}/></button></div></div>}
 
     <div className="grid gap-5 lg:grid-cols-[300px_minmax(0,1fr)]">
       <aside className="max-h-[720px] self-start overflow-hidden rounded-lg border border-[#102B4C]/10 bg-white">
@@ -194,7 +201,8 @@ export default function WorkerAccessManager({ currentUser, canManage, isOwner }:
             <div><p className="text-lg font-semibold text-[#102B4C]">{selected.fullName || selected.username}</p><p className="mt-1 text-[11px] font-medium text-[#060273]/70">{selected.jobTitle || 'Position not specified'}</p><p className="mt-1.5 text-[10px] text-[#102B4C]/45">{selected.email} · Last sign-in {selected.lastLoginAt ? new Date(selected.lastLoginAt).toLocaleString() : 'Never'}</p></div>
             {canManageSelected && <div className="flex flex-wrap gap-2"><button onClick={openEdit} className="inline-flex items-center gap-2 rounded-md border border-[#102B4C]/10 px-3 py-2 text-[10px] font-semibold text-[#102B4C]"><Pencil size={12}/> Edit details</button><button onClick={() => void resetPassword()} className="inline-flex items-center gap-2 rounded-md border border-[#102B4C]/10 px-3 py-2 text-[10px] font-semibold text-[#102B4C]"><KeyRound size={13}/> Reset password</button><button onClick={() => void toggleStatus()} className={`rounded-md px-3 py-2 text-[10px] font-semibold ${selected.active ? 'border border-red-200 text-red-700' : 'bg-[#102B4C] text-white'}`}>{selected.active ? 'Disable account' : 'Enable account'}</button>{isOwner && !selected.active && <button onClick={() => setShowDeleteConfirm(true)} className="inline-flex items-center gap-2 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-[10px] font-semibold text-red-700 transition hover:bg-red-100"><Trash2 size={12}/> Delete account</button>}</div>}
           </div>
-          {canManage && !canManageSelected && <div className="mt-5 rounded-md border border-[#102B4C]/8 bg-[#F7F9FC] px-4 py-3 text-[10px] leading-5 text-[#102B4C]/52">{selected.id === currentUser.id ? 'Your own account is managed through Settings.' : creatorProtected ? 'This worker created your account and is protected from changes.' : 'This account has permissions above your delegated authority and is protected from changes.'}</div>}
+          {selected.accessScope === 'exception' && <div className="mt-5 inline-flex rounded-md border border-[#060273]/10 bg-[#F5F8FC] px-3 py-1.5 text-[9px] font-semibold uppercase tracking-wider text-[#060273]/65">Owner-approved external {selected.accessLevel || 'view'} access</div>}
+          {canManage && !canManageSelected && <div className="mt-5 rounded-md border border-[#102B4C]/8 bg-[#F7F9FC] px-4 py-3 text-[10px] leading-5 text-[#102B4C]/52">{selected.id === currentUser.id ? 'Your own account is managed through Settings.' : creatorProtected ? 'This worker created your account and is protected from changes.' : exceptionViewOnly ? 'The owner granted view-only access to this external account.' : 'This account has permissions above your delegated authority and is protected from changes.'}</div>}
           <div className="mt-6"><h3 className="text-[11px] font-semibold text-[#102B4C]">Module permissions</h3><p className="mt-1 text-[10px] text-[#102B4C]/45">View allows reading. Manage also allows creating and editing. Worker Access delegation remains owner-controlled.</p></div>
           <div className="mt-4 divide-y divide-[#102B4C]/7 rounded-lg border border-[#102B4C]/10">{modules.map((moduleItem) => {
             const ownerControlled = moduleItem.id === 'workers' && !isOwner

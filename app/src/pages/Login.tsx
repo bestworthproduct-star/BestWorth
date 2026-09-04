@@ -25,11 +25,27 @@ export default function Login() {
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
+  const [retryAfterSeconds, setRetryAfterSeconds] = useState(0)
+  const [retryUntilMs, setRetryUntilMs] = useState(0)
   const [showPassword, setShowPassword] = useState(false)
   const [brandingLogo, setBrandingLogo] = useState(FALLBACK_LOGO)
   const [products, setProducts] = useState<ProductPreview[]>([])
   const [activeSlideIndex, setActiveSlideIndex] = useState(0)
   const navigate = useNavigate()
+
+  useEffect(() => {
+    if (retryUntilMs <= 0) return
+
+    const updateCountdown = () => {
+      const remaining = Math.max(Math.ceil((retryUntilMs - Date.now()) / 1000), 0)
+      setRetryAfterSeconds(remaining)
+      if (remaining === 0) setRetryUntilMs(0)
+    }
+    updateCountdown()
+    const timer = window.setInterval(updateCountdown, 500)
+
+    return () => window.clearInterval(timer)
+  }, [retryUntilMs])
 
   useEffect(() => {
     fetch(apiUrl('/api/content/branding'))
@@ -93,6 +109,7 @@ export default function Login() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    if (retryAfterSeconds > 0) return
     setLoading(true)
     setError('')
 
@@ -111,9 +128,23 @@ export default function Login() {
       const data = await response.json()
 
       if (response.ok) {
+        setRetryAfterSeconds(0)
+        setRetryUntilMs(0)
         localStorage.removeItem('adminToken')
         navigate(data.user?.mustChangePassword ? '/admin/change-password' : '/admin')
       } else {
+        if (response.status === 429) {
+          const headerSeconds = Number(response.headers.get('Retry-After'))
+          const bodySeconds = Number(data.retryAfterSeconds)
+          const nextRetry = Number.isFinite(bodySeconds) && bodySeconds > 0
+            ? bodySeconds
+            : Number.isFinite(headerSeconds) && headerSeconds > 0
+              ? headerSeconds
+              : 1
+          const roundedRetry = Math.ceil(nextRetry)
+          setRetryAfterSeconds(roundedRetry)
+          setRetryUntilMs(Date.now() + roundedRetry * 1000)
+        }
         setError(data.message || 'Login failed')
       }
     } catch {
@@ -125,6 +156,20 @@ export default function Login() {
 
   const goToProducts = () => {
     window.location.href = '/#products'
+  }
+
+  const formatRetryTime = (seconds: number) => {
+    if (seconds >= 3600) {
+      const hours = Math.floor(seconds / 3600)
+      const minutes = Math.floor((seconds % 3600) / 60)
+      return `${hours}h ${String(minutes).padStart(2, '0')}m`
+    }
+    if (seconds >= 60) {
+      const minutes = Math.floor(seconds / 60)
+      const remainingSeconds = seconds % 60
+      return `${minutes}m ${String(remainingSeconds).padStart(2, '0')}s`
+    }
+    return `${seconds}s`
   }
 
   return (
@@ -266,10 +311,14 @@ export default function Login() {
 
                 <button
                   type="submit"
-                  disabled={loading}
+                  disabled={loading || retryAfterSeconds > 0}
                   className="mt-2 inline-flex w-full items-center justify-center rounded-lg bg-[#060273] px-6 py-4 text-[11px] font-semibold uppercase tracking-[0.2em] text-white transition-colors hover:bg-[#D64545] disabled:cursor-not-allowed disabled:opacity-50 lg:py-5 lg:text-[12px] lg:tracking-[0.28em]"
                 >
-                  {loading ? 'Authenticating...' : 'Enter Dashboard'}
+                  {loading
+                    ? 'Authenticating...'
+                    : retryAfterSeconds > 0
+                      ? `Try again in ${formatRetryTime(retryAfterSeconds)}`
+                      : 'Enter Dashboard'}
                 </button>
               </form>
 

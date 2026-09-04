@@ -48,13 +48,6 @@ function canDelegatePermissions(actor, requestedPermissions = {}, existingPermis
   });
 }
 
-function isCreatorProtectedTarget(actor, target) {
-  if (getRole(actor) === 'admin' || !actor?.createdBy || !target) return false;
-  const creatorId = actor.createdBy?._id || actor.createdBy;
-  const targetId = target._id || target.id;
-  return Boolean(targetId) && String(creatorId) === String(targetId);
-}
-
 function serializeUser(user) {
   const role = getRole(user);
   return {
@@ -81,6 +74,5 @@ module.exports = {
   normalizePermissions,
   hasPermission,
   canDelegatePermissions,
-  isCreatorProtectedTarget,
   serializeUser
 };

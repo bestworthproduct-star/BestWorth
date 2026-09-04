@@ -6,12 +6,20 @@ const auth = require('../middleware/auth');
 const { getRole, serializeUser } = require('../utils/permissions');
 const { recordAccessAudit } = require('../utils/access-audit');
 const { signAuthToken, setSessionCookie, clearSessionCookie } = require('../utils/auth-token');
-const { rateLimit, consume, clientIp } = require('../utils/rate-limit');
+const { rateLimit, clientIp } = require('../utils/rate-limit');
+const {
+  normalizeClientIp,
+  getProgressiveBlock,
+  recordProgressiveFailure,
+  clearProgressiveFailures,
+  applyRetryAfter
+} = require('../utils/progressive-rate-limit');
 const { escapeRegex } = require('../utils/validation');
 const { sendWorkerPasswordChangedEmail, sendWorkerFirstLoginEmail } = require('../utils/email');
 
-const MAX_LOGIN_ATTEMPTS = 5;
-const MAX_LOGIN_REQUESTS = 10;
+const MAX_LOGIN_ATTEMPTS = 8;
+const MAX_LOGIN_IP_FAILURES = 30;
+const MAX_LOGIN_REQUESTS = 120;
 const LOGIN_WINDOW_MS = 15 * 60 * 1000;
 const DUMMY_PASSWORD_HASH = '$2b$10$7EqJtq98hPqEX7fNZaFWoO5h1HIYFQmMtYaHjZQ5S5rZ6YzYF7x7u';
 
@@ -64,34 +72,77 @@ function sendWorkerSecurityEmail(sendPromise, label, user) {
   });
 }
 
+function longestActiveBlock(results) {
+  return results
+    .filter((result) => result.blocked)
+    .sort((left, right) => right.retryAfterSeconds - left.retryAfterSeconds)[0] || null;
+}
+
+async function currentLoginBlock(ip, accountLimitKey) {
+  return longestActiveBlock(await Promise.all([
+    getProgressiveBlock('auth-login-progressive-ip', ip),
+    getProgressiveBlock('auth-login-progressive-account', accountLimitKey)
+  ]));
+}
+
+async function registerLoginFailure(ip, accountLimitKey) {
+  return longestActiveBlock(await Promise.all([
+    recordProgressiveFailure({
+      scope: 'auth-login-progressive-ip',
+      key: ip,
+      threshold: MAX_LOGIN_IP_FAILURES
+    }),
+    recordProgressiveFailure({
+      scope: 'auth-login-progressive-account',
+      key: accountLimitKey,
+      threshold: MAX_LOGIN_ATTEMPTS
+    })
+  ]));
+}
+
+function sendLoginRateLimit(res, block) {
+  applyRetryAfter(res, block);
+  return res.status(429).json({
+    message: 'Too many failed login attempts. Please wait before trying again.',
+    retryAfterSeconds: block.retryAfterSeconds
+  });
+}
+
 const loginRequestLimit = rateLimit({ scope: 'auth-login-ip', limit: MAX_LOGIN_REQUESTS, windowMs: LOGIN_WINDOW_MS });
 const sensitiveAuthLimit = rateLimit({ scope: 'auth-sensitive', limit: 10, windowMs: LOGIN_WINDOW_MS, key: (req) => `${clientIp(req)}:${req.user?.id || 'anonymous'}` });
 
 router.post('/login', loginRequestLimit, async (req, res) => {
   const username = normalizeUsername(req.body?.username);
   const password = typeof req.body?.password === 'string' ? req.body.password : '';
+  const ip = normalizeClientIp(clientIp(req));
+  const accountLimitKey = `${ip}:${username}`;
 
   try {
     if (!username || username.length > 80 || !password || password.length > 200) return res.status(400).json({ message: 'Invalid username or password' });
 
+    const activeBlock = await currentLoginBlock(ip, accountLimitKey);
+    if (activeBlock) return sendLoginRateLimit(res, activeBlock);
+
     const user = await User.findOne({ username: exactCaseInsensitive(username) });
     if (!user) {
       await bcrypt.compare(password, DUMMY_PASSWORD_HASH);
-      const failed = await consume('auth-login-account', `${clientIp(req)}:${username}`, MAX_LOGIN_ATTEMPTS, LOGIN_WINDOW_MS);
-      if (!failed.allowed) return res.status(429).json({ message: 'Too many failed login attempts. Please wait before trying again.', retryAfterSeconds: failed.retryAfterSeconds });
+      const activatedBlock = await registerLoginFailure(ip, accountLimitKey);
+      if (activatedBlock) return sendLoginRateLimit(res, activatedBlock);
       return res.status(400).json({ message: 'Invalid username or password' });
     }
 
     const validPass = await bcrypt.compare(password, user.password);
     if (!validPass) {
-      const failed = await consume('auth-login-account', `${clientIp(req)}:${username}`, MAX_LOGIN_ATTEMPTS, LOGIN_WINDOW_MS);
-      if (!failed.allowed) return res.status(429).json({ message: 'Too many failed login attempts. Please wait before trying again.', retryAfterSeconds: failed.retryAfterSeconds });
+      const activatedBlock = await registerLoginFailure(ip, accountLimitKey);
+      if (activatedBlock) return sendLoginRateLimit(res, activatedBlock);
       return res.status(400).json({ message: 'Invalid username or password' });
     }
 
     if (user.active === false) {
       return res.status(403).json({ message: 'This account has been disabled.', code: 'ACCOUNT_DISABLED' });
     }
+
+    await clearProgressiveFailures('auth-login-progressive-account', accountLimitKey);
 
     const isFirstLogin = !user.lastLoginAt;
     user.lastLoginAt = new Date();

@@ -29,5 +29,6 @@ const userSchema = new mongoose.Schema({
 }, { timestamps: true });
 
 userSchema.index({ email: 1 }, { unique: true, sparse: true });
+userSchema.index({ createdBy: 1, role: 1 });
 
 module.exports = mongoose.model('User', userSchema);

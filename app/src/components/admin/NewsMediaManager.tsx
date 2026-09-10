@@ -181,7 +181,7 @@ export default function NewsMediaManager({ canManage, isAdmin }: Props) {
       <div className="rounded-lg border border-[#102B4C]/10 bg-white p-5">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
           <div><div className="flex items-center gap-2"><FileText size={16} className="text-[#060273]"/><h2 className="text-[13px] font-semibold text-[#102B4C]">Publishing workspace</h2></div><p className="mt-1 text-[11px] text-[#102B4C]/45">Create controlled company news and video updates for the public site.</p></div>
-          <div className="flex flex-wrap gap-2">{isAdmin && <button onClick={() => setShowSubscribers((current) => !current)} className="inline-flex items-center gap-2 rounded-lg border border-[#102B4C]/10 px-4 py-2.5 text-[10px] font-semibold text-[#102B4C]"><Mail size={13}/> Subscribers · {subscriberTotal}</button>}{canManage && <button onClick={openCreate} className="inline-flex items-center gap-2 rounded-lg bg-[#102B4C] px-4 py-2.5 text-[10px] font-semibold text-white transition hover:bg-[#060273]"><Plus size={13}/> New content</button>}</div>
+          <div className="flex flex-wrap gap-2">{isAdmin && <button onClick={() => setShowSubscribers((current) => !current)} className="inline-flex items-center gap-2 rounded-lg border border-[#102B4C]/10 px-4 py-2.5 text-[10px] font-semibold text-[#102B4C]"><Mail size={13}/> Subscribers · {subscriberTotal}</button>}{canManage && <button data-help-target="primary-action" onClick={openCreate} className="inline-flex items-center gap-2 rounded-lg bg-[#102B4C] px-4 py-2.5 text-[10px] font-semibold text-white transition hover:bg-[#060273]"><Plus size={13}/> New content</button>}</div>
         </div>
       </div>
 

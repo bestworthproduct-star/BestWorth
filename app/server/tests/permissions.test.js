@@ -63,3 +63,20 @@ test('serialized accounts include the display-only company job title', () => {
   assert.equal(result.createdBy, '507f1f77bcf86cd799439012');
   assert.equal(result.role, 'worker');
 });
+
+test('serialized accounts expose only the authenticated user guide progress', () => {
+  const completedAt = new Date('2026-09-10T09:00:00.000Z');
+  const result = serializeUser({
+    ...delegatedManager,
+    username: 'manager',
+    adminGuideVersionSeen: 1,
+    adminGuideCompletedAt: completedAt
+  });
+
+  assert.equal(result.adminGuideVersionSeen, 1);
+  assert.equal(result.adminGuideCompletedAt, completedAt);
+
+  const newAccount = serializeUser({ ...delegatedManager, username: 'new-worker' });
+  assert.equal(newAccount.adminGuideVersionSeen, 0);
+  assert.equal(newAccount.adminGuideCompletedAt, null);
+});

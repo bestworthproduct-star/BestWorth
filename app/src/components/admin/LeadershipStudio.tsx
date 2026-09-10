@@ -87,6 +87,7 @@ export default function LeadershipStudio({
         <div className="flex items-center justify-between">
           <h3 className="text-[12px] font-semibold text-charcoal uppercase tracking-wider">Executive Roster</h3>
           {canManage && <button
+            data-help-target="primary-action"
             onClick={onAdd}
             className="px-4 py-2 border border-charcoal/10 rounded-md text-[11px] font-semibold uppercase tracking-wider hover:bg-warm-stone transition-all flex items-center gap-2"
           >

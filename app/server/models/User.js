@@ -23,6 +23,8 @@ const userSchema = new mongoose.Schema({
   permissions: { type: permissionSchema, default: () => ({}) },
   active: { type: Boolean, default: true },
   mustChangePassword: { type: Boolean, default: false },
+  adminGuideVersionSeen: { type: Number, default: 0, min: 0 },
+  adminGuideCompletedAt: { type: Date, default: null },
   sessionVersion: { type: Number, default: 0, min: 0 },
   createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
   lastLoginAt: { type: Date }

@@ -95,7 +95,7 @@ export default function AccountSettings({
             </div>
           </div>
 
-          <button type="submit" disabled={saving} className="w-full py-3 bg-charcoal text-white rounded-md text-[12px] font-semibold uppercase tracking-wider hover:bg-black transition-all flex items-center justify-center gap-2 disabled:opacity-50 shadow-sm">
+          <button data-help-target="primary-action" type="submit" disabled={saving} className="w-full py-3 bg-charcoal text-white rounded-md text-[12px] font-semibold uppercase tracking-wider hover:bg-black transition-all flex items-center justify-center gap-2 disabled:opacity-50 shadow-sm">
             {saving ? <Lock size={14} className="animate-pulse" /> : <Save size={14} />} Save Changes
           </button>
         </form>

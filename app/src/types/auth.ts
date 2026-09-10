@@ -15,6 +15,8 @@ export interface AuthUser {
   permissions: Permissions
   active: boolean
   mustChangePassword: boolean
+  adminGuideVersionSeen: number
+  adminGuideCompletedAt: string | null
   lastLoginAt: string | null
   createdAt: string | null
   updatedAt: string | null

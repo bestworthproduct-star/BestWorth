@@ -190,6 +190,21 @@ export default function AdminDashboard() {
     navigate('/login')
   }
 
+  const handlePersistGuideProgress = async (completed: boolean) => {
+    try {
+      const response = await fetch(apiUrl('/api/auth/admin-guide'), {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer cookie-session' },
+        body: JSON.stringify({ version: 1, completed })
+      })
+      if (!response.ok) return
+      const result = await response.json()
+      if (result.user) setCurrentUser((previous) => previous ? { ...previous, ...result.user } : result.user)
+    } catch (error) {
+      console.error('Failed to save admin guide progress:', error)
+    }
+  }
+
   const handleUpload = async (file: File, target: string, callback: (url: string) => void) => {
     const token = 'cookie-session'
     if (!token) return
@@ -478,6 +493,8 @@ export default function AdminDashboard() {
       handleLogout={handleLogout}
       stats={stats}
       user={currentUser}
+      guideReady={!loading}
+      onPersistGuideProgress={handlePersistGuideProgress}
     >
       {renderContent()}
 

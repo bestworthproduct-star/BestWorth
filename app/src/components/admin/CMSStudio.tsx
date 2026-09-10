@@ -417,7 +417,7 @@ export default function CMSStudio({ cmsContent, onUpdateContent, onUpload, uploa
 
       <div className="flex flex-1 overflow-hidden">
         {/* Editor (60%) */}
-        <div className="w-[60%] border-r border-charcoal/5 overflow-y-auto p-8 bg-warm-stone/5 no-scrollbar corporative-editor">
+        <div data-help-target="primary-action" className="w-[60%] border-r border-charcoal/5 overflow-y-auto p-8 bg-warm-stone/5 no-scrollbar corporative-editor">
            <div className="max-w-md mx-auto">
               <div className="mb-8 border-b border-charcoal/5 pb-4">
                  <h2 className="text-xl font-semibold text-charcoal tracking-tight">Editing {sections.find(s=>s.id===activeSection)?.label}</h2>

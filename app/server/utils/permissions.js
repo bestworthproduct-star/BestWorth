@@ -61,6 +61,10 @@ function serializeUser(user) {
     permissions: normalizePermissions(role, user.permissions),
     active: user.active !== false,
     mustChangePassword: Boolean(user.mustChangePassword),
+    adminGuideVersionSeen: Number.isFinite(Number(user.adminGuideVersionSeen))
+      ? Math.max(0, Number(user.adminGuideVersionSeen))
+      : 0,
+    adminGuideCompletedAt: user.adminGuideCompletedAt || null,
     lastLoginAt: user.lastLoginAt || null,
     createdAt: user.createdAt || null,
     updatedAt: user.updatedAt || null

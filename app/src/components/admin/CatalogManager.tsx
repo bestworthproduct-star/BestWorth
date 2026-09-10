@@ -74,7 +74,7 @@ export default function CatalogManager({
           </select>
 
           {canManage && <><button onClick={() => setShowCategoryModal(true)} className="px-4 py-2 border border-charcoal/10 rounded-md text-[11px] font-bold uppercase tracking-wider hover:bg-warm-stone transition-all">Manage Categories</button>
-          <button onClick={onAddProduct} className="px-4 py-2 bg-charcoal text-white rounded-md text-[11px] font-bold uppercase tracking-wider hover:bg-black transition-all">New Product</button></>}
+          <button data-help-target="primary-action" onClick={onAddProduct} className="px-4 py-2 bg-charcoal text-white rounded-md text-[11px] font-bold uppercase tracking-wider hover:bg-black transition-all">New Product</button></>}
         </div>
       </div>
 

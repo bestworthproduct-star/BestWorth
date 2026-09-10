@@ -21,6 +21,7 @@ const MAX_LOGIN_ATTEMPTS = 8;
 const MAX_LOGIN_IP_FAILURES = 30;
 const MAX_LOGIN_REQUESTS = 120;
 const LOGIN_WINDOW_MS = 15 * 60 * 1000;
+const ADMIN_GUIDE_VERSION = 1;
 const DUMMY_PASSWORD_HASH = '$2b$10$7EqJtq98hPqEX7fNZaFWoO5h1HIYFQmMtYaHjZQ5S5rZ6YzYF7x7u';
 
 function isAdminPasswordChangeAllowed() {
@@ -178,6 +179,43 @@ router.get('/me', auth, async (req, res) => {
   } catch (err) {
     console.error('[auth] profile lookup failed:', err.message);
     res.status(500).json({ message: 'Account details could not be loaded.' });
+  }
+});
+
+router.patch('/admin-guide', auth, async (req, res) => {
+  const version = req.body?.version;
+  const completed = req.body?.completed;
+
+  if (!Number.isInteger(version) || version !== ADMIN_GUIDE_VERSION || typeof completed !== 'boolean') {
+    return res.status(400).json({ message: 'Invalid admin guide progress.' });
+  }
+
+  try {
+    // The account id always comes from the verified session. Body-supplied user ids are ignored.
+    const user = await User.findById(req.user.id);
+    if (!user) return res.status(404).json({ message: 'Account not found' });
+    if (user.mustChangePassword) {
+      return res.status(403).json({
+        message: 'Change your temporary password before starting the admin guide.',
+        code: 'PASSWORD_CHANGE_REQUIRED'
+      });
+    }
+
+    user.adminGuideVersionSeen = Math.max(Number(user.adminGuideVersionSeen || 0), version);
+    if (completed && !user.adminGuideCompletedAt) user.adminGuideCompletedAt = new Date();
+    await user.save();
+
+    res.json({
+      message: completed ? 'Admin guide completed.' : 'Admin guide dismissed.',
+      user: serializeUser(user)
+    });
+    void recordAccessAudit(req, completed ? 'auth.admin_guide_completed' : 'auth.admin_guide_dismissed', {
+      actor: user._id,
+      metadata: { version }
+    });
+  } catch (err) {
+    console.error('[auth] admin guide progress failed:', err.message);
+    res.status(500).json({ message: 'Admin guide progress could not be saved.' });
   }
 });
 

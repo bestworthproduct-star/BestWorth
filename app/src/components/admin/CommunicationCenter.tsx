@@ -97,7 +97,7 @@ export default function CommunicationCenter({
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-warm-stone/20 p-4 rounded-md border border-charcoal/5">
+      <div data-help-target="primary-action" className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-warm-stone/20 p-4 rounded-md border border-charcoal/5">
         <div className="relative flex-1 max-w-md">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-charcoal/30" size={14} />
           <input type="text" placeholder="Search inquiries..." className="w-full pl-9 pr-4 py-2 bg-white border border-charcoal/10 rounded-md text-[13px] outline-none" value={search} onChange={(e) => setSearch(e.target.value)} />

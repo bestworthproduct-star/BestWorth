@@ -15,9 +15,16 @@ interface HeroData {
   title: string
   subtitle: string
   buttonText: string
-  videoUrls: string[]
+  videoUrls?: string[]
+  mediaItems?: HeroMediaItem[]
   establishmentDate?: string
   idleHideDelaySeconds?: number | null
+}
+
+interface HeroMediaItem {
+  type: 'video' | 'image'
+  url: string
+  imageDurationSeconds?: number
 }
 
 const HERO_IDLE_HIDE_FALLBACK_SECONDS = 25
@@ -36,13 +43,25 @@ function resolveHeroIdleDelaySeconds(value?: number | null) {
 
 export default function HeroSection({ scrollTo }: HeroSectionProps) {
   const [heroData, setHeroData] = useState<HeroData | null>(null)
-  const [currentVideoIndex, setCurrentVideoIndex] = useState(0)
+  const [currentSlideIndex, setCurrentSlideIndex] = useState(0)
   const [isHeroActive, setIsHeroActive] = useState(true)
+  const [isPageVisible, setIsPageVisible] = useState(() => typeof document === 'undefined' || document.visibilityState === 'visible')
   const consent = useCookieConsent()
-  const videoUrls = useMemo(
-    () => (heroData?.videoUrls || []).filter((url) => consent?.externalMedia || !isExternalMediaUrl(resolveMediaUrl(url))),
-    [consent?.externalMedia, heroData?.videoUrls]
-  )
+  const mediaItems = useMemo<HeroMediaItem[]>(() => {
+    const configuredItems = Array.isArray(heroData?.mediaItems)
+      ? heroData.mediaItems
+      : (heroData?.videoUrls || []).map((url) => ({ type: 'video' as const, url }))
+    const permittedItems = configuredItems.filter((item) => (
+      item &&
+      (item.type === 'video' || item.type === 'image') &&
+      typeof item.url === 'string' &&
+      item.url.trim() &&
+      (consent?.externalMedia || !isExternalMediaUrl(resolveMediaUrl(item.url)))
+    ))
+    return permittedItems.length
+      ? permittedItems
+      : [{ type: 'video', url: '/assets/Hero-Video.mp4' }]
+  }, [consent?.externalMedia, heroData])
   const heroRef = useRef<HTMLElement>(null)
   const overlayRef = useRef<HTMLDivElement>(null)
   const contentWrapRef = useRef<HTMLDivElement>(null)
@@ -52,6 +71,9 @@ export default function HeroSection({ scrollTo }: HeroSectionProps) {
   const ctaRef = useRef<HTMLButtonElement>(null)
   const idleTimeoutRef = useRef<number | null>(null)
   const idleHiddenRef = useRef(false)
+  const videoRefs = useRef<Array<HTMLVideoElement | null>>([])
+  const previousSlideRef = useRef(0)
+  const videoFallbackTimerRef = useRef<number | null>(null)
 
   useEffect(() => {
     fetch(apiUrl('/api/content/hero'))
@@ -78,31 +100,89 @@ export default function HeroSection({ scrollTo }: HeroSectionProps) {
     return () => observer.disconnect()
   }, [])
 
-  // Auto-slide effect
   useEffect(() => {
-    if (videoUrls.length <= 1) return
-
-    const interval = setInterval(() => {
-      setCurrentVideoIndex((prev) => (prev + 1) % videoUrls.length)
-    }, 8000) // 8 seconds per slide
-
-    return () => clearInterval(interval)
-  }, [videoUrls])
+    const handleVisibilityChange = () => setIsPageVisible(document.visibilityState === 'visible')
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange)
+  }, [])
 
   useEffect(() => {
-    if (currentVideoIndex >= videoUrls.length) setCurrentVideoIndex(0)
-  }, [currentVideoIndex, videoUrls.length])
+    if (currentSlideIndex < mediaItems.length) return
+    const resetTimer = window.setTimeout(() => setCurrentSlideIndex(0), 0)
+    return () => window.clearTimeout(resetTimer)
+  }, [currentSlideIndex, mediaItems.length])
 
-  const nextVideo = () => {
-    if (videoUrls.length) {
-      setCurrentVideoIndex((prev) => (prev + 1) % videoUrls.length)
+  useEffect(() => {
+    const slideChanged = previousSlideRef.current !== currentSlideIndex
+    if (!isHeroActive || !isPageVisible) {
+      if (videoFallbackTimerRef.current) window.clearTimeout(videoFallbackTimerRef.current)
+      videoFallbackTimerRef.current = null
+    }
+    videoRefs.current.forEach((video, index) => {
+      if (!video) return
+      if (index !== currentSlideIndex) {
+        video.pause()
+        if (video.currentTime !== 0) video.currentTime = 0
+        return
+      }
+      if (slideChanged && video.currentTime !== 0) video.currentTime = 0
+      if (isHeroActive && isPageVisible) {
+        void video.play().catch(() => {})
+      } else {
+        video.pause()
+      }
+    })
+    previousSlideRef.current = currentSlideIndex
+  }, [currentSlideIndex, isHeroActive, isPageVisible, mediaItems])
+
+  useEffect(() => {
+    if (!isHeroActive || !isPageVisible || mediaItems.length <= 1) return
+    const activeItem = mediaItems[currentSlideIndex]
+    if (!activeItem || activeItem.type !== 'image') return
+    const duration = Number.isInteger(activeItem.imageDurationSeconds)
+      ? Math.min(60, Math.max(3, activeItem.imageDurationSeconds || 8))
+      : 8
+    const imageTimer = window.setTimeout(() => {
+      setCurrentSlideIndex((current) => (current + 1) % mediaItems.length)
+    }, duration * 1000)
+    return () => window.clearTimeout(imageTimer)
+  }, [currentSlideIndex, isHeroActive, isPageVisible, mediaItems])
+
+  useEffect(() => () => {
+    if (videoFallbackTimerRef.current) window.clearTimeout(videoFallbackTimerRef.current)
+  }, [])
+
+  const clearVideoFallback = () => {
+    if (videoFallbackTimerRef.current) {
+      window.clearTimeout(videoFallbackTimerRef.current)
+      videoFallbackTimerRef.current = null
     }
   }
 
-  const prevVideo = () => {
-    if (videoUrls.length) {
-      setCurrentVideoIndex((prev) => (prev - 1 + videoUrls.length) % videoUrls.length)
+  const scheduleVideoFallback = (index: number, delay = 15000) => {
+    if (!isHeroActive || !isPageVisible || mediaItems.length <= 1 || index !== currentSlideIndex) return
+    if (videoFallbackTimerRef.current) return
+    videoFallbackTimerRef.current = window.setTimeout(() => {
+      videoFallbackTimerRef.current = null
+      setCurrentSlideIndex((current) => current === index ? (current + 1) % mediaItems.length : current)
+    }, delay)
+  }
+
+  const showNextSlide = () => {
+    clearVideoFallback()
+    if (mediaItems.length > 1) {
+      setCurrentSlideIndex((current) => (current + 1) % mediaItems.length)
     }
+  }
+
+  const nextSlide = () => {
+    clearVideoFallback()
+    setCurrentSlideIndex((current) => (current + 1) % mediaItems.length)
+  }
+
+  const prevSlide = () => {
+    clearVideoFallback()
+    setCurrentSlideIndex((current) => (current - 1 + mediaItems.length) % mediaItems.length)
   }
 
   const handleExploreCatalog = () => {
@@ -269,35 +349,36 @@ export default function HeroSection({ scrollTo }: HeroSectionProps) {
       ref={heroRef}
       className="sticky top-0 h-screen w-full flex items-center overflow-hidden z-[1]"
     >
-      {/* Video Background */}
+      {/* Hero Media Background */}
       <div className="absolute inset-0 w-full h-full z-[1]">
-        {videoUrls.map((url, idx) => (
+        {mediaItems.map((item, idx) => item.type === 'image' ? (
+          <img
+            key={`${item.type}-${item.url}-${idx}`}
+            src={resolveMediaUrl(item.url)}
+            alt=""
+            aria-hidden="true"
+            className={`absolute inset-0 h-full w-full object-cover transition-opacity duration-1000 ${idx === currentSlideIndex ? 'opacity-100' : 'opacity-0'}`}
+          />
+        ) : (
           <video
-            key={url + idx}
-            autoPlay
+            key={`${item.type}-${item.url}-${idx}`}
+            ref={(element) => { videoRefs.current[idx] = element }}
+            autoPlay={idx === currentSlideIndex && isHeroActive && isPageVisible}
             muted
-            loop
+            loop={mediaItems.length === 1}
             playsInline
-            className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-1000 ${
-              idx === currentVideoIndex ? 'opacity-100' : 'opacity-0'
-            }`}
+            preload={idx === currentSlideIndex ? 'auto' : 'metadata'}
+            className={`absolute inset-0 h-full w-full object-cover transition-opacity duration-1000 ${idx === currentSlideIndex ? 'opacity-100' : 'opacity-0'}`}
             poster={resolveMediaUrl('/assets/about-hero.jpg')}
+            onPlaying={() => { if (idx === currentSlideIndex) clearVideoFallback() }}
+            onWaiting={() => scheduleVideoFallback(idx)}
+            onStalled={() => scheduleVideoFallback(idx)}
+            onError={() => scheduleVideoFallback(idx, 3000)}
+            onEnded={() => { if (idx === currentSlideIndex) showNextSlide() }}
           >
-            <source src={resolveMediaUrl(url)} type="video/mp4" />
+            <source src={resolveMediaUrl(item.url)} />
           </video>
         ))}
-        {!videoUrls.length && (
-           <video
-           autoPlay
-           muted
-           loop
-           playsInline
-           className="absolute inset-0 w-full h-full object-cover"
-           poster={resolveMediaUrl('/assets/about-hero.jpg')}
-         >
-           <source src={resolveMediaUrl('/assets/Hero-Video.mp4')} type="video/mp4" />
-         </video>
-        )}
       </div>
 
       {/* Gradient Overlay */}
@@ -347,16 +428,16 @@ export default function HeroSection({ scrollTo }: HeroSectionProps) {
       </div>
 
       {/* Navigation Arrows */}
-      {videoUrls.length > 1 && (
+      {mediaItems.length > 1 && (
         <div className="absolute inset-y-0 left-0 right-0 flex items-center justify-between px-4 md:px-10 z-[4] pointer-events-none">
           <button 
-            onClick={prevVideo}
+            onClick={prevSlide}
             className="p-3 rounded-full border border-white/20 text-white/50 hover:text-white hover:border-white transition-all bg-charcoal/20 backdrop-blur-sm pointer-events-auto"
           >
             <ChevronLeft size={24} />
           </button>
           <button 
-            onClick={nextVideo}
+            onClick={nextSlide}
             className="p-3 rounded-full border border-white/20 text-white/50 hover:text-white hover:border-white transition-all bg-charcoal/20 backdrop-blur-sm pointer-events-auto"
           >
             <ChevronRight size={24} />
@@ -370,14 +451,15 @@ export default function HeroSection({ scrollTo }: HeroSectionProps) {
       </div>
 
       {/* Slide Indicators */}
-      {videoUrls.length > 1 && (
+      {mediaItems.length > 1 && (
         <div className="absolute bottom-10 left-1/2 -translate-x-1/2 flex gap-3 z-[4]">
-          {videoUrls.map((_, idx) => (
+          {mediaItems.map((item, idx) => (
             <button
-              key={idx}
-              onClick={() => setCurrentVideoIndex(idx)}
+              key={`${item.type}-${item.url}-${idx}`}
+              aria-label={`Show hero slide ${idx + 1}`}
+              onClick={() => { clearVideoFallback(); setCurrentSlideIndex(idx) }}
               className={`h-1 transition-all duration-500 ${
-                idx === currentVideoIndex ? 'w-8 bg-brass' : 'w-4 bg-white/30'
+                idx === currentSlideIndex ? 'w-8 bg-brass' : 'w-4 bg-white/30'
               }`}
             />
           ))}

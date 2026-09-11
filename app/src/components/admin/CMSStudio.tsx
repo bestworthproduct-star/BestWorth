@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import { Save, Monitor, Smartphone, RefreshCw, Trash2, ChevronUp, ChevronDown, Eye, Video, Maximize2, X } from 'lucide-react'
+import { Save, Monitor, Smartphone, RefreshCw, Trash2, ChevronUp, ChevronDown, Eye, Video, Image as ImageIcon, Maximize2, X } from 'lucide-react'
 import { resolveMediaUrl } from '@/lib/media'
 
 interface CMSStudioProps {
@@ -18,6 +18,32 @@ const ABOUT_TRUST_DEFAULTS = {
   businessCount: 0,
   businessCountLabel: 'Years in Business',
   businessCountSuffix: '+'
+}
+
+interface HeroMediaItem {
+  type: 'video' | 'image'
+  url: string
+  imageDurationSeconds?: number
+}
+
+function getHeroMediaItems(hero: unknown): HeroMediaItem[] {
+  if (!hero || typeof hero !== 'object' || Array.isArray(hero)) return []
+  const data = hero as { mediaItems?: unknown; videoUrls?: unknown }
+  if (Array.isArray(data.mediaItems)) {
+    return data.mediaItems.flatMap((item): HeroMediaItem[] => {
+      if (!item || typeof item !== 'object' || Array.isArray(item)) return []
+      const candidate = item as { type?: unknown; url?: unknown; imageDurationSeconds?: unknown }
+      if ((candidate.type !== 'video' && candidate.type !== 'image') || typeof candidate.url !== 'string') return []
+      return [{
+        type: candidate.type,
+        url: candidate.url,
+        imageDurationSeconds: typeof candidate.imageDurationSeconds === 'number' ? candidate.imageDurationSeconds : undefined
+      }]
+    })
+  }
+  return Array.isArray(data.videoUrls)
+    ? data.videoUrls.filter((url): url is string => typeof url === 'string').map((url) => ({ type: 'video' as const, url }))
+    : []
 }
 
 export default function CMSStudio({ cmsContent, onUpdateContent, onUpload, uploading }: CMSStudioProps) {
@@ -87,7 +113,16 @@ export default function CMSStudio({ cmsContent, onUpdateContent, onUpload, uploa
     setIsSaving(true)
     const data = key === 'about'
       ? { ...ABOUT_TRUST_DEFAULTS, ...localData[key] }
-      : localData[key]
+      : key === 'hero'
+        ? {
+            ...localData.hero,
+            mediaItems: getHeroMediaItems(localData.hero)
+              .filter((item) => typeof item.url === 'string' && item.url.trim())
+              .map((item) => item.type === 'image'
+                ? { type: 'image', url: item.url.trim(), imageDurationSeconds: item.imageDurationSeconds || 8 }
+                : { type: 'video', url: item.url.trim() })
+          }
+        : localData[key]
     await onUpdateContent(key, data)
     setIsSaving(false)
   }
@@ -103,6 +138,44 @@ export default function CMSStudio({ cmsContent, onUpdateContent, onUpload, uploa
         handleLocalChange(key, field, url)
       }
     })
+  }
+
+  const updateHeroMediaItem = (index: number, updates: Partial<HeroMediaItem>) => {
+    setLocalData((previous: typeof localData) => {
+      const items = [...getHeroMediaItems(previous.hero)]
+      items[index] = { ...items[index], ...updates }
+      return { ...previous, hero: { ...previous.hero, mediaItems: items } }
+    })
+  }
+
+  const addHeroMediaItem = () => {
+    setLocalData((previous: typeof localData) => ({
+      ...previous,
+      hero: {
+        ...previous.hero,
+        mediaItems: [...getHeroMediaItems(previous.hero), { type: 'video', url: '' }]
+      }
+    }))
+  }
+
+  const removeHeroMediaItem = (index: number) => {
+    setLocalData((previous: typeof localData) => ({
+      ...previous,
+      hero: {
+        ...previous.hero,
+        mediaItems: getHeroMediaItems(previous.hero).filter((_, itemIndex) => itemIndex !== index)
+      }
+    }))
+  }
+
+  const handleHeroMediaUpload = (index: number, file: File) => {
+    const item = getHeroMediaItems(localData.hero)[index]
+    const isExpectedType = item?.type === 'video' ? file.type.startsWith('video/') : file.type.startsWith('image/')
+    if (!item || !isExpectedType) {
+      alert(`Please choose a valid ${item?.type || 'media'} file for this slot.`)
+      return
+    }
+    onUpload(file, `hero-mediaItems-${index}`, (url: string) => updateHeroMediaItem(index, { url }))
   }
 
   // Value Item Helpers
@@ -226,23 +299,48 @@ export default function CMSStudio({ cmsContent, onUpdateContent, onUpload, uploa
             </div>
             <div className="space-y-3">
               <div className="flex justify-between items-center">
-                <label className={labelClass}>Video Showcase</label>
-                <button onClick={() => handleLocalChange('hero', 'videoUrls', [...(localData.hero?.videoUrls || []), ''])} className="text-[10px] font-bold text-brass uppercase hover:underline">+ Add Slot</button>
+                <div>
+                  <label className={labelClass}>Hero Media</label>
+                  <p className="text-[10px] leading-4 text-charcoal/35">Videos finish before advancing. Images use their display time.</p>
+                </div>
+                <button onClick={addHeroMediaItem} className="text-[10px] font-bold text-brass uppercase hover:underline">+ Add Media</button>
               </div>
-              {(localData.hero?.videoUrls || []).map((url: string, i: number) => (
+              {getHeroMediaItems(localData.hero).map((item, i) => (
                 <div key={i} className="flex flex-col gap-2 p-3 border border-charcoal/5 rounded-md bg-white">
-                  <div className="flex gap-2">
-                    <input type="text" value={url} onChange={e => {
-                       const list = [...localData.hero.videoUrls]; list[i] = e.target.value; handleLocalChange('hero', 'videoUrls', list)
-                    }} className="flex-1 text-[11px] font-mono bg-warm-stone/30 px-2 py-1.5 rounded border-none outline-none" placeholder="Video Path" />
-                    <button onClick={() => {
-                       const list = localData.hero.videoUrls.filter((_:any, idx:number) => idx !== i); handleLocalChange('hero', 'videoUrls', list)
-                    }} className="p-1.5 text-charcoal/20 hover:text-red-500 transition-colors"><Trash2 size={14}/></button>
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="text-[9px] font-semibold uppercase tracking-[0.14em] text-charcoal/35">Media {i + 1}</span>
+                    <div className="flex items-center gap-2">
+                      <select
+                        value={item.type}
+                        onChange={(event) => updateHeroMediaItem(i, {
+                          type: event.target.value as HeroMediaItem['type'],
+                          imageDurationSeconds: event.target.value === 'image' ? (item.imageDurationSeconds || 8) : undefined
+                        })}
+                        className="rounded border border-charcoal/10 bg-white px-2 py-1 text-[10px] font-medium text-charcoal/60 outline-none"
+                        aria-label={`Media ${i + 1} type`}
+                      >
+                        <option value="video">Video</option>
+                        <option value="image">Image</option>
+                      </select>
+                      <button type="button" onClick={() => removeHeroMediaItem(i)} aria-label={`Remove media ${i + 1}`} className="p-1.5 text-charcoal/20 hover:text-red-500 transition-colors"><Trash2 size={14}/></button>
+                    </div>
                   </div>
-                  <label className="flex items-center gap-2 text-[10px] font-bold text-charcoal/40 hover:text-charcoal cursor-pointer uppercase transition-colors">
-                     <Video size={12}/> {uploading === `hero-videoUrls-${i}` ? 'Syncing...' : 'Upload File'}
-                     <input type="file" className="hidden" accept="video/mp4" onChange={e => e.target.files?.[0] && handleFileUpload('hero', 'videoUrls', e.target.files[0], i)}/>
-                  </label>
+                  <div className="flex gap-2">
+                    <input type="text" value={item.url} onChange={(event) => updateHeroMediaItem(i, { url: event.target.value })} className="flex-1 text-[11px] font-mono bg-warm-stone/30 px-2 py-1.5 rounded border-none outline-none" placeholder={item.type === 'video' ? 'Video path or HTTPS URL' : 'Image path or HTTPS URL'} />
+                  </div>
+                  <div className="flex items-center justify-between gap-3">
+                    <label className="flex items-center gap-2 text-[10px] font-bold text-charcoal/40 hover:text-charcoal cursor-pointer uppercase transition-colors">
+                       {item.type === 'video' ? <Video size={12}/> : <ImageIcon size={12}/>} {uploading === `hero-mediaItems-${i}` ? 'Syncing...' : `Upload ${item.type}`}
+                       <input type="file" className="hidden" accept={item.type === 'video' ? 'video/mp4,video/webm,video/ogg,video/quicktime' : 'image/jpeg,image/png,image/gif,image/webp'} onChange={event => event.target.files?.[0] && handleHeroMediaUpload(i, event.target.files[0])}/>
+                    </label>
+                    {item.type === 'image' && (
+                      <label className="flex items-center gap-2 text-[10px] text-charcoal/45">
+                        Display
+                        <input type="number" min="3" max="60" value={item.imageDurationSeconds || 8} onChange={(event) => updateHeroMediaItem(i, { imageDurationSeconds: Number(event.target.value) })} className="w-14 rounded border border-charcoal/10 px-2 py-1 text-right text-[10px] outline-none" />
+                        sec
+                      </label>
+                    )}
+                  </div>
                 </div>
               ))}
             </div>

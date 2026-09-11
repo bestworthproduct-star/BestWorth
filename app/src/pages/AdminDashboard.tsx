@@ -245,7 +245,12 @@ export default function AdminDashboard() {
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
         body: JSON.stringify(data)
       })
-      if (res.ok && currentUser) fetchDashboardData(token!, currentUser)
+      if (!res.ok) {
+        const result = await res.json().catch(() => null)
+        alert(result?.message || 'This content could not be saved. Please review the media details and try again.')
+        return
+      }
+      if (currentUser) fetchDashboardData(token!, currentUser)
     } catch (err) { console.error(err) }
   }
 

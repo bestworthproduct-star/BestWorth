@@ -8,10 +8,44 @@ const {
   hydrateMediaFieldsForResponse,
   normalizeMediaFieldsForStorage
 } = require('../utils/public-url');
+const { safeHttpUrl } = require('../utils/validation');
 
 const PUBLIC_KEYS = new Set(['hero', 'about', 'values', 'values_settings', 'contact', 'footer', 'branding', 'privacy_policy', 'cookie_policy', 'leadership', 'categories']);
 const EDITABLE_KEYS = new Set([...PUBLIC_KEYS, 'email_templates']);
 const MAX_CONTENT_BYTES = 350 * 1024;
+const MAX_HERO_MEDIA_ITEMS = 20;
+const DEFAULT_HERO_IMAGE_DURATION_SECONDS = 8;
+
+function validateHeroMediaItems(items) {
+  if (!Array.isArray(items) || items.length > MAX_HERO_MEDIA_ITEMS) {
+    throw new Error('Hero media is invalid or contains too many items.');
+  }
+
+  return items.map((item, index) => {
+    const isPlainObject = item && typeof item === 'object' && !Array.isArray(item) && Object.getPrototypeOf(item) === Object.prototype;
+    if (!isPlainObject || !['video', 'image'].includes(item.type)) {
+      throw new Error(`Hero media item ${index + 1} is invalid.`);
+    }
+
+    let url;
+    try {
+      url = safeHttpUrl(item.url, { name: `Hero media item ${index + 1}`, max: 2048 });
+    } catch {
+      throw new Error(`Hero media item ${index + 1} URL is invalid.`);
+    }
+    if (!url) throw new Error(`Hero media item ${index + 1} URL is invalid.`);
+
+    if (item.type === 'video') return { type: 'video', url };
+
+    const duration = item.imageDurationSeconds == null
+      ? DEFAULT_HERO_IMAGE_DURATION_SECONDS
+      : Number(item.imageDurationSeconds);
+    if (!Number.isInteger(duration) || duration < 3 || duration > 60) {
+      throw new Error(`Hero media item ${index + 1} duration is invalid.`);
+    }
+    return { type: 'image', url, imageDurationSeconds: duration };
+  });
+}
 
 function validateContentData(key, body) {
   if (key === 'privacy_policy' || key === 'cookie_policy') {
@@ -25,6 +59,9 @@ function validateContentData(key, body) {
   }
   if (key === 'values' && (!Array.isArray(body) || body.length > 50)) throw new Error('Values content is invalid.');
   if (key === 'categories' && (!Array.isArray(body) || body.length > 100)) throw new Error('Categories content is invalid.');
+  if (key === 'hero' && Object.prototype.hasOwnProperty.call(body, 'mediaItems')) {
+    body.mediaItems = validateHeroMediaItems(body.mediaItems);
+  }
   return body;
 }
 
@@ -118,3 +155,4 @@ router.post('/:key', auth, requireSessionReady, (req, res, next) => {
 });
 
 module.exports = router;
+module.exports.validateContentData = validateContentData;

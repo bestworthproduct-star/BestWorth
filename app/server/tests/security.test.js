@@ -8,6 +8,7 @@ const { stringField, emailField, safeHttpUrl, objectId } = require('../utils/val
 const { signAuthToken, verifyAuthToken, getRequestToken } = require('../utils/auth-token');
 const { rejectOperatorInjection } = require('../middleware/security');
 const { createUnsubscribeToken, hashUnsubscribeToken, verifyUnsubscribeToken } = require('../utils/newsletter-token');
+const { validateContentData } = require('../routes/content');
 
 test('strict text and email validation rejects objects and malformed values', () => {
   assert.throws(() => stringField({ $ne: '' }, { name: 'Name' }), /must be text/);
@@ -50,4 +51,28 @@ test('newsletter unsubscribe tokens are signed and only a hash needs to be store
   assert.equal(verifyUnsubscribeToken(token, subscriber), true);
   assert.equal(verifyUnsubscribeToken(`${token}x`, subscriber), false);
   assert.notEqual(hashUnsubscribeToken(token), token);
+});
+
+test('hero media validation preserves legacy videos and accepts bounded mixed media', () => {
+  const legacy = { title: 'Existing hero', videoUrls: ['/assets/existing.mp4'] };
+  assert.deepEqual(validateContentData('hero', legacy), legacy);
+
+  const result = validateContentData('hero', {
+    mediaItems: [
+      { type: 'video', url: '/api/media/video/507f1f77bcf86cd799439011' },
+      { type: 'image', url: '/api/media/507f1f77bcf86cd799439012', imageDurationSeconds: 9 }
+    ]
+  });
+
+  assert.deepEqual(result.mediaItems, [
+    { type: 'video', url: '/api/media/video/507f1f77bcf86cd799439011' },
+    { type: 'image', url: '/api/media/507f1f77bcf86cd799439012', imageDurationSeconds: 9 }
+  ]);
+});
+
+test('hero media validation rejects unsafe or unbounded entries', () => {
+  assert.throws(() => validateContentData('hero', { mediaItems: [{ type: 'image', url: 'javascript:alert(1)' }] }), /invalid/i);
+  assert.throws(() => validateContentData('hero', { mediaItems: [{ type: 'document', url: '/assets/file.pdf' }] }), /invalid/i);
+  assert.throws(() => validateContentData('hero', { mediaItems: [{ type: 'image', url: '/assets/hero.jpg', imageDurationSeconds: 120 }] }), /invalid/i);
+  assert.throws(() => validateContentData('hero', { mediaItems: Array.from({ length: 21 }, () => ({ type: 'image', url: '/assets/hero.jpg' })) }), /invalid/i);
 });
